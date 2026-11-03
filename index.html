@@ -55,6 +55,8 @@ a{color:var(--gold2)}button,input,select,textarea{font:inherit;color:inherit}
 .upg-badge svg{width:14px;height:14px;flex:none}
 .upg-li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;font-size:14px}.upg-li svg{width:18px;height:18px;flex:none;color:var(--gold2);margin-top:2px}
 .lock{position:relative;filter:blur(3px);opacity:.5;pointer-events:none;user-select:none}
+.tcg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px}.tcg-grid a{display:block;text-decoration:none;color:inherit}.tcg-grid .tc-wrap{zoom:.5;padding:0}
+.tcg-ban{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;margin-top:12px;background:linear-gradient(120deg,#5c1220,#1c1510 70%);border-color:var(--gold)}
 /* Carnet: proporción de credencial (85.6 × 54 mm) */
 .carnet{position:relative;width:min(100%,520px);min-height:0;margin:0 auto;border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#1d140e,#120c09 60%,#24110f);border:1.5px solid var(--gold);box-shadow:0 18px 40px rgba(0,0,0,.5);color:var(--text);display:flex;flex-direction:column}
 .carnet .ch{display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(90deg,var(--vino),var(--vino2));border-bottom:1px solid var(--gold)}
@@ -593,9 +595,10 @@ if (typeof module !== 'undefined') module.exports = RULES;
    MODE 'auto': real si hay llaves, si no demo. `node build.mjs` genera docs/ (real) y docs/demo/.
    ===================================================================== */
 const CONFIG = { MODE: 'auto', SUPABASE_URL: '', SUPABASE_ANON_KEY: '', APP_NAME: 'Charrería Pro' };
+const TCG = CONFIG.SITE === 'tcg';   // el mismo código sirve Charrería Pro y su sitio satélite CharreríaTCG
 const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
 const CATEGORIAS = ['Libre','Juvenil'];
-const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust'];
+const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust','tcg_cards'];
 RULES.F.escaramuza = { name: 'Rutina de escaramuza', short: 'Escaramuza', inf: [], eq: [] };
 const FN = k => RULES.F[k].name;
 
@@ -663,7 +666,7 @@ const DB = {
     try { await this.backend.del(t, id); } catch (e) { arr.splice(i, 0, prev); throw e; }
   }
 };
-const LS_KEY = 'charreriapro_demo_v13', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v14', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -671,14 +674,14 @@ const Local = {
     let raw = null; try { raw = localStorage.getItem(LS_KEY); } catch(e){}
     try { DB.data = raw ? JSON.parse(raw) : seed(); } catch(e){ DB.data = seed(); }
     TABLES.forEach(t => DB.data[t] = DB.data[t] || []);
-    if (!raw) this.persist();
+    tcgSyncLocal(); if (!raw) this.persist();
     if (this.bc) this.bc.onmessage = () => this.reload();
     window.addEventListener('storage', e => { if (e.key === LS_KEY) this.reload(); });
   },
   reload(){ try { const r = localStorage.getItem(LS_KEY); if (r) DB.data = JSON.parse(r); } catch(e){} onRemoteChange(); },
   persist(){ try { localStorage.setItem(LS_KEY, JSON.stringify(DB.data)); } catch(e){} },
-  async put(){ this.persist(); if (this.bc) this.bc.postMessage('sync'); },
-  async del(){ this.persist(); if (this.bc) this.bc.postMessage('sync'); },
+  async put(){ tcgSyncLocal(); this.persist(); if (this.bc) this.bc.postMessage('sync'); },
+  async del(){ tcgSyncLocal(); this.persist(); if (this.bc) this.bc.postMessage('sync'); },
   sessionGet(){ try { return localStorage.getItem(SS_KEY); } catch(e){ return memSession; } },
   sessionSet(v){ memSession = v; try { v ? localStorage.setItem(SS_KEY, v) : localStorage.removeItem(SS_KEY); } catch(e){} },
   async restore(){ const id = this.sessionGet(); return id ? DB.get('profiles', id) || null : null; },
@@ -775,7 +778,7 @@ const Remote = {
   async rpc(fn, args){
     const { data, error } = await this.sb.rpc(fn, args);
     if (error) throw new Error(/function .* does not exist|schema cache/i.test(error.message) ? 'Falta instalar la actualización más reciente en la base de datos' : error.message);
-    await Promise.all(['requests','charros','teams','horses','stock','profiles'].map(async t => { const { data: rows, error: e } = await this.sb.from(t).select('id,data').limit(20000); if (!e) DB.data[t] = rows.map(r => r.data); }));
+    await Promise.all(['requests','charros','teams','horses','stock','profiles','tcg_cards'].map(async t => { const { data: rows, error: e } = await this.sb.from(t).select('id,data').limit(20000); if (!e) DB.data[t] = rows.map(r => r.data); }));
     return data;
   },
   async del(t, id){ const { error } = await this.sb.from(t).delete().eq('id', id); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
@@ -968,7 +971,8 @@ function seed(){
   HS.forEach(x => { const m = { cb1: '04A1C2E3F4051A', cb2: '04B7D2E1A9338C', cb5: '04C3F8A2B1774D', cb6: '04D9E0B3C2884E' }[x.id]; if (m) chipOk(x, m); });
   HS.find(x => x.id === 'cb4').chipUid = '04E1F2A3B4C5D6'; HS.find(x => x.id === 'cb4').chipStatus = 'pendiente'; HS.find(x => x.id === 'cb4').chipAt = ago(2);
   RQ.push({ id:'rqk1', type:'chip_order', targetKind:'horse', targetId:'cb3', targetName:'Canelo', ship:{ name:'Gabriel Montaño', phone:'55 4433 2211', street:'Av. Hidalgo 120', colonia:'Centro', city:'Texcoco', state:'Estado de México', zip:'56100', notes:'Portón negro' }, price: 699, payStatus:'pagado_simulado', status:'enviado', kitUid:'04F00DCAFE1234', tracking:'ESTAFETA 7012 3344 55', shippedAt: ago(3), createdBy:'udueno', createdAt: ago(6) });
-  P.forEach(x => { if (x.id === 'ucap') { x.subscriptionStatus = 'pro'; x.proUntil = Date.now() + 20 * 864e5; } });
+  P.forEach(x => { if (['ucap','udueno','uganadero'].includes(x.id)) Object.assign(x, { subscriptionStatus: 'pro', proUntil: Date.now() + 20 * 864e5, tcgConsent: { at: Date.now(), v: TCG_CONSENT_V } }); });
+  { const c = CH.find(x => x.name === 'Ernesto Villaseñor'); if (c) c.userId = 'ucap'; }
   const offc = (kind, d) => Object.assign(d, { verif: 'oficial', verifKey: verifKeyOf(kind, d), verifiedBy: 'uadmin', verifiedByName: 'Súper Usuario', verifiedAt: ago(100) });
   CH.forEach(c => { if (c.id !== 'hfausto') offc('charro', c); }); T.forEach(t => { if (t.id !== 'q5') offc('team', t); }); HS.forEach(x => { if (!['cb3','cb7'].includes(x.id)) offc('horse', x); });
   offc('ranch', RA[0]); ST.forEach(x => { if (x.id !== 's4' && x.ranchId === 'g1') offc('stock', x); });
@@ -1003,16 +1007,17 @@ function openUpgrade(why){
   const u = State.user, P = prices(), li = t => `<div class="upg-li">${I.check}<span>${t}</span></div>`;
   const body = step => step === 'pay' ? `<div class="card mt"><div style="font-weight:800">Confirmar pago</div><div class="small mut" style="margin-top:4px">Plan Pro mensual · <b style="color:var(--gold2)">${mxn(P.pro)} MXN</b></div>
       <div class="banner warn mt">${I.info}<span>Pago de prueba: no se hace ningún cargo. Cuando se conecte el cobro real, aquí aparecerá el pago con tarjeta.</span></div>
+      <label class="row small mt2" style="gap:8px;align-items:flex-start"><input type="checkbox" id="upgOk" style="margin-top:3px"><span>${TCG_CONSENT}</span></label>
       <button class="btn pri block mt2" id="upgPay">Confirmar pago simulado</button><button class="btn ghost block mt" id="upgBack">Regresar</button></div>`
     : `<div class="center" style="margin-top:6px"><span class="upg-badge">${I.trophy} PRO</span><div class="h1" style="margin-top:12px">Lleva tu charrería al siguiente nivel</div>${why ? `<div class="sub" style="margin-top:6px">${esc(why)}</div>` : ''}</div>
-      <div class="card mt">${li('Reportes detallados en PDF de charros y caballos, listos para imprimir o enviar')}${li('Historial completo: todos los torneos, estadísticas por suerte y por año')}${li('Tarjetas coleccionables en alta resolución para compartir en redes')}${li('Insignia Pro en tu perfil')}</div>
+      <div class="card mt">${li('Reportes detallados en PDF de charros y caballos, listos para imprimir o enviar')}${li('Historial completo: todos los torneos, estadísticas por suerte y por año')}${li('Tarjetas coleccionables en alta resolución para compartir en redes')}${li('Tu carta en CharreríaTCG')}${li('Insignia Pro en tu perfil')}</div>
       <div class="center mt2"><div style="font-family:'Cinzel',serif;font-size:34px;color:var(--gold2);line-height:1">${mxn(P.pro)}</div><div class="small mut">MXN al mes</div></div>
       <button class="btn pri block mt2" id="upgGo">${u ? 'Activar Pro' : 'Inicia sesión para activar Pro'}</button><button class="btn ghost block mt" id="upgNo">Ahora no</button>
       <div class="small mut2 center mt">Siempre gratis: marcadores en vivo, rankings, vistas públicas y mesa del juez.</div>`;
   const draw = step => { $('#modal').innerHTML = `<div class="modal"><div class="box"${step === 'pay' ? ' style="animation:none"' : ''}>${body(step)}</div></div>`; wire(step); };
   const close = () => { $('#modal').innerHTML = ''; };
   const wire = step => { $('#modal .modal').onclick = e => { if (e.target.classList.contains('modal')) close(); };
-    if (step === 'pay') { $('#upgBack').onclick = () => draw('info'); $('#upgPay').onclick = async () => { try { await DB.backend.activatePro(); await audit('pro', `${State.user.name} activó Pro (pago simulado)`); close(); toast('¡Bienvenido a Pro!', 'ok'); render(); } catch (e) { toast(e.message || 'No se pudo activar', 'err'); } }; }
+    if (step === 'pay') { $('#upgBack').onclick = () => draw('info'); $('#upgPay').onclick = async () => { if (!$('#upgOk').checked) return toast('Marca la autorización para continuar', 'err'); try { await DB.backend.activatePro(); await tcgConsent(true); await audit('pro', `${State.user.name} activó Pro (pago simulado)`); close(); toast('¡Bienvenido a Pro!', 'ok'); render(); } catch (e) { toast(e.message || 'No se pudo activar', 'err'); } }; }
     else { $('#upgNo').onclick = close; $('#upgGo').onclick = () => { if (!State.user) { close(); toast('Inicia sesión para activar Pro'); return go('cuenta'); } draw('pay'); }; } };
   draw('info');
 }
@@ -1212,8 +1217,8 @@ const State = { user: null, route: 'inicio', param: null, param2: null,
 /* ------------------------- RUTAS ------------------------- */
 function go(h){ if (location.hash.slice(1) === h) render(); else location.hash = h; }
 function parseRoute(){
-  const h = location.hash.slice(1) || 'inicio';
-  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo|ganaderia|res|carnet)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
+  const h = location.hash.slice(1) || (TCG ? 'tienda' : 'inicio');
+  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo|ganaderia|res|carnet|carta)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
   if (m) { State.route = m[1]; State.param = m[2]; State.param2 = m[3] || null; } else { State.route = h; State.param = State.param2 = null; }
 }
 window.addEventListener('hashchange', () => { parseRoute(); render(); window.scrollTo(0, 0); });
@@ -1221,6 +1226,7 @@ window.addEventListener('hashchange', () => { parseRoute(); render(); window.scr
 /* ------------------------- RENDER ------------------------- */
 function render(){
   State.pendingRender = false; const u = State.user;
+  if (TCG) return renderTcg();
   $('#top').innerHTML = `<a class="brand" href="#inicio"><span class="logo">${I.horse}</span><b>Charrería <span>Pro</span></b></a>
     ${DB.backend.mode === 'demo' ? '<span class="chip blue">DEMO</span>' : ''}
     <a class="avatar" href="#cuenta" aria-label="Cuenta" style="overflow:hidden">${u ? (safeImg(u.photo || (myCharro(u) || {}).photo) ? `<img class="ph" src="${esc(safeImg(u.photo || myCharro(u).photo))}" alt="" style="width:100%;height:100%;border:0">` : esc(initials(u.name))) : '<span style="width:18px;height:18px;display:block">' + I.user + '</span>'}</a>`;
@@ -1304,6 +1310,7 @@ function vInicio(){
     h += `<div class="hero" style="border-color:var(--line2)"><div class="h1">La charrería, en vivo y con historia.</div><div class="sub" style="margin-top:8px">Calificaciones al momento conforme al reglamento, hojas oficiales digitales y el ranking nacional.</div>
       <div class="btns mt2"><a class="btn pri" href="#ranking">${I.trophy} Ver ranking</a><a class="btn" href="#historial">${I.clock} Historial</a></div><div class="pattern"></div></div>`;
   }
+  h += tcgBanner();
   h += `<div class="h2">Próximas charreadas</div>` + (next.length ? `<div class="list">${next.map(eventCard).join('')}</div>` : emptyState(I.clock, 'Sin charreadas programadas', 'Cuando un lienzo publique su próxima charreada aparecerá aquí.'));
   h += `<div class="h2">Top charros ${new Date().getFullYear()}<a href="#ranking">Ver todo</a></div>` + (top.length ? `<div class="card pad0">${top.map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.n} faenas`, c.pts, 'pts', true)).join('')}</div>` : emptyState(I.trophy, 'Aún sin ranking', 'Se forma con las charreadas oficiales finalizadas.'));
   h += `<div class="h2">Resultados recientes<a href="#historial">Historial</a></div><div class="list">${past.map(eventCard).join('') || emptyState(I.clock, 'Sin resultados', '')}</div>`;
@@ -1432,6 +1439,75 @@ function charroStats(name){
   R.rank = idx;
   return R;
 }
+/* ---------- CHARRERÍATCG: catálogo de cartas y sitio satélite ---------- */
+const TCG_CONSENT_V = '2026-11';
+const TCG_CONSENT = 'Soy la persona de la carta, o su madre, padre o tutor, y autorizo usar su imagen y sus datos en el ranking y en las cartas, la tienda y los juegos de CharreríaTCG mientras mi plan Pro esté vigente. Puedo retirar esta autorización en Mi panel.';
+const TCG_SRC = [['charro', 'charros', 'userId'], ['horse', 'horses', 'ownerId'], ['stock', 'stock', 'ownerId']];
+const TORO_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 8C4.5 8 2.6 6.4 2 3.2 1 7.4 3 11 7 11.6c.2 3.4 1.5 7 3.2 8.7.9.9 2.7.9 3.6 0 1.7-1.7 3-5.3 3.2-8.7 4-.6 6-4.2 5-8.4C21.4 6.4 19.5 8 16 8Z"/></svg>';
+function tcgSyncLocal(){   // igual que tcg_sync() en la base: Pro vigente, autorización y registro verificado
+  const out = [];
+  TCG_SRC.forEach(([kind, table, ownerKey]) => (DB.data[table] || []).forEach(d => { if (d.deleted) return;
+    const p = (DB.data.profiles || []).find(x => x.id === d[ownerKey]);
+    if (!p || !p.tcgConsent || p.subscriptionStatus !== 'pro' || !(+p.proUntil > Date.now()) || !isOfficial(kind, d) || (kind === 'stock' && d.mode !== 'unidad')) return;
+    out.push({ id: `${kind}-${d.id}`, kind, refId: d.id, name: d.name, ownerId: p.id, activeUntil: +p.proUntil, updatedAt: Date.now() }); }));
+  DB.data.tcg_cards = out;
+}
+const tcgCards = () => DB.all('tcg_cards').filter(c => c.activeUntil > Date.now());
+const tcgCardOf = (kind, id) => tcgCards().find(c => c.id === `${kind}-${id}`);
+const tcgLink = (kind, id) => tcgCardOf(kind, id) ? `<a class="btn block mt" href="tcg/#carta-${kind}-${id}">${I.trophy} Ver su carta en CharreríaTCG</a>` : '';
+async function tcgConsent(on){ const p = DB.get('profiles', State.user.id); State.user = await DB.put('profiles', { ...p, tcgConsent: on ? { at: Date.now(), v: TCG_CONSENT_V } : null }); }
+const tcgBanner = () => `<a class="card tcg-ban" href="tcg/"><span class="logo" style="width:44px;height:44px;flex:none">${I.trophy}</span><div class="grow"><div style="font-family:'Cinzel',serif;font-weight:800;font-size:17px;color:var(--gold2)">CharreríaTCG</div><div class="small" style="margin-top:2px">Las cartas de los charros, caballos y ganado de verdad. Conócelas y prepárate para jugar.</div></div><span class="marrow">${I.arrow}</span></a>`;
+function tcgSection(u){
+  const mine = TCG_SRC.flatMap(([kind, table, ownerKey]) => DB.all(table).filter(d => d[ownerKey] === u.id && !(kind === 'stock' && d.mode !== 'unidad')).map(d => [kind, d]));
+  if (!mine.length) return '';
+  if (!isPro(u)) return `<div class="h2">CharreríaTCG</div><div class="card"><div class="small mut">Con Pro, tu carta aparece en CharreríaTCG.</div><button class="btn pri block mt" data-act="upgrade" data-why="Pon tu carta en CharreríaTCG.">Activar Pro</button></div>`;
+  const on = !!u.tcgConsent;
+  return `<div class="h2">CharreríaTCG</div><div class="card"><button class="tog ${on ? 'on' : ''}" data-act="tcgToggle" style="text-align:left;width:100%;display:flex;justify-content:space-between;gap:10px;align-items:center"><span><b>Mostrar mis cartas</b><br><span class="small mut">Aparecen mientras tengas Pro vigente.</span></span><span>${on ? 'Sí' : 'No'}</span></button>
+    ${mine.map(([kind, d]) => { const c = tcgCardOf(kind, d.id); return `<div class="row between small" style="padding:8px 0;border-bottom:1px solid var(--line);gap:8px"><span class="ell">${esc(d.name)}</span>${c ? `<a href="tcg/#carta-${kind}-${d.id}">Ver carta</a>` : `<span class="mut">${!isOfficial(kind, d) ? 'Falta verificar' : 'Sin publicar'}</span>`}</div>`; }).join('')}</div>`;
+}
+function stockCardHTML(x){
+  const q = stockQuality(x.id), r = DB.get('ranches', x.ranchId) || {}, ovr = q ? Math.round(q.overall * 20) : 40, tier = ovr >= 90 ? 'leyenda' : ovr >= 78 ? 'oro' : ovr >= 64 ? 'plata' : 'bronce', photo = safeImg(x.photo), toro = x.kind === 'toro';
+  const crit = q ? RATE_CRIT.map(([k, l]) => `<div><span class="ell">${esc(l)}</span><span class="bar" style="margin:0"><i style="width:${Math.round(q.parts[k] * 20)}%"></i></span><b>${q.parts[k].toFixed(1)}</b></div>`).join('') : '<div style="grid-template-columns:1fr;text-align:center">Aún sin calificaciones</div>';
+  return `<div class="tc-wrap"><div class="tc ${tier}" id="tcard"><div class="in">
+    <div class="pic">${photo ? `<img src="${esc(photo)}" alt="">` : `<span style="width:92px;height:92px;color:var(--t1);opacity:.8">${toro ? TORO_ICON : I.horse}</span>`}<div class="ovr"><b>${ovr}</b><span>Media</span></div><span class="tier">${TIER_LBL[tier]}</span></div>
+    <div class="band"><div class="nm">${esc(x.name)}</div><div class="sb">${esc(r.name || 'Ganadería')}</div></div>
+    <div class="st"><div><b>${q ? q.overall.toFixed(1) : '—'}</b><span>Calidad</span></div><div><b>${q ? q.evs : 0}</b><span>Charreadas</span></div><div><b style="font-size:13px">${esc(x.age || '—')}</b><span>Edad</span></div></div>
+    <div class="su">${crit}</div><div class="bd"><span>${toro ? 'Toro' : 'Yegua bruta'}</span>${isOfficial('stock', x) ? '<span>Oficial</span>' : ''}</div>
+    <div class="ft"><span>${esc(CONFIG.APP_NAME)}</span><span>${esc(r.state || '')}</span></div></div></div></div>`;
+}
+function tcgCardHTML(c){
+  if (c.kind === 'charro') { const d = DB.get('charros', c.refId); return d ? cardHTML(charroStats(d.name)) : ''; }
+  if (c.kind === 'horse') { const d = DB.get('horses', c.refId); return d ? horseCardHTML(d, horseStats(d)) : ''; }
+  const d = DB.get('stock', c.refId); return d ? stockCardHTML(d) : '';
+}
+function vTienda(){
+  const tab = State.tcgTab || '', L = tcgCards().filter(c => !tab || c.kind === tab).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  const tabs = [['', 'Todas'], ['charro', 'Charros'], ['horse', 'Caballos'], ['stock', 'Ganado']];
+  return `<div class="hero" style="border-color:var(--line2)"><div class="h1">Las cartas de la charrería.</div><div class="sub" style="margin-top:8px">Cada carta nace de las puntuaciones reales de Charrería Pro y se actualiza con cada charreada.</div><div class="btns mt2"><a class="btn pri" href="#jugar">Cómo se juega</a></div><div class="pattern"></div></div>
+    <div class="btns mt2">${tabs.map(([k, l]) => `<button class="btn sm${k === tab ? ' pri' : ''}" data-act="tcgTab" data-k="${k}">${l}</button>`).join('')}</div>
+    ${L.length ? `<div class="tcg-grid">${L.map(c => `<a href="#carta-${c.kind}-${c.refId}" aria-label="Ver carta de ${esc(c.name)}">${tcgCardHTML(c).replace(' id="tcard"', '')}</a>`).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Aún no hay cartas aquí', 'Las cartas aparecen cuando un usuario Pro verificado autoriza la suya.')}</div>`}
+    <div class="footer">CharreríaTCG · Venta de cartas y partidas en línea: próximamente</div>`;
+}
+function vCarta(){
+  const kind = State.param, c = tcgCardOf(kind, State.param2), pro = { charro: 'ranking', horse: 'caballos', stock: 'ganado' }[kind] || 'inicio';
+  if (!c) return `<a class="back" href="#tienda">${I.arrow} Cartas</a>` + emptyState(I.trophy, 'Esta carta no está disponible', 'Puede que su plan Pro haya terminado o que aún no esté publicada.');
+  return `<a class="back" href="#tienda">${I.arrow} Cartas</a><div class="mt">${tcgCardHTML(c)}</div>
+    <div class="card mt"><div style="font-weight:800">Carta oficial</div><div class="small mut">Muy pronto podrás pedirla impresa y jugarla en línea.</div></div>
+    <a class="btn block mt" href="../#${pro}">${I.trophy} Ver en Charrería Pro</a>`;
+}
+function vJugar(){
+  const li = t => `<div class="upg-li">${I.check}<span>${t}</span></div>`;
+  return `<div class="h1">La Charreada</div><div class="sub" style="margin-top:6px">Dos jugadores, siete faenas y unos 15 minutos. Gana quien junte más sombreros.</div>
+    <div class="h2">En cada faena</div><div class="card">${li('Volteen la faena: dice qué habilidad cuenta y si hay caballo o ganado.')}${li('Cada quien elige en secreto un charro y, si la faena lo pide, un caballo.')}${li('Revelen y saquen una carta de Suerte.')}${li('Sumen habilidad, bono del caballo y Suerte. El total más alto gana los sombreros.')}</div>
+    <div class="h2">Reglas clave</div><div class="card">${li('Cada charro y cada caballo salen una sola vez.')}${li('En el jineteo de toro y en el Paso de la muerte hay que igualar o superar la Bravura del animal.')}${li('Si empatan, los sombreros se suman a la siguiente faena.')}${li('El Paso de la muerte vale 3 sombreros.')}</div>
+    <div class="footer">Reglas de prueba: pueden cambiar antes del lanzamiento.</div>`;
+}
+function renderTcg(){
+  $('#top').innerHTML = `<a class="brand" href="#tienda"><span class="logo">${I.trophy}</span><b>Charrería <span>TCG</span></b></a>${DB.backend.mode === 'demo' ? '<span class="chip blue">DEMO</span>' : ''}<a class="avatar" href="../#cuenta" aria-label="Cuenta en Charrería Pro"><span style="width:18px;height:18px;display:block">${I.user}</span></a>`;
+  const active = State.route === 'carta' ? 'tienda' : State.route;
+  $('#nav').innerHTML = [['#tienda', 'tienda', 'Cartas', I.trophy], ['#jugar', 'jugar', 'Cómo jugar', I.clock], ['../', '', 'Charrería Pro', I.horse]].map(([href, k, l, ic]) => `<a href="${href}" class="${k && active === k ? 'on' : ''}">${ic}<span>${l}</span></a>`).join('');
+  $('#view').className = 'wrap'; $('#view').innerHTML = ({ tienda: vTienda, jugar: vJugar, carta: vCarta }[State.route] || vTienda)();
+}
 /* ---------- CABALLOS ---------- */
 const DISCIPLINAS = ['Cala de caballo','Piales en el lienzo','Coleadero','Jineteo','Terna en el ruedo','Manganas','Paso de la muerte','Multidisciplina'];
 const SEXOS = ['Macho','Hembra','Castrado'];
@@ -1542,6 +1618,7 @@ function openHorse(id){
     ${canSeePrice(h, u) ? `<div class="h2">Valuación</div>${valBox(h, R)}` : ''}
     <div class="h2">Torneos</div>${list.length ? `<div class="card pad0">${list.slice(0, isPro(State.user) ? 500 : 3).map(e => `<a class="rank" href="#evento-${e.ev.id}" data-close="1" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:700">${esc(e.ev.title)}</div><div class="small mut ell">${fdate(e.ev.date)} · Montado por ${esc([...e.riders].join(', '))}</div></div><div class="pts">${e.pts}<small>pts</small></div></a>`).join('')}</div>` : '<div class="card small mut">Todavía no tiene faenas calificadas. Se suman cuando un charro lo monta en una charreada.</div>'}
     ${proBlock('horse', h.id, h.name, list, deepStats((p, s, ev) => (ev.charros.find(c => c.id === p.id) || {}).horseId === h.id))}
+    ${tcgLink('horse', h.id)}
     ${hasCarnet(h) ? `<a class="btn block mt" href="#carnet-${h.id}" data-close="1">${I.shield} Ver carnet digital</a>` : ''}
     ${(h.history || []).length ? `<div class="h2">Dueños anteriores</div><div class="card small">${h.history.slice().reverse().map(x => `<div class="row between" style="padding:3px 0"><b>${esc(x.label)}</b><span class="mut">${fdate(localISO(x.from))} – ${fdate(localISO(x.to))}</span></div>`).join('')}</div>` : ''}</div></div>`;
   wireCardModal();
@@ -1758,6 +1835,7 @@ function openStock(id){
     ${photo ? `<img src="${esc(photo)}" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:14px;margin-top:10px">` : ''}
     <div style="font-family:'Cinzel',serif;font-weight:800;font-size:20px;margin-top:10px">${esc(stockTitle(x))}</div><div style="margin-top:6px">${verifChip('stock', x)}</div>
     <div class="card small mt">${[['Ganadería', r.name], ['Faenas', (x.uses || []).join(', ')], ['Cabezas', x.mode === 'lote' ? x.count : ''], ['Edad', x.age], ['Peso', x.weight], ['Renta', canSeeRent(x) ? rentLbl(x) : 'Por verificar'], ['Disponible', x.available === false ? 'No' : 'Sí']].filter(([, v]) => v).map(([k, v]) => `<div class="row between" style="padding:3px 0"><span class="mut">${k}</span><b>${esc(v)}</b></div>`).join('')}</div>
+    ${tcgLink('stock', x.id)}
     ${x.about ? `<div class="small mt" style="line-height:1.5">${esc(x.about)}</div>` : ''}
     ${qualityBox(x.id)}
     <div class="h2">Rentar</div><div class="card"><div style="font-weight:700">${esc(r.name || 'Ganadería')}</div><div class="small mut">${esc([r.city, r.state].filter(Boolean).join(', '))}</div>${contactBtns(r, stockTitle(x) + ' de ' + (r.name || 'su ganadería'))}<a class="btn ghost sm block mt" href="#ganaderia-${r.id}" data-close="1">Ver ganadería</a></div>
@@ -1837,6 +1915,7 @@ function openCard(name){
   $('#modal').innerHTML = `<div class="modal"><div class="box" role="dialog" aria-label="Tarjeta de ${esc(name)}"><div class="row between"><div style="font-weight:800;font-size:15px">Tarjeta de charro</div><button class="btn sm" data-close="1">Cerrar</button></div>
     ${cardHTML(R)}
     ${R.live ? `<a class="btn vino block mt" href="#evento-${R.live.id}" data-close="1">${I.live} Verlo en vivo: ${esc(R.live.title)}</a>` : ''}
+    ${R.prof ? tcgLink('charro', R.prof.id) : ''}
     <div class="h2">Torneos</div>${list.length ? `<div class="card pad0">${list.slice(0, isPro(State.user) ? 500 : 3).map(e => `<a class="rank" href="#evento-${e.ev.id}" data-close="1" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:700">${esc(e.ev.title)}</div><div class="small mut ell">${fdate(e.ev.date)} · ${esc(e.team)} · ${e.n} faenas${e.ev.official ? ' · Oficial' : ''}</div></div><div class="pts">${e.pts}<small>pts</small></div></a>`).join('')}</div>` : '<div class="card small mut">Todavía no tiene faenas calificadas.</div>'}
     ${proBlock('charro', name, name, list, deepStats(p => norm(p.name) === norm(name)))}
     <div class="small mut2 mt">La media (40 a 99) compara su promedio por faena con el de todos los charros. Con menos de 3 faenas es provisional.</div></div></div>`;
@@ -1922,6 +2001,7 @@ function vCuenta(){
     if (u.role !== 'juez' && u.role !== 'ganadero') h += ranchSection(u);
     if (u.role === 'lienzo' && L) h += `<div class="h2">Foto del lienzo</div><div class="card">${photoBox('lienzo', L.id, L.photo, L.name)}</div>`;
   }
+  h += tcgSection(u);
   h += `<div class="h2">Mi plan</div><div class="card"><div class="row between" style="gap:8px"><div><div style="font-weight:800">${isPro(u) ? 'Pro' : 'Gratis'}</div><div class="small mut">${isSuper(u) ? 'El súper usuario tiene todas las funciones.' : isPro(u) ? `Activo hasta el ${fdate(localISO(+u.proUntil))}` : 'Marcadores, rankings y mesa del juez sin costo.'}</div></div>${isPro(u) ? '<span class="upg-badge">PRO</span>' : `<button class="btn pri sm" data-act="upgrade">Conocer Pro</button>`}</div>${isPro(u) && !isSuper(u) ? `<button class="btn ghost sm mt" data-act="upgrade">Renovar 30 días</button>` : ''}</div>`;
   if (u.role !== 'charro') h += `<div class="h2">Foto de perfil</div><div class="card">${photoBox('profile', u.id, u.photo, u.name)}</div>`;
   h += `<div class="h2">Seguridad</div>` + (State.changePass ? passForm(true) : `<button class="btn block" data-act="changepass">${I.key} Cambiar contraseña</button>`);
@@ -2573,6 +2653,8 @@ const ACT = {
     await safe(async () => { await DB.put('profiles', { ...p, subscriptionStatus: 'free', proUntil: null }); await audit('pro', `Quitó Pro a ${p.name}`); }, 'Plan Pro retirado'); },
   async adjDel(el){ const a = DB.get('adjust', el.dataset.id); if (!a || !(await ask('Quitar ajuste', `${a.label} vuelve a su valor real.`, 'Quitar'))) return;
     await safe(async () => { await DB.del('adjust', a.id); await audit('ajuste', `Quitó el ajuste de ${VK_LABEL[a.kind].toLowerCase()} ${a.label}`); }, 'Ajuste quitado'); },
+  async tcgToggle(){ const on = !State.user.tcgConsent; if (on && !(await ask('Autorización CharreríaTCG', TCG_CONSENT, 'Autorizo'))) return; await safe(() => tcgConsent(on), on ? 'Tu carta ya está en CharreríaTCG' : 'Tu carta salió de CharreríaTCG'); },
+  tcgTab(el){ State.tcgTab = el.dataset.k; render(); },
   scard(el){ openStock(el.dataset.id); }, rateStock(el){ openRateStock(el.dataset.id); },
   async evStockDel(el){ const ev = curEv(), x = DB.get('stock', el.dataset.id); await safe(() => updEv({ stock: (ev.stock || []).filter(y => y.stockId !== el.dataset.id) }), x ? `Se quitó ${x.name}` : 'Quitado'); }, smanage(el){ go('res-' + el.dataset.id); }, gtab(el){ State.gTab = el.dataset.k; render(); },
   newRanch(){ State.newRanch = !State.newRanch; render(); }, newStock(){ State.newStock = !State.newStock; render(); },
@@ -2804,6 +2886,7 @@ document.addEventListener('submit', async e => {
   try { State.user = await DB.backend.restore(); } catch (e) { State.user = null; }
   if (authHash.has('access_token') || authHash.has('error')) history.replaceState(null, '', location.pathname + location.search + '#cuenta');
   if (authHash.has('error')) setTimeout(() => toast(authHash.get('error_code') === 'otp_expired' ? 'El enlace ya expiró o ya se usó. Pide uno nuevo.' : (authHash.get('error_description') || 'Enlace inválido'), 'err'), 300);
+  if (TCG) document.title = 'CharreríaTCG';
   parseRoute(); render();
 })();
 </script>
