@@ -239,7 +239,7 @@ create policy "videos subida" on storage.objects for insert to authenticated wit
 do $$
 declare
   v_email text := 'ranchodejuda@gmail.com';
-  v_pass  text := 'Unicornio02';
+  v_pass  text := 'CAMBIA_ESTA_CONTRASEÑA';  -- solo se usa al crear la cuenta por primera vez
   v_name  text := 'Súper Usuario';
   v_uid   uuid;
 begin
