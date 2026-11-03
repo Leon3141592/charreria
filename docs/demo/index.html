@@ -1144,7 +1144,7 @@ function vPanelEvento(){
   h += `<div class="h2">Faenas</div><div class="card"><div class="chips">${order.map(k => `<button class="tog ${ev.suertes.includes(k) ? 'on' : ''}" data-act="toggleSuerte" data-s="${k}" ${dis}>${esc(FN(k))}</button>`).join('')}</div><div class="small mut mt">Orden oficial de las faenas conforme al reglamento.</div></div>`;
   h += `<div class="h2">${cc ? 'Charros completos inscritos' : 'Equipos y charros'}</div>`;
   h += ev.teams.map(t => `<div class="team"><div class="row between"><div><div style="font-weight:800">${esc(t.name)}</div><div class="small mut">${esc(cc ? (t.assoc || '') + (t.state ? ' · ' + t.state : '') : (t.state || '') + (t.capitan ? ' · Capitán: ' + t.capitan : ''))}</div></div>${locked ? '' : `<button class="btn ghost sm" data-act="delTeam" data-id="${t.id}">${I.x}</button>`}</div>
-    ${cc ? '' : `<div>${ev.charros.filter(c => c.teamId === t.id).map(c => `<span class="tag">${esc(c.name)}${locked ? '' : `<button data-act="delCharro" data-id="${c.id}" aria-label="Quitar">${I.x}</button>`}</span>`).join('') || '<div class="small mut mt">Sin charros todavía</div>'}</div>
+    ${cc ? '' : `<div>${ev.charros.filter(c => c.teamId === t.id).map(c => `<span class="tag" ${c.addedBy ? `title="Agregado por ${esc(c.addedByName || 'juez')}${c.note ? ' · ' + esc(c.note) : ''}"` : ''}>${esc(c.name)}${c.addedBy ? ' <span class="chip blue" style="padding:1px 6px;font-size:10px">juez</span>' : ''}${locked ? '' : `<button data-act="delCharro" data-id="${c.id}" aria-label="Quitar">${I.x}</button>`}</span>`).join('') || '<div class="small mut mt">Sin charros todavía</div>'}</div>
     ${locked ? '' : `<form class="row mt" data-form="addCharro" data-team="${t.id}" style="gap:8px"><input class="in" name="name" placeholder="Nombre del charro" required><button class="btn sm" style="min-height:46px">${I.plus}</button></form>`}`}</div>`).join('');
   if (!locked) h += cc ? `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Inscribir charro completo</div><input class="in mt" name="name" placeholder="Nombre del charro" required><input class="in mt" name="assoc" placeholder="Equipo / asociación"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn block mt">${I.plus} Inscribir</button></form>`
     : `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Agregar equipo</div><input class="in mt" name="name" placeholder="Nombre del equipo / asociación" required><input class="in mt" name="capitan" placeholder="Capitán"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn block mt">${I.plus} Agregar equipo</button></form>`;
@@ -1164,7 +1164,31 @@ const DEFS = key => { const [t, fk] = key.split(':'); if (t === 'eq') return RUL
 
 function jSelWho(path, ev, tid, label){
   const d = State.j.d, cur = getP(d, path) || '', ch = ev.charros.filter(c => c.teamId === tid);
-  return `${label ? `<label class="f">${label}</label>` : ''}<select class="in" data-jp="${path}"><option value="">— Elegir charro —</option>${ch.map(c => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>`;
+  return `${label ? `<label class="f">${label}</label>` : ''}<select class="in" data-jp="${path}" data-team="${tid}"><option value="">— Elegir charro —</option>${ch.map(c => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)}${c.addedBy ? ' (agregado por juez)' : ''}</option>`).join('')}${ev.mode === 'completo' ? '' : '<option value="__nuevo">＋ Agregar charro (cambio de último momento)…</option>'}</select>`;
+}
+function askCharro(team){
+  return new Promise(res => {
+    $('#modal').innerHTML = `<div class="modal"><div class="box"><div style="font-weight:800;font-size:17px">Agregar charro a ${esc(team.name)}</div><div class="sub" style="margin-top:6px">Para cambios de último momento. Quedará registrado a tu nombre y el lienzo lo verá marcado como agregado por juez.</div>
+      <label class="f">Nombre del charro</label><input class="in" id="acName" autocomplete="off"><label class="f">Motivo (opcional)</label><input class="in" id="acNote" placeholder="Ej. sustituye a Juan Pérez">
+      <div class="btns mt2"><button class="btn" id="askNo">Cancelar</button><button class="btn pri" id="askOk">Agregar</button></div></div></div>`;
+    const close = v => { $('#modal').innerHTML = ''; res(v); }, nm = $('#acName'); nm.focus();
+    const ok = () => { const name = nm.value.trim().replace(/\s+/g, ' '); if (!name) { nm.focus(); return toast('Escribe el nombre del charro', 'err'); } close({ name, note: $('#acNote').value.trim() }); };
+    $('#askNo').onclick = () => close(null); $('#askOk').onclick = ok;
+    nm.onkeydown = $('#acNote').onkeydown = e => { if (e.key === 'Enter') ok(); };
+    $('#modal .modal').onclick = e => { if (e.target.classList.contains('modal')) close(null); };
+  });
+}
+async function judgeAddCharro(path, tid){
+  const ev = curEv(), team = ev && ev.teams.find(t => t.id === tid); if (!team) return render();
+  const r = await askCharro(team); if (!r) return render();
+  const dup = ev.charros.find(c => c.teamId === tid && norm(c.name) === norm(r.name));
+  if (dup) { setP(State.j.d, path, dup.id); toast('Ese charro ya estaba en el equipo; quedó seleccionado'); return jMark(); }
+  const u = State.user, c = { id: 'c' + uid(), name: r.name, teamId: tid, addedBy: u.id, addedByName: u.name, addedAt: Date.now(), note: r.note || '' };
+  await safe(async () => {
+    await DB.put('events', { ...curEv(), charros: [...curEv().charros, c] });   // sin updatedAt: el juez solo puede agregar charros
+    await audit('charro_juez', `Agregó al charro ${r.name} en ${team.name} (“${ev.title}”)${r.note ? ' · ' + r.note : ''}`);
+    setP(State.j.d, path, c.id); State.j.dirty = true;
+  }, 'Charro agregado');
 }
 function jSel(path, list, placeholder, withPts = true){
   const cur = getP(State.j.d, path) || '';
@@ -1558,6 +1582,7 @@ document.addEventListener('click', async e => {
 });
 document.addEventListener('change', async e => {
   const el = e.target;
+  if (el.dataset.jp && el.value === '__nuevo') return judgeAddCharro(el.dataset.jp, el.dataset.team);
   if (el.dataset.jp) { let v = el.value; if (el.dataset.num) v = +v; if (el.type === 'number') v = el.value; setP(State.j.d, el.dataset.jp, v);
     if (el.dataset.jp.endsWith('.tipo')) { const i = el.dataset.jp.split('.')[1]; Object.assign(State.j.d.intentos[i], { res: '', fl: [], rm: [] }); }
     if (/\.res$/.test(el.dataset.jp) && !el.value) { const base = el.dataset.jp.replace(/\.res$/, ''); ['fl','rm','es','ex'].forEach(k => { if (getP(State.j.d, base + '.' + k)) setP(State.j.d, base + '.' + k, []); }); }

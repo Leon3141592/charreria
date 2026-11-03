@@ -177,6 +177,20 @@ create policy "events cambio" on public.events for update
     and ( (select e.data->>'status' from events e where e.id = events.id) is distinct from 'finalizado'
           or events.data->>'status' = 'finalizado')));
 
+-- JUECES: durante la charreada en vivo pueden AGREGAR charros (cambios de último momento).
+-- No pueden cambiar nada más del evento ni quitar o editar charros existentes.
+drop policy if exists "events juez agrega charro" on public.events;
+create policy "events juez agrega charro" on public.events for update
+  using (public.can_score(events.id))
+  with check (
+    public.can_score(events.id)
+    and (events.data - 'charros') = (select e.data - 'charros' from events e where e.id = events.id)
+    and events.data->'charros' @> (select e.data->'charros' from events e where e.id = events.id)
+    and not exists (   -- cada charro nuevo queda a nombre del juez que lo agregó
+      select 1 from jsonb_array_elements(events.data->'charros') c
+      where not ((select e.data->'charros' from events e where e.id = events.id) @> jsonb_build_array(c))
+        and c->>'addedBy' is distinct from auth.uid()::text));
+
 -- CALIFICACIONES (una fila por equipo y faena): solo jueces autorizados del lienzo, con la charreada en vivo
 -- y mientras la hoja del equipo no haya sido entregada (el súper usuario siempre puede corregir)
 drop policy if exists "scores alta" on public.scores;
