@@ -728,6 +728,162 @@ create policy "horses cambio" on public.horses for update
     and public.verif_of(horses.data) = public.verif_of((select h.data from horses h where h.id = horses.id))));
 
 -- =====================================================================
+-- 5f) GANADERÍAS, GANADO Y RENTA
+-- =====================================================================
+-- 1) TABLAS
+create table if not exists public.ranches (id text primary key, data jsonb not null, created_at timestamptz default now());
+create table if not exists public.stock   (id text primary key, data jsonb not null, created_at timestamptz default now());
+create index if not exists stock_ranch_idx on public.stock ((data->>'ranchId'));
+alter table public.ranches enable row level security;
+alter table public.stock   enable row level security;
+
+-- 2) Cuenta de ganadero: queda activa al registrarse; lo "oficial" lo da la verificación
+drop policy if exists "profiles alta" on public.profiles;
+create policy "profiles alta" on public.profiles for insert with check (
+  id = auth.uid()::text
+  and profiles.data->>'role' in ('lienzo','juez','charro','equipo','dueno','ganadero')
+  and coalesce(profiles.data->>'verified','false') = 'false'
+  and ( profiles.data->>'status' = 'pendiente'
+        or (profiles.data->>'status' = 'aprobado' and profiles.data->>'role' in ('charro','equipo','dueno','ganadero'))
+        or (profiles.data->>'status' = 'aprobado' and public.invite_ok(profiles.data->>'invite', profiles.data->>'role'))));
+
+-- 3) GANADERÍAS: lectura pública (el ganadero publica su contacto para renta); el dueño las edita sin tocar la verificación
+drop policy if exists "ranches lectura" on public.ranches;
+create policy "ranches lectura" on public.ranches for select using (true);
+drop policy if exists "ranches alta" on public.ranches;
+create policy "ranches alta" on public.ranches for insert with check (
+  public.is_approved() and ranches.data->>'ownerId' = auth.uid()::text
+  and ranches.data->'verif' is null and ranches.data->'verifKey' is null);
+drop policy if exists "ranches cambio" on public.ranches;
+create policy "ranches cambio" on public.ranches for update
+  using (public.is_super() or ranches.data->>'ownerId' = auth.uid()::text)
+  with check (public.is_super() or (ranches.data->>'ownerId' = auth.uid()::text
+    and public.verif_of(ranches.data) = public.verif_of((select r.data from ranches r where r.id = ranches.id))));
+drop policy if exists "ranches baja" on public.ranches;
+create policy "ranches baja" on public.ranches for delete using (public.is_super() or ranches.data->>'ownerId' = auth.uid()::text);
+
+-- GANADO: toros y yeguas de una ganadería del mismo dueño
+drop policy if exists "stock lectura" on public.stock;
+create policy "stock lectura" on public.stock for select using (true);
+drop policy if exists "stock alta" on public.stock;
+create policy "stock alta" on public.stock for insert with check (
+  stock.data->>'ownerId' = auth.uid()::text
+  and exists (select 1 from ranches r where r.id = stock.data->>'ranchId' and r.data->>'ownerId' = auth.uid()::text)
+  and stock.data->'verif' is null and stock.data->'verifKey' is null);
+drop policy if exists "stock cambio" on public.stock;
+create policy "stock cambio" on public.stock for update
+  using (public.is_super() or stock.data->>'ownerId' = auth.uid()::text)
+  with check (public.is_super() or (stock.data->>'ownerId' = auth.uid()::text
+    and exists (select 1 from ranches r where r.id = stock.data->>'ranchId' and r.data->>'ownerId' = auth.uid()::text)
+    and public.verif_of(stock.data) = public.verif_of((select s.data from stock s where s.id = stock.id))));
+drop policy if exists "stock baja" on public.stock;
+create policy "stock baja" on public.stock for delete using (public.is_super() or stock.data->>'ownerId' = auth.uid()::text);
+
+-- 4) VERIFICACIÓN: ganaderías y ganado (incluye el precio de renta en la huella)
+create or replace function public.verif_key(kind text, d jsonb) returns text
+language sql immutable as $$
+  select case kind
+    when 'charro' then public.vk(d, 'name', 'category')
+    when 'team'   then public.vk(d, 'name', 'state')
+    when 'horse'  then public.vk(d, 'name', 'registry', 'breed', 'training', 'birthYear', 'discipline', 'sex')
+    when 'ranch'  then public.vk(d, 'name', 'state', 'whatsapp', 'phone')
+    when 'stock'  then public.vk(d, 'name', 'kind', 'mode', 'count', 'rentPrice', 'rentUnit')
+  end
+$$;
+
+create or replace function public.can_verify(kind text, rid text) returns boolean
+language plpgsql stable security definer set search_path = public as $$
+declare lid text; ok boolean := false;
+begin
+  if public.is_super() then return true; end if;
+  if not (public.is_approved() and public.my_data()->>'role' = 'lienzo') then return false; end if;
+  lid := public.my_data()->>'lienzoId';
+  if not public.owns_lienzo(lid) then return false; end if;
+  if kind = 'team' then
+    select exists (select 1 from teams t where t.id = rid and t.data->>'lienzoId' = lid and t.data->>'lienzoStatus' = 'aprobado') into ok;
+  elsif kind = 'charro' then
+    select exists (select 1 from charros c join teams t on t.id = c.data->>'teamId'
+                   where c.id = rid and t.data->>'lienzoId' = lid and t.data->>'lienzoStatus' = 'aprobado') into ok;
+  elsif kind = 'horse' then
+    select exists (select 1 from events e, jsonb_array_elements(e.data->'charros') ch
+                   where e.data->>'lienzoId' = lid and ch->>'horseId' = rid) into ok;
+  elsif kind = 'stock' then
+    select exists (select 1 from events e, jsonb_array_elements(coalesce(e.data->'stock', '[]'::jsonb)) x
+                   where e.data->>'lienzoId' = lid and x->>'stockId' = rid) into ok;
+  elsif kind = 'ranch' then
+    select exists (select 1 from events e, jsonb_array_elements(coalesce(e.data->'stock', '[]'::jsonb)) x
+                   join stock s on s.id = x->>'stockId'
+                   where e.data->>'lienzoId' = lid and s.data->>'ranchId' = rid) into ok;
+  end if;
+  return ok;
+end $$;
+
+create or replace function public.set_verified(kind text, rid text, decision text, note text default '') returns void
+language plpgsql security definer set search_path = public as $$
+declare tbl text; d jsonb; me jsonb := public.my_data(); now_ms bigint := (extract(epoch from now()) * 1000)::bigint;
+begin
+  tbl := case kind when 'charro' then 'charros' when 'team' then 'teams' when 'horse' then 'horses' when 'ranch' then 'ranches' when 'stock' then 'stock' end;
+  if tbl is null then raise exception 'Tipo inválido'; end if;
+  if decision = 'pendiente' and not public.is_super() then raise exception 'No tienes permiso para esta acción'; end if;
+  if decision not in ('oficial','rechazado','pendiente') then raise exception 'Decisión inválida'; end if;
+  if not public.can_verify(kind, rid) then raise exception 'No tienes permiso para verificar este registro'; end if;
+  execute format('select data from %I where id = $1 for update', tbl) into d using rid;
+  if d is null then raise exception 'Registro no encontrado'; end if;
+  execute format('update %I set data = data || $1 where id = $2', tbl) using jsonb_build_object(
+    'verif', decision, 'verifKey', case when decision = 'pendiente' then null else public.verif_key(kind, d) end,
+    'verifiedBy', auth.uid()::text, 'verifiedByName', coalesce(me->>'name', ''), 'verifiedAt', now_ms,
+    'verifNote', case when decision = 'rechazado' then coalesce(note, '') else '' end), rid;
+end $$;
+revoke all on function public.set_verified(text, text, text, text) from public, anon;
+grant execute on function public.set_verified(text, text, text, text) to authenticated;
+
+-- 5) TIEMPO REAL
+do $$ declare t text; begin
+  foreach t in array array['ranches','stock'] loop
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
+
+-- =====================================================================
+-- 5g) CALIFICACIÓN DEL GANADO
+-- =====================================================================
+create table if not exists public.stock_ratings (id text primary key, data jsonb not null, created_at timestamptz default now());
+create index if not exists stock_ratings_stock_idx on public.stock_ratings ((data->>'stockId'));
+alter table public.stock_ratings enable row level security;
+
+-- Lectura pública: el historial de calidad del ganado es público
+drop policy if exists "stock_ratings lectura" on public.stock_ratings;
+create policy "stock_ratings lectura" on public.stock_ratings for select using (true);
+
+-- Califica: súper usuario, el lienzo dueño o un juez del lienzo, con la charreada en vivo o finalizada,
+-- solo ganado que el lienzo registró en esa charreada, una calificación por persona, a su nombre, de 1 a 5
+create or replace function public.rating_ok(d jsonb, rid text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select d->>'raterId' = auth.uid()::text
+    and rid = (d->>'eventId') || '-' || (d->>'stockId') || '-' || auth.uid()::text
+    and public.can_sheet(d->>'eventId')
+    and exists (select 1 from events e, jsonb_array_elements(coalesce(e.data->'stock', '[]'::jsonb)) x
+                where e.id = d->>'eventId' and x->>'stockId' = d->>'stockId')
+    and (d->'scores'->>'des')::int between 1 and 5
+    and (d->'scores'->>'con')::int between 1 and 5
+    and (d->'scores'->>'seg')::int between 1 and 5
+$$;
+drop policy if exists "stock_ratings alta" on public.stock_ratings;
+create policy "stock_ratings alta" on public.stock_ratings for insert with check (public.rating_ok(stock_ratings.data, stock_ratings.id));
+drop policy if exists "stock_ratings cambio" on public.stock_ratings;
+create policy "stock_ratings cambio" on public.stock_ratings for update
+  using (stock_ratings.data->>'raterId' = auth.uid()::text)
+  with check (public.rating_ok(stock_ratings.data, stock_ratings.id));
+
+do $$ begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'stock_ratings') then
+    alter publication supabase_realtime add table public.stock_ratings;
+  end if;
+end $$;
+
+-- =====================================================================
 -- 6) SÚPER USUARIO (se crea solo; puedes correr este archivo varias veces)
 -- =====================================================================
 do $$

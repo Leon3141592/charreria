@@ -576,7 +576,7 @@ if (typeof module !== 'undefined') module.exports = RULES;
 const CONFIG = {"APP_NAME":"Charrería Pro","MODE":"demo","SUPABASE_URL":"","SUPABASE_ANON_KEY":""};
 const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
 const CATEGORIAS = ['Libre','Juvenil'];
-const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand'];
+const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings'];
 const FN = k => RULES.F[k].name;
 
 /* ------------------------- ICONOS ------------------------- */
@@ -643,7 +643,7 @@ const DB = {
     try { await this.backend.del(t, id); } catch (e) { arr.splice(i, 0, prev); throw e; }
   }
 };
-const LS_KEY = 'charreriapro_demo_v8', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v10', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -783,6 +783,7 @@ async function createAccount(id, pl, extra){
   if (role === 'charro') { const cid = 'h' + uid();
     await DB.put('charros', { id: cid, name: pl.name, alias: pl.alias || '', state: pl.state, category: pl.category || 'Libre', photo: '', teamId: null, userId: id, createdAt: Date.now() });
     if (pl.teamReq) await DB.put('requests', { id: 'r' + uid(), type: 'roster', charroId: cid, teamId: pl.teamReq, status: 'pendiente', createdBy: id, createdAt: Date.now() }); }
+  if (role === 'ganadero') await DB.put('ranches', { id: 'g' + uid(), name: pl.ranchName, ownerId: id, ownerName: pl.name, state: pl.state, city: pl.city || '', location: '', whatsapp: pl.whatsapp || '', phone: pl.phone || '', about: '', photo: '', createdAt: Date.now() });
   if (role === 'equipo') { const tid = 'q' + uid();
     await DB.put('teams', { id: tid, name: pl.teamName, state: pl.state, assoc: pl.assoc || '', photo: '', captainId: id, captainName: pl.name, lienzoId: null, lienzoStatus: '', createdAt: Date.now() });
     if (pl.lienzoAfil) await DB.put('requests', { id: 'r' + uid(), type: 'afiliacion', teamId: tid, lienzoId: pl.lienzoAfil, status: 'pendiente', createdBy: id, createdAt: Date.now() }); }
@@ -902,18 +903,34 @@ function seed(){
   horse('cb6','Centella','Manganas','Hembra',5,'Azteca','Palomino','FMCH-33901','uext2','',false,false,false,{ history: [{ label: 'Rancho San Rafael', from: ago(900), to: ago(200) }] });
   horse('cb7','Diamante','Piales en el lienzo','Macho',3,'Cuarto de milla','Bayo','','udueno','Gabriel Montaño',true,true,true);
   P.forEach(x => { if (x.id === 'ucharro' || x.id === 'ucap') x.verified = true; });
+  const RA = [], ST = [];
+  prof('uganadero','Rogelio Alcaraz','ganadero@demo.mx','ganadero','aprobado',null);
+  RA.push({ id:'g1', name:'Ganadería Los Encinos', ownerId:'uganadero', ownerName:'Rogelio Alcaraz', state:'Jalisco', city:'Tepatitlán', location:'Carretera Tepa–Arandas km 12', whatsapp:'3312345678', phone:'3787654321', about:'Toros de reparo y yeguas brutas para charreadas y torneos desde 1998. Transporte incluido en Los Altos.', photo:'', createdAt: ago(300) });
+  RA.push({ id:'g2', name:'Ganadería San Marcos', ownerId:'uext3', ownerName:'Familia Ruvalcaba', state:'Aguascalientes', city:'San Francisco de los Romo', location:'', whatsapp:'4491112233', phone:'', about:'Ganado para coleadero y terna.', photo:'', createdAt: ago(40) });
+  const stk = (id, ranchId, ownerId, kind, mode, name, extra) => ST.push({ id, ranchId, ownerId, kind, mode, name, tag: '', count: mode === 'lote' ? 10 : 1, uses: [], age: '', weight: '', about: '', photo: '', rentPrice: 0, rentUnit: 'por cabeza', available: true, createdAt: ago(200), ...extra });
+  stk('s1','g1','uganadero','toro','unidad','El Diablo',{ tag:'23', uses:['Jineteo de toro'], age:'5 años', weight:'520 kg', rentPrice:4500, rentUnit:'por cabeza', about:'Toro de reparo fuerte, salida limpia.' });
+  stk('s2','g1','uganadero','toro','lote','Toros de terna',{ count:12, uses:['Terna en el ruedo','Coleadero'], rentPrice:28000, rentUnit:'por lote' });
+  stk('s3','g1','uganadero','yegua','lote','Yeguas brutas',{ count:15, uses:['Jineteo de yegua','Piales en el lienzo','Manganas a pie','Manganas a caballo'], rentPrice:18000, rentUnit:'por charreada' });
+  stk('s4','g1','uganadero','yegua','unidad','La Güera',{ tag:'7', uses:['Jineteo de yegua'], age:'6 años', rentPrice:3000, rentUnit:'por cabeza' });
+  stk('s5','g2','uext3','toro','lote','Novillos de coleadero',{ count:20, uses:['Coleadero'], rentPrice:22000, rentUnit:'por lote' });
+  E.forEach(e => { if (e.id === 'elive' || e.id === 'ecirc') e.stock = [{ stockId: 's1' }, { stockId: 's3' }]; if (e.id === 'eoto') e.stock = [{ stockId: 's2' }]; });
+  const SR = [], rate = (ev, sid, uid_, name, role, des, con, seg, note, d) => SR.push({ id: `${ev}-${sid}-${uid_}`, eventId: ev, stockId: sid, ranchId: (ST.find(x => x.id === sid) || {}).ranchId, raterId: uid_, raterName: name, raterRole: role, scores: { des, con, seg }, note, createdAt: ago(d), updatedAt: ago(d) });
+  rate('ecirc','s1','ujuez','Juez Ricardo Ponce','juez',5,4,4,'Reparó parejo toda la faena.',40); rate('ecirc','s1','uvilla','Administración Lienzo de la Villa','lienzo',4,5,5,'',40);
+  rate('ecirc','s3','ujuez','Juez Ricardo Ponce','juez',4,4,3,'Dos yeguas salieron lastimadas de una pata.',40); rate('elive','s1','ujuez','Juez Ricardo Ponce','juez',5,5,4,'Excelente toro de reparo.',0);
+  rate('eoto','s2','ujuez2','Juez Ana Lucía Bravo','juez',3,4,4,'Algunos toros flojos para la terna.',12);
   const offc = (kind, d) => Object.assign(d, { verif: 'oficial', verifKey: verifKeyOf(kind, d), verifiedBy: 'uadmin', verifiedByName: 'Súper Usuario', verifiedAt: ago(100) });
   CH.forEach(c => { if (c.id !== 'hfausto') offc('charro', c); }); T.forEach(t => { if (t.id !== 'q5') offc('team', t); }); HS.forEach(x => { if (!['cb3','cb7'].includes(x.id)) offc('horse', x); });
+  offc('ranch', RA[0]); ST.forEach(x => { if (x.id !== 's4' && x.ranchId === 'g1') offc('stock', x); });
   RQ.push({ id:'rq4', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Administración Lienzo de la Villa', contact:'55 9876 5432', message:'Lo queremos para la escuela de charrería.', status:'pendiente', createdBy:'uvilla', createdAt: ago(3) });
   RQ.push({ id:'rq5', type:'interes', horseId:'cb3', ownerId:'udueno', buyerName:'Ernesto Villaseñor', contact:'capitan@demo.mx', message:'', status:'pendiente', createdBy:'ucap', createdAt: ago(5) });
   RQ.push({ id:'rq3', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Fausto Herrera', contact:'55 1234 5678', message:'Me interesa para la temporada; ¿se puede ver en Texcoco?', status:'pendiente', createdBy:'ucharro', createdAt: ago(1) });
   RQ.push({ id:'rq2', type:'afiliacion', teamId:'q5', lienzoId:'lvilla', status:'pendiente', createdBy:'ucap2', createdAt: Date.now()-2*864e5 });
-  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, settings:[{ id:'valuacion', min:60000, max:800000 }] };
+  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, settings:[{ id:'valuacion', min:60000, max:800000 }] };
 }
 
 /* ------------------------- LÓGICA ------------------------- */
-const roleName = r => ({ superadmin:'Súper usuario', lienzo:'Lienzo', juez:'Juez', charro:'Charro', equipo:'Capitán de equipo', dueno:'Dueño de caballos' }[r] || r);
-const OPEN_ROLES = ['charro','equipo','dueno'];   // cuentas activas al registrarse; lo oficial lo da una solicitud aprobada
+const roleName = r => ({ superadmin:'Súper usuario', lienzo:'Lienzo', juez:'Juez', charro:'Charro', equipo:'Capitán de equipo', dueno:'Dueño de caballos', ganadero:'Ganadero' }[r] || r);
+const OPEN_ROLES = ['charro','equipo','dueno','ganadero'];   // cuentas activas al registrarse; lo oficial lo da una solicitud aprobada
 const myCharro = u => u && DB.all('charros').find(c => c.userId === u.id);
 const myTeam = u => u && DB.all('teams').find(t => t.captainId === u.id);
 const rosterOf = tid => DB.all('charros').filter(c => c.teamId === tid).sort((a, b) => a.name.localeCompare(b.name));
@@ -928,9 +945,9 @@ function canDecide(u, r){
 }
 const byName = (a, b) => a.name.localeCompare(b.name);
 /* ---------- VERIFICACIÓN: el sello "Oficial" queda ligado a los datos verificados; si cambian, vuelve a revisión ---------- */
-const VK_FIELDS = { charro: ['name','category'], team: ['name','state'], horse: ['name','registry','breed','training','birthYear','discipline','sex'] };
-const VK_TABLE = { charro: 'charros', team: 'teams', horse: 'horses' };
-const VK_LABEL = { charro: 'Charro', team: 'Equipo', horse: 'Caballo' };
+const VK_FIELDS = { charro: ['name','category'], team: ['name','state'], horse: ['name','registry','breed','training','birthYear','discipline','sex'], ranch: ['name','state','whatsapp','phone'], stock: ['name','kind','mode','count','rentPrice','rentUnit'] };
+const VK_TABLE = { charro: 'charros', team: 'teams', horse: 'horses', ranch: 'ranches', stock: 'stock' };
+const VK_LABEL = { charro: 'Charro', team: 'Equipo', horse: 'Caballo', ranch: 'Ganadería', stock: 'Ganado' };
 const verifKeyOf = (kind, d) => VK_FIELDS[kind].map(k => String(d[k] ?? '').trim().toLowerCase()).join('|');   // igual que verif_key() en la base
 const isOfficial = (kind, d) => !!d && d.verif === 'oficial' && d.verifKey === verifKeyOf(kind, d);
 const verifState = (kind, d) => isOfficial(kind, d) ? 'oficial' : d.verif === 'rechazado' && d.verifKey === verifKeyOf(kind, d) ? 'rechazado' : d.verif === 'oficial' ? 'cambios' : 'pendiente';
@@ -946,6 +963,8 @@ function canVerify(u, kind, d){
   if (kind === 'team') return aff(d);
   if (kind === 'charro') return aff(DB.get('teams', d.teamId));
   if (kind === 'horse') return DB.all('events').some(e => e.lienzoId === L && e.charros.some(c => c.horseId === d.id));
+  if (kind === 'stock') return DB.all('events').some(e => e.lienzoId === L && (e.stock || []).some(x => x.stockId === d.id));
+  if (kind === 'ranch') return DB.all('events').some(e => e.lienzoId === L && (e.stock || []).some(x => (DB.get('stock', x.stockId) || {}).ranchId === d.id));
   return false;
 }
 function verifQueue(u){ const out = []; if (!u) return out;
@@ -969,7 +988,7 @@ function readPhoto(file){   // recorta al centro y reduce a 320 px para guardarl
   });
 }
 async function savePhoto(key, src){
-  const [kind, id] = key.split(':'), table = { profile: 'profiles', charro: 'charros', team: 'teams', lienzo: 'lienzos', horse: 'horses' }[kind], row = table && DB.get(table, id);
+  const [kind, id] = key.split(':'), table = { profile: 'profiles', charro: 'charros', team: 'teams', lienzo: 'lienzos', horse: 'horses', ranch: 'ranches', stock: 'stock' }[kind], row = table && DB.get(table, id);
   if (!row) throw new Error('No se encontró el registro');
   const n = await DB.put(table, { ...row, photo: src }); if (kind === 'profile') State.user = n;
 }
@@ -1013,7 +1032,7 @@ const State = { user: null, route: 'inicio', param: null, param2: null,
 function go(h){ if (location.hash.slice(1) === h) render(); else location.hash = h; }
 function parseRoute(){
   const h = location.hash.slice(1) || 'inicio';
-  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
+  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo|ganaderia|res)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
   if (m) { State.route = m[1]; State.param = m[2]; State.param2 = m[3] || null; } else { State.route = h; State.param = State.param2 = null; }
 }
 window.addEventListener('hashchange', () => { parseRoute(); render(); window.scrollTo(0, 0); });
@@ -1026,9 +1045,9 @@ function render(){
     <a class="avatar" href="#cuenta" aria-label="Cuenta" style="overflow:hidden">${u ? (safeImg(u.photo || (myCharro(u) || {}).photo) ? `<img class="ph" src="${esc(safeImg(u.photo || myCharro(u).photo))}" alt="" style="width:100%;height:100%;border:0">` : esc(initials(u.name))) : '<span style="width:18px;height:18px;display:block">' + I.user + '</span>'}</a>`;
   const liveN = publicEvents().filter(e => e.status === 'en_vivo').length, pend = isSuper(u) ? pendingCount() : 0;
   const tabs = [['inicio','Inicio',I.home],['vivo','En vivo',I.live,liveN],['historial','Historial',I.clock],['ranking','Ranking',I.trophy],['cuenta', u ? (isSuper(u) ? 'Admin' : 'Mi panel') : 'Entrar', isSuper(u) ? I.shield : I.user, 0, pend]];
-  const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta', solicitudes:'cuenta', caballos:'ranking', caballo:'cuenta' }[State.route] || State.route;
+  const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta', solicitudes:'cuenta', caballos:'ranking', caballo:'cuenta', ganado:'inicio', ganaderia:'inicio', res:'cuenta' }[State.route] || State.route;
   $('#nav').innerHTML = tabs.map(([k, l, ic, dot, badge]) => `<a href="#${k === 'cuenta' && isSuper(u) ? 'admin' : k}" class="${active === k ? 'on' : ''}">${ic}${dot ? '<span class="dot"></span>' : ''}${badge ? `<span class="badge-n" style="position:absolute;top:0;right:calc(50% - 22px)">${badge}</span>` : ''}<span>${l}</span></a>`).join('');
-  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo };
+  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes };
   $('#view').className = 'wrap' + (State.route === 'hoja' ? ' wide' : '');
   $('#view').innerHTML = State.recovery ? vNewPass() : (views[State.route] || vInicio)();
   fitSheet();
@@ -1107,6 +1126,8 @@ function vInicio(){
   h += `<div class="h2">Top charros ${new Date().getFullYear()}<a href="#ranking">Ver todo</a></div>` + (top.length ? `<div class="card pad0">${top.map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.n} faenas`, c.pts, 'pts', true)).join('')}</div>` : emptyState(I.trophy, 'Aún sin ranking', 'Se forma con las charreadas oficiales finalizadas.'));
   h += `<div class="h2">Resultados recientes<a href="#historial">Historial</a></div><div class="list">${past.map(eventCard).join('') || emptyState(I.clock, 'Sin resultados', '')}</div>`;
   { const nh = DB.all('horses').length, ns = DB.all('horses').filter(x => x.forSale).length; if (nh) h += `<div class="h2">Caballos<a href="#caballos">Ver todos</a></div><div class="list">${menuItem('#caballos', I.horse, 'Vitrina de caballos', `${nh} ejemplares${ns ? ` · ${ns} en venta` : ''} · desempeño y valuación`)}</div>`; }
+  { const ns = DB.all('stock').filter(x => isOfficial('stock', x)).length, nr = DB.all('ranches').filter(r => isOfficial('ranch', r)).length;
+    h += `<div class="list${DB.all('horses').length ? ' mt' : ''}">${menuItem('#ganado', I.horse, 'Ganado para renta', nr ? `${nr} ganaderías verificadas · ${ns} registros de toros y yeguas` : 'Toros y yeguas brutas para charreadas')}</div>`; }
   if (!State.user) h += `<div class="card mt2" style="background:linear-gradient(160deg,#2a1510,#1c1510)"><div style="font-weight:800;font-size:16px">¿Tienes un lienzo charro?</div>
     <div class="sub" style="margin-top:4px">Registra tu lienzo, califica con tus jueces desde el celular, entrega la hoja oficial digital y transmite tus charreadas.</div>
     <a class="btn pri block mt" href="#cuenta" data-act="reg">${I.plus} Registrar mi lienzo</a></div>`;
@@ -1412,6 +1433,136 @@ function openInterest(h){
   $('#askOk').onclick = async () => { const contact = $('#inC').value.trim(), message = $('#inM').value.trim(); if (contact.length < 7) return toast('Escribe un teléfono o correo válido', 'err'); close();
     await safe(async () => { await DB.put('requests', { id: 'r' + uid(), type: 'interes', horseId: h.id, ownerId: h.ownerId, buyerName: u.name, contact, message, status: 'pendiente', createdBy: u.id, createdAt: Date.now() }); await audit('interes', `${u.name} mostró interés en ${h.name}`); }, 'Listo: el dueño recibió tu contacto'); };
 }
+/* ---------- GANADERÍAS Y GANADO ---------- */
+const STOCK_USES = { toro: ['Jineteo de toro','Terna en el ruedo','Coleadero'], yegua: ['Jineteo de yegua','Piales en el lienzo','Manganas a pie','Manganas a caballo'] };
+const RENT_UNITS = ['por cabeza','por lote','por charreada','por día'];
+const stockTitle = x => x.mode === 'lote' ? `${x.name || 'Lote'} · ${x.count} ${x.kind === 'toro' ? 'toros' : 'yeguas'}` : `${x.kind === 'toro' ? 'Toro' : 'Yegua'}${x.tag ? ' #' + x.tag : ''} “${x.name}”`;
+const rentLbl = x => +x.rentPrice ? `${mxn(+x.rentPrice)} ${x.rentUnit || ''}` : 'Precio a consultar';
+const canSeeRent = x => isOfficial('stock', x) || (State.user && (x.ownerId === State.user.id || isSuper(State.user)));   // sin verificar, el precio de renta no es público
+const waLink = (num, text) => { let d = String(num || '').replace(/\D/g, ''); if (d.length === 10) d = '52' + d; return d.length >= 12 ? `https://wa.me/${d}?text=${encodeURIComponent(text)}` : ''; };
+const myRanch = u => u && DB.all('ranches').find(r => r.ownerId === u.id);
+const ranchStock = id => DB.all('stock').filter(x => x.ranchId === id).sort((a, b) => (a.kind > b.kind ? 1 : -1) || byName(a, b));
+function contactBtns(r, about){
+  const wa = waLink(r.whatsapp, `Hola, vi ${about || 'su ganadería'} en ${CONFIG.APP_NAME} y me interesa rentar ganado.`), tel = String(r.phone || r.whatsapp || '').replace(/[^\d+]/g, '');
+  return `<div class="btns mt">${wa ? `<a class="btn pri sm" href="${esc(wa)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}${tel ? `<a class="btn sm" href="tel:${esc(tel)}">Llamar ${esc(r.phone || r.whatsapp)}</a>` : ''}</div>`;
+}
+const RATE_CRIT = [['des','Desempeño / bravura'], ['con','Condición física'], ['seg','Seguridad y manejo']];
+function stockQuality(sid){
+  const R = DB.all('stock_ratings').filter(r => r.stockId === sid); if (!R.length) return null;
+  const avg = k => R.reduce((a, r) => a + (+r.scores[k] || 0), 0) / R.length, parts = Object.fromEntries(RATE_CRIT.map(([k]) => [k, avg(k)]));
+  return { n: R.length, evs: new Set(R.map(r => r.eventId)).size, parts, overall: (parts.des + parts.con + parts.seg) / 3, list: R.slice().sort((a, b) => b.updatedAt - a.updatedAt) };
+}
+function ranchQuality(rid){ const L = DB.all('stock_ratings').filter(r => r.ranchId === rid); if (!L.length) return null; return { n: L.length, overall: L.reduce((a, r) => a + (+r.scores.des + +r.scores.con + +r.scores.seg) / 3, 0) / L.length }; }
+const qLbl = q => q ? `★ ${q.overall.toFixed(1)} (${q.n})` : '';
+function stockRow(x, manage){ const r = DB.get('ranches', x.ranchId) || {};
+  return `<div class="rank tap" data-act="${manage ? 'smanage' : 'scard'}" data-id="${x.id}" role="button" tabindex="0">${av(x.photo, x.name, 44)}<div class="grow"><div class="ell" style="font-weight:700">${esc(stockTitle(x))}${isOfficial('stock', x) ? '' : ' <span class="chip blue" style="padding:1px 7px;font-size:10px">Por verificar</span>'}${x.available === false ? ' <span class="chip" style="padding:1px 7px;font-size:10px">No disponible</span>' : ''}</div><div class="small mut ell">${esc([qLbl(stockQuality(x.id)), r.name, (x.uses || []).join(', ')].filter(Boolean).join(' · '))}</div></div><div class="small" style="text-align:right;max-width:110px">${canSeeRent(x) ? esc(rentLbl(x)) : '<span class="mut">Precio por verificar</span>'}</div></div>`; }
+function ranchRow(r){ const st = ranchStock(r.id).filter(x => isOfficial('stock', x)), nt = st.filter(x => x.kind === 'toro').reduce((a, x) => a + (+x.count || 1), 0), ny = st.filter(x => x.kind === 'yegua').reduce((a, x) => a + (+x.count || 1), 0);
+  return `<a class="rank tap" href="#ganaderia-${r.id}" style="text-decoration:none;color:inherit">${av(r.photo, r.name, 44)}<div class="grow"><div class="ell" style="font-weight:700">${esc(r.name)} ${isOfficial('ranch', r) ? `<span class="verified" title="Ganadería verificada">${I.verified}</span>` : ''}</div><div class="small mut ell">${esc([qLbl(ranchQuality(r.id)), [r.city, r.state].filter(Boolean).join(', ')].filter(Boolean).join(' · '))} · ${nt} toros · ${ny} yeguas</div></div><span class="marrow">${I.arrow}</span></a>`; }
+function vGanado(){
+  const t = State.gTab || 'toro', pend = DB.all('stock').filter(x => !isOfficial('stock', x)).length + DB.all('ranches').filter(r => !isOfficial('ranch', r)).length;
+  let h = `<div class="h1">Ganado</div><div class="sub" style="margin-top:4px">Toros y yeguas brutas de ganaderías verificadas para renta en charreadas y torneos. El trato es directo con la ganadería.</div>
+    <div class="seg mt">${[['toro','Toros'],['yegua','Yeguas'],['ganaderias','Ganaderías']].map(([k, l]) => `<button class="${t === k ? 'on' : ''}" data-act="gtab" data-k="${k}">${l}</button>`).join('')}</div>`;
+  if (t === 'ganaderias') { const L = DB.all('ranches').filter(r => isOfficial('ranch', r)).sort((a, b) => ((ranchQuality(b.id) || {}).overall || 0) - ((ranchQuality(a.id) || {}).overall || 0) || byName(a, b)); h += L.length ? `<div class="card pad0 mt">${L.map(ranchRow).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin ganaderías verificadas', 'Las ganaderías aparecen aquí cuando el súper usuario o un lienzo las verifica.')}</div>`; }
+  else { const L = DB.all('stock').filter(x => x.kind === t && isOfficial('stock', x) && isOfficial('ranch', DB.get('ranches', x.ranchId))).sort((a, b) => (b.available !== false) - (a.available !== false) || ((stockQuality(b.id) || {}).overall || 0) - ((stockQuality(a.id) || {}).overall || 0) || byName(a, b));
+    h += L.length ? `<div class="card pad0 mt">${L.map(x => stockRow(x)).join('')}</div>` : `<div class="mt">${emptyState(I.horse, t === 'toro' ? 'Sin toros verificados' : 'Sin yeguas verificadas', 'El ganado aparece aquí cuando la ganadería y el ejemplar o lote están verificados.')}</div>`; }
+  if (pend) h += `<div class="small mut mt">${pend} ${pend === 1 ? 'registro espera' : 'registros esperan'} verificación.</div>`;
+  return h + (State.user ? `<a class="btn block mt2" href="#cuenta">${I.plus} Registrar mi ganadería</a>` : '');
+}
+function vGanaderia(){
+  const r = DB.get('ranches', State.param), u = State.user; if (!r) return `<a class="back" href="#ganado">${I.arrow} Ganado</a>` + emptyState(I.horse, 'Ganadería no encontrada', '');
+  const own = u && (r.ownerId === u.id || isSuper(u)), L = ranchStock(r.id).filter(x => own || isOfficial('stock', x));
+  let h = `<a class="back" href="#${own && r.ownerId === u.id ? 'cuenta' : 'ganado'}">${I.arrow} ${own && r.ownerId === u.id ? 'Mi cuenta' : 'Ganado'}</a><div class="card"><div class="row" style="gap:12px">${av(r.photo, r.name, 64)}<div class="grow"><div style="font-weight:800;font-size:18px">${esc(r.name)}</div><div class="small mut">${esc([r.city, r.state].filter(Boolean).join(', '))}${r.location ? ' · ' + esc(r.location) : ''}</div><div style="margin-top:6px">${verifChip('ranch', r)}${ranchQuality(r.id) ? ` <span class="chip gold">★ ${ranchQuality(r.id).overall.toFixed(1)} · ${ranchQuality(r.id).n} calificaciones</span>` : ''}</div></div></div>
+    ${r.about ? `<div class="small" style="margin-top:10px;line-height:1.5">${esc(r.about)}</div>` : ''}${contactBtns(r, r.name)}</div>`;
+  if (own && r.ownerId === u.id) h += ranchEditor(r);
+  h += `<div class="h2">Ganado</div>` + (L.length ? `<div class="card pad0">${L.map(x => stockRow(x, own && x.ownerId === u.id)).join('')}</div>` : `<div class="card small mut">Aún no hay ganado ${own ? 'registrado' : 'verificado'}.</div>`);
+  if (own && r.ownerId === u.id) h += stockNewForm(r);
+  return h;
+}
+function ranchEditor(r){
+  return `<div class="h2">Perfil de la ganadería</div><div class="card">${photoBox('ranch', r.id, r.photo, r.name)}${verifNote('ranch', r, 'Tu ganadería y tu ganado aparecen en la sección pública cuando el súper usuario o un lienzo donde hayas rentado los verifique.')}
+    <form data-form="ranchEdit" data-id="${r.id}" class="mt"><label class="f">Nombre</label><input class="in" name="name" value="${esc(r.name)}" required>
+    <div class="row" style="gap:8px"><div class="grow"><label class="f">Municipio</label><input class="in" name="city" value="${esc(r.city || '')}"></div><div class="grow"><label class="f">Estado</label>${selState(r.state)}</div></div>
+    <label class="f">Ubicación (rancho, carretera, referencia)</label><input class="in" name="location" value="${esc(r.location || '')}">
+    <div class="grid2"><div><label class="f">WhatsApp</label><input class="in" name="whatsapp" type="tel" value="${esc(r.whatsapp || '')}" required></div><div><label class="f">Teléfono</label><input class="in" name="phone" type="tel" value="${esc(r.phone || '')}"></div></div>
+    <label class="f">Descripción</label><input class="in" name="about" value="${esc(r.about || '')}" placeholder="Tipo de ganado, transporte, zona que cubres…"><button class="btn block mt2">Guardar ganadería</button></form></div>`;
+}
+function stockFields(x = {}){ const kind = x.kind || State.sKind || 'toro', mode = x.mode || State.sMode || 'unidad';
+  return `<div class="grid2"><div><label class="f">Tipo</label><select class="in" name="kind" data-skind="1">${[['toro','Toro'],['yegua','Yegua bruta']].map(([k, l]) => `<option value="${k}" ${k === kind ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    <div><label class="f">Registro</label><select class="in" name="mode" data-smode="1">${[['unidad','Por unidad'],['lote','Por lote / montón']].map(([k, l]) => `<option value="${k}" ${k === mode ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+    <label class="f">${mode === 'lote' ? 'Nombre del lote' : 'Nombre del ejemplar'}</label><input class="in" name="name" value="${esc(x.name || '')}" placeholder="${mode === 'lote' ? 'Ej. Toros de terna' : 'Ej. El Diablo'}" required>
+    ${mode === 'lote' ? `<label class="f">Número de cabezas</label><input class="in" name="count" type="number" min="2" max="500" value="${esc(x.count || 10)}" required>` : `<div class="grid2"><div><label class="f">Número / arete</label><input class="in" name="tag" value="${esc(x.tag || '')}"></div><div><label class="f">Edad</label><input class="in" name="age" value="${esc(x.age || '')}" placeholder="Ej. 5 años"></div></div><label class="f">Peso aproximado</label><input class="in" name="weight" value="${esc(x.weight || '')}" placeholder="Ej. 520 kg">`}
+    <label class="f">Faenas para las que sirve</label><div class="chips">${STOCK_USES[kind].map(us => `<label class="tog" style="cursor:pointer"><input type="checkbox" name="use" value="${esc(us)}" ${(x.uses || []).includes(us) ? 'checked' : ''} style="margin-right:6px">${esc(us)}</label>`).join('')}</div>
+    <div class="grid2"><div><label class="f">Precio de renta (MXN)</label><input class="in" name="rentPrice" type="number" min="0" step="100" value="${esc(x.rentPrice || '')}" placeholder="0 = a consultar"></div><div><label class="f">Cobro</label><select class="in" name="rentUnit">${RENT_UNITS.map(us => `<option ${us === (x.rentUnit || (mode === 'lote' ? 'por lote' : 'por cabeza')) ? 'selected' : ''}>${us}</option>`).join('')}</select></div></div>
+    <label class="f">Notas</label><input class="in" name="about" value="${esc(x.about || '')}" placeholder="Temperamento, condición, transporte…">`;
+}
+const stockData = (d, fd) => ({ kind: d.kind, mode: d.mode, name: d.name.trim(), count: d.mode === 'lote' ? Math.max(2, +d.count || 2) : 1, tag: (d.tag || '').trim(), age: (d.age || '').trim(), weight: (d.weight || '').trim(), uses: fd.getAll('use'), rentPrice: Math.max(0, Math.round(+d.rentPrice || 0)), rentUnit: d.rentUnit, about: (d.about || '').trim() });
+const stockNewForm = r => `<div class="card mt"><button class="btn block" data-act="newStock">${I.plus} ${State.newStock ? 'Cancelar' : 'Dar de alta toro, yegua o lote'}</button>${State.newStock ? `<form data-form="stockNew" data-ranch="${r.id}" class="mt">${stockFields()}<button class="btn pri block mt2">Dar de alta</button></form>` : ''}</div>`;
+function vRes(){
+  const x = DB.get('stock', State.param), u = State.user; if (!x) return `<a class="back" href="#ganado">${I.arrow} Ganado</a>` + emptyState(I.horse, 'No encontrado', '');
+  if (!u || (x.ownerId !== u.id && !isSuper(u))) { setTimeout(() => openStock(x.id), 0); return vGanado(); }
+  return `<a class="back" href="#ganaderia-${x.ranchId}">${I.arrow} Mi ganadería</a><div class="h1">${esc(stockTitle(x))}</div>
+    <div class="card mt">${photoBox('stock', x.id, x.photo, x.name)}${verifNote('stock', x, 'Mientras no esté verificado no aparece en la sección pública y su precio de renta no es público. Si cambias el precio, vuelve a revisión.')}
+    <form data-form="stockEdit" data-id="${x.id}" class="mt">${stockFields(x)}<button class="btn block mt2">Guardar</button></form></div>
+    <div class="list mt"><button class="tog ${x.available !== false ? 'on' : ''}" data-act="stockAvail" data-id="${x.id}" style="text-align:left;width:100%;display:flex;justify-content:space-between"><span><b>Disponible para renta</b><br><span class="small mut">Apágalo si ya está comprometido o en descanso.</span></span><span>${x.available !== false ? 'Sí' : 'No'}</span></button></div>
+    <button class="btn ghost block mt2" data-act="stockDel" data-id="${x.id}">${I.x} Dar de baja</button>`;
+}
+function openStock(id){
+  const x = DB.get('stock', id); if (!x) return; const r = DB.get('ranches', x.ranchId) || {}, photo = safeImg(x.photo);
+  $('#modal').innerHTML = `<div class="modal"><div class="box" role="dialog" aria-label="${esc(stockTitle(x))}"><div class="row between"><div style="font-weight:800;font-size:15px">${x.kind === 'toro' ? 'Toro' : 'Yegua bruta'}${x.mode === 'lote' ? ' · lote' : ''}</div><button class="btn sm" data-close="1">Cerrar</button></div>
+    ${photo ? `<img src="${esc(photo)}" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:14px;margin-top:10px">` : ''}
+    <div style="font-family:'Cinzel',serif;font-weight:800;font-size:20px;margin-top:10px">${esc(stockTitle(x))}</div><div style="margin-top:6px">${verifChip('stock', x)}</div>
+    <div class="card small mt">${[['Ganadería', r.name], ['Faenas', (x.uses || []).join(', ')], ['Cabezas', x.mode === 'lote' ? x.count : ''], ['Edad', x.age], ['Peso', x.weight], ['Renta', canSeeRent(x) ? rentLbl(x) : 'Por verificar'], ['Disponible', x.available === false ? 'No' : 'Sí']].filter(([, v]) => v).map(([k, v]) => `<div class="row between" style="padding:3px 0"><span class="mut">${k}</span><b>${esc(v)}</b></div>`).join('')}</div>
+    ${x.about ? `<div class="small mt" style="line-height:1.5">${esc(x.about)}</div>` : ''}
+    ${qualityBox(x.id)}
+    <div class="h2">Rentar</div><div class="card"><div style="font-weight:700">${esc(r.name || 'Ganadería')}</div><div class="small mut">${esc([r.city, r.state].filter(Boolean).join(', '))}</div>${contactBtns(r, stockTitle(x) + ' de ' + (r.name || 'su ganadería'))}<a class="btn ghost sm block mt" href="#ganaderia-${r.id}" data-close="1">Ver ganadería</a></div>
+    <div class="small mut2 mt">El trato y el pago son directos con la ganadería; la app no interviene.</div></div></div>`;
+  wireCardModal();
+}
+function qualityBox(sid){
+  const q = stockQuality(sid); if (!q) return `<div class="h2">Calidad</div><div class="card small mut">Aún sin calificaciones. Los jueces y lienzos lo califican después de cada charreada.</div>`;
+  return `<div class="h2">Calidad</div><div class="card"><div class="row between"><div><div style="font-family:'Cinzel',serif;font-size:26px;color:var(--gold2);line-height:1">${q.overall.toFixed(1)}<small style="font-size:13px;color:var(--mut)"> / 5</small></div><div class="small mut">${q.n} calificaciones en ${q.evs} ${q.evs === 1 ? 'charreada' : 'charreadas'}</div></div><div style="color:var(--gold2);font-size:18px;letter-spacing:2px" aria-hidden="true">${'★'.repeat(Math.round(q.overall))}${'☆'.repeat(5 - Math.round(q.overall))}</div></div>
+    ${RATE_CRIT.map(([k, l]) => `<div class="row between small" style="margin-top:8px"><span>${l}</span><b>${q.parts[k].toFixed(1)}</b></div><div class="bar"><i style="width:${Math.round(q.parts[k] * 20)}%"></i></div>`).join('')}
+    ${q.list.filter(r => r.note).slice(0, 3).map(r => { const ev = DB.get('events', r.eventId); return `<div class="small" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line)">“${esc(r.note)}”<div class="mut2">${esc(r.raterName)} · ${roleName(r.raterRole)}${ev ? ' · ' + esc(ev.title) : ''}</div></div>`; }).join('')}</div>`;
+}
+function eventStockSection(ev, u, manage){
+  const L = (ev.stock || []).map(x => DB.get('stock', x.stockId)).filter(Boolean), avail = DB.all('stock').filter(x => !(ev.stock || []).some(y => y.stockId === x.id)).sort((a, b) => isOfficial('stock', b) - isOfficial('stock', a) || byName(a, b));
+  let h = `<div class="h2">Ganado de esta charreada</div><div class="card">${L.length ? L.map(x => { const r = DB.get('ranches', x.ranchId) || {}, mine = DB.get('stock_ratings', `${ev.id}-${x.id}-${u.id}`);
+      return `<div class="chr"><div class="row" style="gap:6px;align-items:center"><button class="lnk grow" data-act="scard" data-id="${x.id}"><span class="ell">${esc(stockTitle(x))}</span></button>${manage ? `<button class="btn ghost sm" data-act="evStockDel" data-id="${x.id}" aria-label="Quitar ${esc(x.name)}">${I.x}</button>` : ''}</div><div class="small mut">${esc(r.name || '')}${mine ? ` · Tu calificación: ★ ${((+mine.scores.des + +mine.scores.con + +mine.scores.seg) / 3).toFixed(1)}` : ''}</div></div>`; }).join('')
+      : '<div class="small mut">Registra los toros y yeguas que rentaste para que los jueces y el lienzo los califiquen.</div>'}
+    ${manage && avail.length ? `<form class="row mt" data-form="evStock" style="gap:8px"><select class="in" name="stockId" required><option value="">＋ Agregar ganado registrado</option>${avail.map(x => `<option value="${x.id}">${esc(stockTitle(x))} · ${esc((DB.get('ranches', x.ranchId) || {}).name || '')}${isOfficial('stock', x) ? '' : ' (por verificar)'}</option>`).join('')}</select><button class="btn sm" style="min-height:46px" aria-label="Agregar ganado">${I.plus}</button></form>` : ''}
+    ${L.length && canSheet(u, ev) ? `<button class="btn pri block mt" data-act="rateStock" data-id="${ev.id}">★ Calificar ganado</button>` : L.length ? '<div class="small mut2 mt">Se califica cuando la charreada está en vivo o finalizada.</div>' : ''}</div>`;
+  return h;
+}
+function openRateStock(evId){
+  const ev = DB.get('events', evId), u = State.user; if (!ev || !canSheet(u, ev)) return toast('No puedes calificar en esta charreada', 'err');
+  const L = (ev.stock || []).map(x => DB.get('stock', x.stockId)).filter(Boolean), st = {};
+  L.forEach(x => { const m = DB.get('stock_ratings', `${ev.id}-${x.id}-${u.id}`); st[x.id] = m ? { ...m.scores, note: m.note || '' } : { des: 0, con: 0, seg: 0, note: '' }; });
+  let drawn = false;
+  const draw = () => { const top = drawn ? ($('#modal .box') || {}).scrollTop || 0 : 0; $('#modal').innerHTML = `<div class="modal"><div class="box"${drawn ? ' style="animation:none"' : ''}><div class="row between"><div style="font-weight:800;font-size:17px">Calificar ganado</div><button class="btn sm" data-close="1">Listo</button></div><div class="small mut" style="margin-top:4px">${esc(ev.title)} · De 1 (malo) a 5 (excelente). Cada calificación queda a tu nombre.</div>
+    ${L.map(x => `<div class="card mt"><div style="font-weight:800">${esc(stockTitle(x))}</div><div class="small mut">${esc((DB.get('ranches', x.ranchId) || {}).name || '')}</div>
+      ${RATE_CRIT.map(([k, l]) => `<div class="small" style="margin-top:10px">${l}</div><div class="row" style="gap:6px;margin-top:4px">${[1,2,3,4,5].map(v => `<button class="tog ${st[x.id][k] === v ? 'on' : ''}" data-rate="${x.id}:${k}:${v}" style="flex:1;justify-content:center;min-width:0" aria-label="${l}: ${v}">${v}</button>`).join('')}</div>`).join('')}
+      <input class="in mt" data-rnote="${x.id}" placeholder="Comentario (opcional)" value="${esc(st[x.id].note)}"><button class="btn block mt" data-rsave="${x.id}">Guardar calificación</button></div>`).join('')}</div></div>`; if (drawn) $('#modal .box').scrollTop = top; drawn = true; };
+  draw();
+  $('#modal').onclick = async e => {
+    if (e.target.classList.contains('modal') || e.target.closest('[data-close]')) { $('#modal').onclick = null; $('#modal').innerHTML = ''; return render(); }
+    const n = e.target.closest('[data-rnote]'); if (n) return;
+    const b = e.target.closest('[data-rate]'); if (b) { const [sid, k, v] = b.dataset.rate.split(':'); document.querySelectorAll('[data-rnote]').forEach(i => st[i.dataset.rnote].note = i.value); st[sid][k] = +v; return draw(); }
+    const sv = e.target.closest('[data-rsave]'); if (!sv) return; const sid = sv.dataset.rsave, x = DB.get('stock', sid), c = st[sid]; c.note = (document.querySelector(`[data-rnote="${sid}"]`) || {}).value || '';
+    if (!(c.des && c.con && c.seg)) return toast('Califica los tres puntos de 1 a 5', 'err');
+    const id = `${ev.id}-${sid}-${u.id}`, prev = DB.get('stock_ratings', id);
+    try { await DB.put('stock_ratings', { id, eventId: ev.id, stockId: sid, ranchId: x.ranchId, raterId: u.id, raterName: u.name, raterRole: u.role, scores: { des: c.des, con: c.con, seg: c.seg }, note: c.note.trim(), createdAt: prev ? prev.createdAt : Date.now(), updatedAt: Date.now() });
+      await audit('ganado', `Calificó ${stockTitle(x)} en “${ev.title}”`); toast('Calificación guardada', 'ok'); draw(); } catch (err) { toast(err.message || 'No se pudo guardar', 'err'); }
+  };
+}
+function ranchSection(u){
+  const r = myRanch(u);
+  if (!r) return u.role === 'ganadero' || State.newRanch ? `<div class="h2">Mi ganadería</div><form class="card" data-form="ranchNew"><div class="small mut">Registra tu ganadería para rentar toros y yeguas.</div><label class="f">Nombre de la ganadería</label><input class="in" name="name" required>
+      <div class="row" style="gap:8px"><div class="grow"><label class="f">Municipio</label><input class="in" name="city" required></div><div class="grow"><label class="f">Estado</label>${selState('')}</div></div>
+      <label class="f">WhatsApp</label><input class="in" name="whatsapp" type="tel" required><button class="btn pri block mt2">Registrar ganadería</button></form>`
+    : `<div class="card mt"><div class="small mut">¿Rentas toros o yeguas para charreadas?</div><button class="btn sm mt" data-act="newRanch">${I.plus} Registrar mi ganadería</button></div>`;
+  const st = ranchStock(r.id);
+  return `<div class="h2">Mi ganadería<a href="#ganaderia-${r.id}">Administrar</a></div><div class="card pad0"><a class="rank tap" href="#ganaderia-${r.id}" style="text-decoration:none;color:inherit">${av(r.photo, r.name, 44)}<div class="grow"><div style="font-weight:700">${esc(r.name)}</div><div class="small mut">${st.length} registros de ganado · ${verifState('ranch', r) === 'oficial' ? 'Oficial' : 'Pendiente de verificación'}</div></div><span class="marrow">${I.arrow}</span></a></div>`;
+}
 const TIER_LBL = { bronce: 'Bronce', plata: 'Plata', oro: 'Oro', leyenda: 'Leyenda' };
 function cardHTML(R){
   const P = R.prof, photo = safeImg(P && P.photo), sub = [P && P.alias ? `“${P.alias}”` : '', R.team, P && P.state].filter(Boolean).join(' · ') || 'Charro';
@@ -1499,7 +1650,9 @@ function vCuenta(){
     if (tools) h += `<div class="h2">Herramientas</div><div class="list">${tools}</div>`;
     if (u.role === 'charro') h += charroSection(u);
     if (u.role === 'equipo') h += teamSection(u);
+    if (u.role === 'ganadero') h += ranchSection(u);
     if (u.role !== 'juez') h += horsesSection(u);
+    if (u.role !== 'juez' && u.role !== 'ganadero') h += ranchSection(u);
     if (u.role === 'lienzo' && L) h += `<div class="h2">Foto del lienzo</div><div class="card">${photoBox('lienzo', L.id, L.photo, L.name)}</div>`;
   }
   if (u.role !== 'charro') h += `<div class="h2">Foto de perfil</div><div class="card">${photoBox('profile', u.id, u.photo, u.name)}</div>`;
@@ -1561,11 +1714,13 @@ function reqCard(r, canAct){
 function verifCard({ kind, d, st }){
   const t = kind === 'charro' ? DB.get('teams', d.teamId) : null, age = kind === 'horse' ? horseAge(d) : null;
   const sub = kind === 'charro' ? [d.alias ? '“' + d.alias + '”' : '', d.state, d.category, t ? 'Equipo: ' + t.name : 'Sin equipo'] : kind === 'team' ? [d.state, d.captainName ? 'Capitán: ' + d.captainName : '', rosterOf(d.id).length + ' charros', d.lienzoStatus === 'aprobado' ? lienzo(d.lienzoId).name : 'Sin lienzo']
+    : kind === 'ranch' ? [[d.city, d.state].filter(Boolean).join(', '), d.ownerName, 'WhatsApp ' + (d.whatsapp || '—'), ranchStock(d.id).length + ' registros de ganado']
+    : kind === 'stock' ? [stockTitle(d), (DB.get('ranches', d.ranchId) || {}).name, (d.uses || []).join(', '), 'Renta: ' + rentLbl(d)]
     : [d.discipline, d.breed, d.registry ? 'Registro ' + d.registry : 'Sin registro', d.training, age != null ? age + ' años' : '', d.sex];
   return `<div class="card"><div class="row" style="gap:10px">${av(d.photo, d.name, 44)}<div class="grow"><div style="font-weight:800">${esc(d.name)} <span class="small mut">· ${VK_LABEL[kind]}</span></div><div class="small mut">${esc(sub.filter(Boolean).join(' · '))}</div><div style="margin-top:5px">${verifChip(kind, d)}</div></div></div>
     ${st === 'cambios' ? '<div class="small mut2" style="margin-top:6px">Estaba verificado y su dueño cambió datos clave.</div>' : ''}
     <div class="btns mt"><button class="btn pri sm" data-act="verify" data-k="${kind}" data-id="${d.id}" data-d="oficial">${I.check} Verificar</button><button class="btn sm" data-act="verify" data-k="${kind}" data-id="${d.id}" data-d="rechazado">${I.x} Rechazar</button>
-    ${kind === 'horse' ? `<button class="btn ghost sm" data-act="hcard" data-id="${d.id}">Ver tarjeta</button>` : kind === 'charro' ? `<button class="btn ghost sm" data-act="card" data-n="${esc(d.name)}">Ver tarjeta</button>` : ''}</div></div>`;
+    ${kind === 'stock' ? `<button class="btn ghost sm" data-act="scard" data-id="${d.id}">Ver</button>` : kind === 'ranch' ? `<a class="btn ghost sm" href="#ganaderia-${d.id}">Ver</a>` : kind === 'horse' ? `<button class="btn ghost sm" data-act="hcard" data-id="${d.id}">Ver tarjeta</button>` : kind === 'charro' ? `<button class="btn ghost sm" data-act="card" data-n="${esc(d.name)}">Ver tarjeta</button>` : ''}</div></div>`;
 }
 function vSolicitudes(){
   const u = State.user; if (!u) return needLogin();
@@ -1597,11 +1752,12 @@ function vAuth(){
   else if (m === 'forgot') h += `<form class="card mt" data-form="forgot"><div style="font-weight:800">Recuperar contraseña</div><div class="small mut" style="margin-top:4px">Escribe el correo de tu cuenta. Te enviaremos un enlace para crear una contraseña nueva.</div>
     <label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required><button class="btn pri block mt2">Enviarme el enlace</button><button type="button" class="btn ghost sm block mt" data-act="authmode" data-k="login">Volver a entrar</button></form>`;
   else { const r = State.regRole, teamsAll = DB.all('teams').slice().sort((a, b) => a.name.localeCompare(b.name));
-    const ROLES = [['lienzo','Lienzo charro'],['juez','Juez'],['charro','Charro'],['equipo','Equipo'],['dueno','Dueño de caballos']];
+    const ROLES = [['lienzo','Lienzo charro'],['juez','Juez'],['charro','Charro'],['equipo','Equipo'],['dueno','Dueño de caballos'],['ganadero','Ganadería']];
     const help = { lienzo: 'El administrador revisa y autoriza cada lienzo.', juez: 'El administrador autoriza a cada juez para su lienzo.',
       charro: 'Tu cuenta queda activa al instante. Para ser parte oficial de un equipo, su capitán, el lienzo o un juez aprueba tu solicitud.',
       equipo: 'Registras tu equipo como capitán. El lienzo al que te afilies aprueba la afiliación, y tú apruebas a los charros de tu roster.',
-      dueno: 'Tu cuenta queda activa al instante. Pronto podrás registrar tus caballos.' }[r];
+      dueno: 'Tu cuenta queda activa al instante. Registra tus caballos desde Mi cuenta.',
+      ganadero: 'Registra tu ganadería para rentar toros y yeguas a lienzos y charreadas. Tu ganado aparece en la sección pública cuando el súper usuario o un lienzo lo verifique.' }[r];
     const extra = {
       lienzo: `<label class="f">Nombre del lienzo</label><input class="in" name="lienzoName" required><div class="row" style="gap:8px"><div class="grow"><label class="f">Municipio</label><input class="in" name="city" required></div><div class="grow"><label class="f">Estado</label>${selState('')}</div></div>`,
       juez: `<label class="f">Lienzo donde calificas</label><select class="in" name="lienzoId" required>${lienzosOk.map(l => `<option value="${l.id}">${esc(l.name)} · ${esc(l.state)}</option>`).join('')}</select>`,
@@ -1609,7 +1765,9 @@ function vAuth(){
         <label class="f">Equipo al que quieres unirte (opcional)</label><select class="in" name="teamReq"><option value="">— Por ahora ninguno —</option>${teamsAll.map(t => `<option value="${t.id}">${esc(t.name)} · ${esc(t.state || '')}</option>`).join('')}</select>`,
       equipo: `<label class="f">Nombre del equipo</label><input class="in" name="teamName" required><label class="f">Asociación (opcional)</label><input class="in" name="assoc"><label class="f">Estado</label>${selState('')}
         <label class="f">Lienzo al que te afilias (opcional)</label><select class="in" name="lienzoAfil"><option value="">— Después —</option>${lienzosOk.map(l => `<option value="${l.id}">${esc(l.name)} · ${esc(l.state)}</option>`).join('')}</select>`,
-      dueno: `<label class="f">Estado</label>${selState('')}` }[r];
+      dueno: `<label class="f">Estado</label>${selState('')}`,
+      ganadero: `<label class="f">Nombre de la ganadería</label><input class="in" name="ranchName" required><div class="row" style="gap:8px"><div class="grow"><label class="f">Municipio</label><input class="in" name="city" required></div><div class="grow"><label class="f">Estado</label>${selState('')}</div></div>
+        <label class="f">WhatsApp para renta</label><input class="in" name="whatsapp" type="tel" placeholder="10 dígitos" required>` }[r];
     h += `<form class="card mt" data-form="register"><label class="f">Tipo de cuenta</label><div class="chips">${ROLES.map(([k, l]) => `<button type="button" class="tog ${r === k ? 'on' : ''}" data-act="regrole" data-k="${k}">${l}</button>`).join('')}</div>
       <div class="small mut" style="margin-top:8px">${help}</div>
       <label class="f">${{ lienzo: 'Nombre del responsable', equipo: 'Nombre del capitán' }[r] || 'Nombre completo'}</label><input class="in" name="name" required><label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required>
@@ -1669,6 +1827,7 @@ function vPanelEvento(){
     <label class="row small mt" style="gap:8px"><input type="checkbox" name="all" checked> Inscribir a todo su roster</label><button class="btn pri block mt">${I.plus} Agregar equipo oficial</button></form>`;
   if (!locked) h += cc ? `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Inscribir charro completo</div><input class="in mt" name="name" list="dl-charros" placeholder="Nombre del charro (registrado u otro)" autocomplete="off" required><input class="in mt" name="assoc" placeholder="Equipo / asociación"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><select class="in mt" name="horseId" aria-label="Caballo">${horseOpts('')}</select><button class="btn block mt">${I.plus} Inscribir</button></form>`
     : `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">${offTeams.length ? 'Agregar otro equipo (no registrado)' : 'Agregar equipo'}</div><input class="in mt" name="name" placeholder="Nombre del equipo / asociación" required><input class="in mt" name="capitan" placeholder="Capitán"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn block mt">${I.plus} Agregar equipo</button></form>`;
+  h += eventStockSection(ev, u, canManage(u, ev));
   h += `<div class="h2">Transmisión en vivo</div><form class="card" data-form="stream"><div class="small mut">Transmite desde YouTube Live o Facebook Live y pega aquí el enlace.</div><input class="in mt" name="url" type="url" placeholder="https://youtube.com/live/…" value="${esc(ev.streamUrl)}"><button class="btn block mt">Guardar enlace</button></form>`;
   h += `<div class="h2">Video grabado</div><div class="card"><div class="small mut">Pega el enlace del video o sube el archivo grabado.</div><form data-form="video"><input class="in mt" name="url" type="url" placeholder="https://youtube.com/watch?v=…" value="${esc(ev.videoUrl && !ev.videoUrl.startsWith('blob:') ? ev.videoUrl : '')}"><button class="btn block mt">Guardar enlace</button></form>
     <label class="btn block mt" style="cursor:pointer">${I.upload} Subir archivo de video<input type="file" accept="video/*" data-upload="${ev.id}" style="display:none"></label>${ev.videoUrl ? `<div class="small mt" style="color:#7fdcb0">✓ Video publicado</div>` : ''}</div>`;
@@ -1841,7 +2000,7 @@ function vJuez(){
   h += `<div class="sum-bar"><div class="grow"><div class="small mut">${esc(RULES.F[j.fk].short)} · ${existing ? (j.dirty ? 'cambios sin publicar' : 'publicada ' + ftime(existing.updatedAt)) : 'sin publicar'}</div>
     <div class="score-line"><span class="b">B ${r.buenos}</span><span class="m">M −${r.malos}</span>${r.T ? `<span class="b">T +${r.T}</span>` : ''}${r.eq ? `<span class="m">Eq −${r.eq}</span>` : ''}</div></div>
     <div class="big">${r.total - r.eq}</div>${editable ? `<button class="btn pri sm" data-act="jPublish">${I.check} ${existing ? 'Actualizar' : 'Publicar'}</button>` : ''}</div>`;
-  h += `<div class="btns mt2"><a class="btn" href="#hoja-${ev.id}-${team.id}">${I.doc} Hoja de ${esc(team.name)}</a></div>
+  h += `<div class="btns mt2"><a class="btn" href="#hoja-${ev.id}-${team.id}">${I.doc} Hoja de ${esc(team.name)}</a>${(ev.stock || []).length ? `<button class="btn" data-act="rateStock" data-id="${ev.id}">★ Calificar ganado (${ev.stock.length})</button>` : ''}</div>
     <div class="small mut2 center mt">Cada publicación y corrección queda en la bitácora con tu nombre y hora.</div>`;
   return h;
 }
@@ -2040,6 +2199,12 @@ const ACT = {
   authmode(el){ State.authMode = el.dataset.k; render(); },
   card(el){ openCard(el.dataset.n); },
   hcard(el){ openHorse(el.dataset.id); },
+  scard(el){ openStock(el.dataset.id); }, rateStock(el){ openRateStock(el.dataset.id); },
+  async evStockDel(el){ const ev = curEv(), x = DB.get('stock', el.dataset.id); await safe(() => updEv({ stock: (ev.stock || []).filter(y => y.stockId !== el.dataset.id) }), x ? `Se quitó ${x.name}` : 'Quitado'); }, smanage(el){ go('res-' + el.dataset.id); }, gtab(el){ State.gTab = el.dataset.k; render(); },
+  newRanch(){ State.newRanch = !State.newRanch; render(); }, newStock(){ State.newStock = !State.newStock; render(); },
+  async stockAvail(el){ const x = DB.get('stock', el.dataset.id); await safe(() => DB.put('stock', { ...x, available: x.available === false }), x.available === false ? 'Disponible para renta' : 'Marcado como no disponible'); },
+  async stockDel(el){ const x = DB.get('stock', el.dataset.id); if (!(await ask('Dar de baja', `Se borrará ${stockTitle(x)}. Sus calificaciones en charreadas se conservan.`, 'Dar de baja', true))) return;
+    await safe(async () => { await DB.del('stock', x.id); await audit('ganado', `Dio de baja ${stockTitle(x)}`); go('ganaderia-' + x.ranchId); }, 'Dado de baja'); },
   async verify(el){ const kind = el.dataset.k, d = DB.get(VK_TABLE[kind], el.dataset.id), dec = el.dataset.d; if (!d) return; let note = '';
     if (dec === 'rechazado') { note = await ask(`Rechazar ${VK_LABEL[kind].toLowerCase()}`, `${d.name} seguirá fuera de rankings y precios públicos. El dueño verá el motivo.`, 'Rechazar', true, true); if (!note) return; }
     if (dec === 'pendiente' && !(await ask('Quitar sello oficial', `${d.name} dejará de aparecer en rankings, vitrina y precios públicos hasta que se verifique otra vez.`, 'Quitar sello', true))) return;
@@ -2151,6 +2316,7 @@ document.addEventListener('click', async e => {
 document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role="button"][data-act]')) { e.preventDefault(); e.target.click(); } });
 document.addEventListener('change', async e => {
   const el = e.target;
+  if (el.dataset.skind || el.dataset.smode) { if (el.dataset.skind) State.sKind = el.value; else State.sMode = el.value; const f = el.closest('form'); if (f && f.dataset.form === 'stockNew') { render(); } return; }
   if (el.dataset.horse) { const ev = curEv(); if (!ev) return; const hz = DB.get('horses', el.value);
     return safe(() => updEv({ charros: ev.charros.map(c => c.id === el.dataset.horse ? { ...c, horseId: el.value || null } : c) }), hz ? `Caballo asignado: ${hz.name}` : 'Caballo quitado'); }
   if (el.dataset.photo) { const f = el.files[0]; el.value = ''; if (!f) return; return safe(async () => savePhoto(el.dataset.photo, await readPhoto(f)), 'Foto actualizada'); }
@@ -2173,6 +2339,15 @@ document.addEventListener('submit', async e => {
   const f = e.target; if (!f.dataset.form) return; e.preventDefault();
   const d = Object.fromEntries(new FormData(f).entries()), k = f.dataset.form;
   if (k === 'login') return safe(async () => { State.user = await DB.backend.login(d.email.trim(), d.pass); State.j = null; go(isSuper(State.user) ? 'admin' : 'cuenta'); }, 'Bienvenido');
+  if (k === 'evStock') { const ev = curEv(), x = DB.get('stock', d.stockId); if (!x) return;
+    return safe(async () => { await updEv({ stock: [...(ev.stock || []), { stockId: x.id, addedAt: Date.now() }] }); await audit('ganado', `Registró ${stockTitle(x)} en “${ev.title}”`); }, 'Ganado agregado a la charreada'); }
+  if (k === 'ranchNew') { const u = State.user, id = 'g' + uid();
+    return safe(async () => { await DB.put('ranches', { id, name: d.name.trim(), ownerId: u.id, ownerName: u.name, state: d.state, city: (d.city || '').trim(), location: '', whatsapp: (d.whatsapp || '').trim(), phone: u.phone || '', about: '', photo: '', createdAt: Date.now() }); await audit('ganaderia', `Registró la ganadería ${d.name.trim()}`); State.newRanch = false; go('ganaderia-' + id); }, 'Ganadería registrada'); }
+  if (k === 'ranchEdit') { const r = DB.get('ranches', f.dataset.id); if (!r) return;
+    return safe(() => DB.put('ranches', { ...r, name: d.name.trim(), city: (d.city || '').trim(), state: d.state, location: (d.location || '').trim(), whatsapp: (d.whatsapp || '').trim(), phone: (d.phone || '').trim(), about: (d.about || '').trim() }), 'Ganadería guardada'); }
+  if (k === 'stockNew') { const u = State.user, id = 's' + uid(), x = stockData(d, new FormData(f));
+    return safe(async () => { await DB.put('stock', { id, ranchId: f.dataset.ranch, ownerId: u.id, ...x, photo: '', available: true, createdAt: Date.now() }); await audit('ganado', `Dio de alta ${stockTitle(x)}`); State.newStock = false; State.sKind = State.sMode = null; go('res-' + id); }, 'Ganado dado de alta'); }
+  if (k === 'stockEdit') { const x = DB.get('stock', f.dataset.id); if (!x) return; return safe(() => DB.put('stock', { ...x, ...stockData(d, new FormData(f)) }), 'Guardado'); }
   if (k === 'horseNew') { const u = State.user, id = 'cb' + uid();
     return safe(async () => { await DB.put('horses', { id, ...horseData(d), photo: '', ownerId: u.id, ownerName: '', ownerPublic: false, pricePublic: false, forSale: false, history: [], ownerSince: Date.now(), createdAt: Date.now() }); await audit('caballo', `Registró al caballo ${d.name.trim()}`); State.newHorse = false; go('caballo-' + id); }, 'Caballo registrado'); }
   if (k === 'horseEdit') { const h = DB.get('horses', f.dataset.id); if (!h) return; return safe(() => DB.put('horses', { ...h, ...horseData(d) }), 'Ficha guardada'); }
@@ -2193,6 +2368,7 @@ document.addEventListener('submit', async e => {
       if (p) { State.user = p; await audit('contrasena', `${p.name} cambió su contraseña`); }
       if (wasRecovery) go(p && isSuper(p) ? 'admin' : 'cuenta'); }, 'Contraseña actualizada'); }
   if (k === 'register') { const payload = { role: State.regRole, name: d.name.trim(), email: d.email.trim().toLowerCase(), phone: d.phone || '', invite: (d.invite || '').trim().toUpperCase() || null, lienzoName: d.lienzoName, city: d.city, state: d.state, lienzoId: d.lienzoId,
+      ranchName: (d.ranchName || '').trim(), whatsapp: (d.whatsapp || '').trim(),
       alias: (d.alias || '').trim(), category: d.category, teamReq: d.teamReq || null, teamName: (d.teamName || '').trim(), assoc: (d.assoc || '').trim(), lienzoAfil: d.lienzoAfil || null };
     if (OPEN_ROLES.includes(payload.role)) payload.invite = null;
     return safe(async () => { const r = await DB.backend.register(payload, d.pass); if (r.needsConfirm) { toast('Revisa tu correo para confirmar la cuenta y luego entra.', 'ok'); State.authMode = 'login'; return; } State.user = r.profile; go('cuenta'); }); }
