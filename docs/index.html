@@ -67,6 +67,9 @@ a{color:var(--gold2)}button,input,select,textarea{font:inherit;color:inherit}
 .carnet .cf .w{grid-column:1/-1}.carnet .cf .nm b{font-family:'Cinzel',serif;font-size:16px;color:var(--gold2)}
 .carnet .cfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 12px;border-top:1px solid var(--line);font-size:8.5px;color:var(--mut2);letter-spacing:.04em}
 .carnet .seal{position:absolute;left:calc(12px + 30% - 50px);bottom:32px;width:54px;height:54px;border-radius:50%;border:2px solid var(--gold);display:grid;place-items:center;text-align:center;font-size:7px;font-weight:800;letter-spacing:.08em;color:var(--gold2);background:rgba(10,7,5,.6);transform:rotate(-12deg)}
+.esc-c{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}.esc-c:last-child{border-bottom:0}
+.esc-c .n{display:flex;align-items:center;gap:6px;flex:none}.esc-c .n b{min-width:22px;text-align:center;font-variant-numeric:tabular-nums}.esc-c .n button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line2);background:var(--bg2);color:var(--text);font-size:18px;cursor:pointer}
+.esc-c.on{color:var(--gold2)}.esc-ej{display:grid;grid-template-columns:26px 1fr 64px 64px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.esc-ej select{min-height:38px;padding:4px 6px;font-size:12.5px}
 .ph{object-fit:cover;border-radius:50%;flex:none;border:1px solid var(--line2);background:var(--card2);display:block}
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--card2);border:1px solid var(--line2);display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--gold2);text-decoration:none;flex:none}
 .wrap{max-width:560px;margin:0 auto;padding:14px 16px 24px}
@@ -593,6 +596,7 @@ const CONFIG = {"APP_NAME":"Charrería Pro","SUPABASE_URL":"https://bezwxvslwhrj
 const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
 const CATEGORIAS = ['Libre','Juvenil'];
 const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust'];
+RULES.F.escaramuza = { name: 'Rutina de escaramuza', short: 'Escaramuza', inf: [], eq: [] };
 const FN = k => RULES.F[k].name;
 
 /* ------------------------- ICONOS ------------------------- */
@@ -659,7 +663,7 @@ const DB = {
     try { await this.backend.del(t, id); } catch (e) { arr.splice(i, 0, prev); throw e; }
   }
 };
-const LS_KEY = 'charreriapro_demo_v12', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v13', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -900,6 +904,20 @@ function seed(){
   const cc = { id:'ecc', title:'Campeonato Charro Completo', lienzoId:'lvilla', date: day(-25), mode:'completo', category:'Libre', status:'finalizado', official:true, requestOfficial:true, suertes: RULES.ORDER_CC.slice(), teams:[], charros:[], streamUrl:'', videoUrl:'', createdAt: Date.now() };
   [[0,0],[1,0],[2,1],[3,2],[4,0]].forEach(([ti, k]) => { const id = 'k' + ti; cc.teams.push({ id, name: TEAMS[ti][2][k], assoc: TEAMS[ti][0], state: TEAMS[ti][1] }); cc.charros.push({ id: 'ck' + ti, name: TEAMS[ti][2][k], teamId: id }); });
   E.push(cc); scoreAll(cc, 7, true);
+  const ESCS = [['Escaramuza Las Alteñas','Jalisco','Mariana Ríos'],['Escaramuza Flor de Lis','Ciudad de México','Daniela Ochoa'],['Escaramuza Real de Catorce','San Luis Potosí','Lucía Torres'],['Escaramuza Adelitas del Bajío','Guanajuato','Fernanda Lugo']];
+  const JZ = [['jz1','Juez María Elena Robles'],['jz2','Juez Patricia Arteaga'],['jz3','Juez Rocío Villalpando'],['jz4','Juez Teresa Galindo'],['jz5','Juez Silvia Carmona']];
+  const escSheet = (lvl) => { const d = escBlank(); d.puntas.forEach((p, i) => { p.name = ['Valeria','Ximena','Regina','Camila','Paola','Andrea'][Math.floor(rng() * 6)] + ' ' + ['Pérez','García','Luna','Ortiz','Soto'][Math.floor(rng() * 5)];
+      PUNTA_ADIC.forEach(([k]) => { if (rng() < .55 + lvl * .3) p.adic[k] = true; }); p.tiempos = [4, 3, 2, 1][Math.floor(rng() * (2 + lvl * 2))]; p.metros = Math.round((6 + rng() * (6 + lvl * 9)) * 100) / 100; if (rng() < .25) p.inf.trote = 1; });
+    d.ej.forEach(e => { e.ad = (escAdicOpts(e.c, e.v).slice(-1)[0] || 0) * (rng() < .45 + lvl * .4 ? 1 : 0); if (rng() < .5) e.inf.dist = 1 + Math.floor(rng() * 2); if (rng() < .2) e.inf.def = 1; if (rng() < .12) e.inf.tpvr = 1; if (rng() < .04) e.desc = true; });
+    if (rng() < .3) d.pres.arreos = 1; if (rng() < .15) d.var.tiempo = 1; return d; };
+  const mkEsc = (id, title, lienzoId, date, status, official, idxs, judges, extra = {}) => { const ev = { id, title, lienzoId, date, mode: 'escaramuza', category: 'Libre', status, official, requestOfficial: official, suertes: [], charros: [], streamUrl: '', videoUrl: '', createdAt: Date.now(), ...extra,
+      teams: idxs.map(i => ({ id: 'z' + i, name: ESCS[i][0], state: ESCS[i][1], assoc: 'Asociación de Charros de ' + ESCS[i][1], capitan: ESCS[i][2], members: [] })) };
+    E.push(ev); const t0 = new Date(date + 'T12:00:00').getTime();
+    ev.teams.forEach((t, ti) => { const lvl = [.9, .6, .45, .25][+t.id.slice(1)] || .4; judges(ti).forEach(([jid, jn], k) => { const d = escSheet(lvl + (rng() - .5) * .15), r = calcEsc(d);
+      S.push({ id: `${id}-${t.id}-esc-${jid}`, eventId: id, teamId: t.id, teamName: t.name, faena: 'escaramuza', input: d, buenos: r.ejVal + r.adic + r.puntas, malos: r.infTot, total: r.total, eq: 0, net: r.total, parts: [], judgeId: jid, judgeName: jn, createdAt: t0 + (ti * 5 + k) * 60000, updatedAt: t0 + (ti * 5 + k) * 60000 }); }); }); };
+  mkEsc('eesc1', 'Campeonato Estatal de Escaramuzas · Etapa 1', 'lstm', day(-55), 'finalizado', true, [0, 1, 2, 3], () => JZ);
+  mkEsc('eesc2', 'Copa de Escaramuzas de la Villa', 'lvilla', day(-18), 'finalizado', true, [0, 1, 2, 3], () => JZ);
+  mkEsc('eescv', 'Torneo de Escaramuzas Bicentenario', 'lvilla', day(0), 'en_vivo', true, [0, 1, 2], ti => ti === 0 ? JZ.slice(0, 3) : ti === 1 ? JZ.slice(0, 1) : [], { startedAt: Date.now() - 40 * 60000 });
   const live = mkEvent('elive','Torneo Nacional Charro Bicentenario','lvilla',day(0),[0,1,2],'en_vivo',true,{ startedAt: Date.now() - 70*60000 });
   scoreAll(live, 3, false);
   S.filter(x => x.eventId === 'elive').forEach((x, i) => { x.createdAt = x.updatedAt = Date.now() - (60 - i * 6) * 60000; });
@@ -1124,8 +1142,53 @@ const publicEvents = () => DB.all('events').filter(e => e.status !== 'borrador' 
 const evScores = id => DB.all('scores').filter(s => s.eventId === id);
 const sheetOf = (eid, tid) => DB.get('sheets', `${eid}-${tid}`);
 const isLocked = (ev, tid) => { const sh = sheetOf(ev.id, tid); return !!(sh && sh.entregada); };
-const teamLabel = ev => ev.mode === 'completo' ? 'Charro' : 'Equipo';
+const teamLabel = ev => ev.mode === 'completo' ? 'Charro' : ev.mode === 'escaramuza' ? 'Escaramuza' : 'Equipo';
+/* ---------- ESCARAMUZAS (Reglamento FMCH y Hoja de Calificación Libre 2025–2028) ---------- */
+const ESC_CONC = ['Agrupación','Flor','Abanico','Cruce','Escalera','Coladera','Giro','Combinado · giro','Combinado · complementario','Libre','Compuesto'];
+const ESC_MAX = 304, ESC_ADIC_MAX = 42;
+const PUNTA_ADIC = [['mano','Poner en mano'],['recta','Línea recta'],['vel','Velocidad'],['rect','Dentro del rectángulo'],['una','Una mano'],['saludo','Saludo charro']];
+const PUNTA_TIEMPOS = [[4,'4 tiempos (+0)',0],[3,'3 tiempos (+3)',3],[2,'2 tiempos (+4)',4],[1,'1 tiempo (+5)',5]];
+const PUNTA_INF = [['arreo','Perder arreo',2],['trote','Trotar',1],['horc','Montar a horcajadas',4],['estribo','Sacar el pie del estribo',2],['castigo','Castigar al caballo',4],['extrem','Sacar extremidad tras el alto',4],['salida','Salirse del lienzo',6],['rect','Entrenador en el rectángulo',2]];
+const ESC_PRES = [['arreos','Cada concepto diferente en arreos',2],['atuendo','Cada concepto diferente en atuendo',2],['crin','Crinolina sin almidonar',2],['otros','Otros motivos (puntos)',1]];
+const ESC_VAR = [['horario','No respetar horario en reconocimiento',6],['minuto','Entrar después de un minuto',2],['tiempo','Minutos (o fracción) sobre el tiempo',5],['arreos','No presentarse a tiempo a revisión de arreos',6],['musica','Música no tradicional',6],['medica','No ir a revisión médica',6],['desfile','No desfilar completas',6],['papeleria','No entregar papelería en tiempo y forma',6],['convoc','No respetar convocatoria, acuerdos, etc.',6],['otros','Otros (puntos)',1]];
+const ESC_RINF = [['galope','Entrar o salir sin galopar',2,'es'],['saludo','Salir sin alto o sin saludar',5,'s'],['dist','Distancia en ejecución / cuaje',2],['defg','Defecto de ejecución en giros (A/L/Z/C/G)',4],['def','Defecto de ejecución (D/A/V)',6],['tpvr','Trote, paro, velocidad, roce (T/P/V/R)',2],
+  ['camg','Caminar en giros',4],['rehuse','Rehúse y/o paro de manos',6],['circ','No mantener círculo en coladera',2],['choque','Choque en no ejecución y/o en bardas',10],['cd','No cumplir con CD señalado',6],['caidac','Caída con caballo',2],['noent','No entrada o salida de ejercicio',2],
+  ['horc','Montar a horcajadas',4],['castigo','Castigo innecesario',4],['arreo','Pérdida de arreo',2],['estribo','Monta peligrosa / sacar pie del estribo',2],['paro','Paro de actuación (todas)',6],['salidai','Salida de integrante',6],['asne','Pérdida de asiento en no ejecución',2],
+  ['caidasc','Caída sin caballo en no ejecución',10],['ase','Pérdida de asiento en ejecución',10],['prep','No señalar preparaciones',6],['seng','No señalar giros, grados, 2T/CD',2]];
+const ESC_DQ = ['', 'Falta de atuendo / lo no permitido', 'Falta de respeto al jurado', 'Otros motivos'];
+const escAdicOpts = (c, v) => +v !== 28 ? [0] : ['Coladera','Escalera','Cruce','Libre'].includes(c) ? [0, 3] : c === 'Giro' || c === 'Combinado · giro' ? [0, 6, 8, 10] : c === 'Compuesto' ? [0, 10] : [0];
+const escBlank = () => ({ pres: {}, var: {}, disq: '', times: { puntas: '', rutina: '' }, noRut: 0, notes: '',
+  puntas: [0, 1].map(() => ({ name: '', adic: {}, tiempos: 4, metros: '', inf: {}, desc: false, motivo: '' })),
+  ej: [[16,'Agrupación'],[20,'Flor'],[20,'Escalera'],[26,'Abanico'],[26,'Coladera'],[28,'Cruce'],[28,'Escalera'],[28,'Coladera'],[28,'Compuesto'],[28,'Libre'],[28,'Combinado · giro'],[28,'Combinado · complementario']].map(([v, c]) => ({ v, c, ad: 0, inf: {}, lost: false, desc: false })),
+  es: { e: { inf: {} }, s: { inf: {} } } });
+const sumInf = (o, L) => L.reduce((a, [k, , v]) => a + v * (+(o || {})[k] || 0), 0);
+function escPunta(p){
+  const m = +p.metros || 0, tp = m >= 6 ? ((PUNTA_TIEMPOS.find(t => t[0] === +p.tiempos) || [0, '', 0])[2]) : 0, mt = m >= 15.51 ? 2 : m >= 10 ? 1 : 0;
+  const ad = p.desc ? 0 : PUNTA_ADIC.reduce((a, [k]) => a + (p.adic[k] ? 1 : 0), 0) + tp + mt, inf = sumInf(p.inf, PUNTA_INF);
+  return { ad, inf, total: ad - inf, tp, mt };
+}
+function calcEsc(d){
+  const P = d.puntas.map(escPunta), puntas = P.reduce((a, p) => a + p.total, 0), base = d.ej.reduce((a, e) => a + (+e.v || 0), 0), warn = [];
+  const overMax = base > ESC_MAX; if (overMax) warn.push(`Suma base ${base}: rebasa ${ESC_MAX} y la rutina queda descalificada.`);
+  const ejVal = overMax ? 0 : d.ej.reduce((a, e) => a + (e.desc ? 0 : +e.v || 0), 0), adic = overMax ? 0 : d.ej.reduce((a, e) => a + (e.desc || e.lost ? 0 : +e.ad || 0), 0);
+  if (adic > ESC_ADIC_MAX) warn.push(`Los adicionales suman ${adic}; el máximo posible es ${ESC_ADIC_MAX}.`);
+  const infRut = d.ej.reduce((a, e) => a + sumInf(e.inf, ESC_RINF), 0) + sumInf(d.es.e.inf, ESC_RINF) + sumInf(d.es.s.inf, ESC_RINF);
+  const infPres = sumInf(d.pres, ESC_PRES), infVar = sumInf(d.var, ESC_VAR), noRut = 25 * (+d.noRut || 0), infTot = infRut + infPres + infVar + noRut;
+  const cnt = v => d.ej.filter(e => +e.v === v).length;
+  if (cnt(16) !== 1 || cnt(20) !== 2 || cnt(26) !== 2 || cnt(28) !== 7) warn.push('Valores esperados: 1 de 16, 2 de 20, 2 de 26 (uno abanico) y 7 de 28 (incluye el combinado).');
+  [['Coladera'],['Cruce'],['Giro','Combinado · giro'],['Escalera'],['Abanico'],['Libre'],['Compuesto'],['Combinado · giro'],['Combinado · complementario']].forEach(cs => { if (!d.ej.some(e => cs.includes(e.c))) warn.push(`Falta el concepto obligatorio: ${cs[0]}.`); });
+  ['Giro','Coladera','Cruce','Escalera','Flor'].forEach(c => { const n = d.ej.filter(e => e.c === c || (c === 'Giro' && e.c.startsWith('Combinado · giro'))).length; if (n > 3) warn.push(`${c} aparece ${n} veces; el máximo es 3.`); });
+  const total = d.disq ? 0 : Math.round((ejVal + adic + puntas - infTot) * 100) / 100;
+  return { P, puntas, base, ejVal, adic, infRut, infPres, infVar, noRut, infTot, total, warn, overMax };
+}
+function escFinal(ev, tid){
+  const rows = evScores(ev.id).filter(s => s.teamId === tid && s.faena === 'escaramuza').sort((a, b) => a.total - b.total), n = rows.length;
+  if (!n) return { score: 0, n: 0, rows, used: [], method: 'Sin calificaciones', inf: 0 };
+  const used = n >= 5 ? rows.slice(1, -1) : rows, score = Math.round(100 * used.reduce((a, s) => a + s.total, 0) / used.length) / 100, inf = Math.round(100 * used.reduce((a, s) => a + s.malos, 0) / used.length) / 100;
+  return { score, n, rows, used, inf, method: n >= 5 ? 'Se descartan la más alta y la más baja; promedio de 3 juezas' : n === 1 ? 'Calificación de 1 jueza (el reglamento pide 5)' : `Promedio de ${n} juezas (el reglamento pide 5)` };
+}
 function teamStandings(ev){
+  if (ev.mode === 'escaramuza') return ev.teams.map(t => { const f = escFinal(ev, t.id); return { ...t, pts: f.score, malos: f.inf, n: f.n }; }).sort((a, b) => b.pts - a.pts || a.malos - b.malos);
   const sc = evScores(ev.id);
   return ev.teams.map(t => { const ts = sc.filter(s => s.teamId === t.id); return { ...t, pts: sum(ts.map(s => s.net)), malos: sum(ts.map(s => s.malos + s.eq)), n: ts.length }; })
     .sort((a, b) => b.pts - a.pts || a.malos - b.malos);
@@ -1191,7 +1254,7 @@ function statusChip(ev){
   return '<span class="chip">Borrador</span>';
 }
 const officialChip = ev => ev.official ? `<span class="chip gold">${I.shield}Oficial</span>` : '';
-const modeChip = ev => ev.mode === 'completo' ? '<span class="chip">Charro completo</span>' : `<span class="chip">${esc(ev.category || 'Libre')}</span>`;
+const modeChip = ev => ev.mode === 'completo' ? '<span class="chip">Charro completo</span>' : ev.mode === 'escaramuza' ? '<span class="chip">Escaramuzas</span>' : `<span class="chip">${esc(ev.category || 'Libre')}</span>`;
 function dateBox(iso){ const [y,m,d] = iso.split('-').map(Number); return `<div class="datebox"><b>${d}</b><span>${MESES[m-1]}</span></div>`; }
 function eventCard(ev){
   const L = lienzo(ev.lienzoId), st = ev.status !== 'programado' ? teamStandings(ev) : [], lead = st[0] && st[0].n ? st[0] : null;
@@ -1216,7 +1279,8 @@ function videoBlock(ev){
     <div class="row between small" style="margin-top:8px"><span class="mut">${label}</span><a href="${esc(url)}" target="_blank" rel="noopener">Abrir en otra ventana ↗</a></div>`;
 }
 function rankRow(i, name, meta, pts, unit, card){
-  const hc = typeof card === 'string' && card.startsWith('h:');
+  const hc = typeof card === 'string' && card.startsWith('h:'), sc_ = typeof card === 'string' && card.startsWith('s:');
+  if (sc_) return `<div class="rank tap" data-act="scard" data-id="${esc(card.slice(2))}" role="button" tabindex="0" aria-label="Ver ${esc(name)}"><div class="pos ${i < 3 ? 'p' + (i + 1) : ''}">${i + 1}</div><div class="grow"><div class="ell" style="font-weight:700">${esc(name)}</div><div class="small mut ell">${meta}</div></div><div class="pts">${pts}<small>${unit}</small></div></div>`;
   return `<div class="rank${card ? ' tap' : ''}"${hc ? ` data-act="hcard" data-id="${esc(card.slice(2))}" role="button" tabindex="0" aria-label="Ver tarjeta de ${esc(name)}"` : card ? ` data-act="card" data-n="${esc(name)}" role="button" tabindex="0" aria-label="Ver tarjeta de ${esc(name)}"` : ''}><div class="pos ${i < 3 ? 'p' + (i + 1) : ''}">${i + 1}</div><div class="grow"><div class="ell" style="font-weight:700">${esc(name)}</div><div class="small mut ell">${meta}</div></div><div class="pts">${pts}<small>${unit}</small></div></div>`;
 }
 
@@ -1278,9 +1342,10 @@ function vEvento(){
   h += `<div class="btns mt">${btns.join('')}</div>`;
   if (DB.backend.mode === 'demo' && ev.status === 'en_vivo') h += `<button class="btn ghost block sm mt" data-act="simulate" data-id="${ev.id}">Simular la siguiente faena calificada (demo)</button>`;
   if (ev.status === 'programado') return h + `<div class="h2">${ev.mode === 'completo' ? 'Charros inscritos' : 'Equipos inscritos'}</div><div class="card pad0">${ev.teams.map(t => `<div class="rank"><div class="grow"><div style="font-weight:700">${esc(t.name)}</div><div class="small mut">${esc(t.assoc || t.state || '')}${ev.mode !== 'completo' ? ' · ' + ev.charros.filter(c => c.teamId === t.id).length + ' charros' : ''}</div></div></div>`).join('') || '<div class="empty">Aún sin inscritos</div>'}</div>`;
-  h += `<div class="seg mt2">${[['marcador','Marcador'],['feed','Calificaciones'],['charros','Charros']].map(([k, l]) => `<button class="${State.homeTab === k ? 'on' : ''}" data-act="evtab" data-k="${k}">${l}</button>`).join('')}</div>`;
+  if (ev.mode === 'escaramuza' && State.homeTab === 'charros') State.homeTab = 'marcador';
+  h += `<div class="seg mt2">${[['marcador','Marcador'],['feed','Calificaciones'],...(ev.mode === 'escaramuza' ? [] : [['charros','Charros']])].map(([k, l]) => `<button class="${State.homeTab === k ? 'on' : ''}" data-act="evtab" data-k="${k}">${l}</button>`).join('')}</div>`;
   if (State.homeTab === 'marcador') {
-    h += `<div class="card pad0 mt">${st.map((t, i) => `<div class="rank" style="display:block"><div class="row"><div class="pos ${i < 3 && t.n ? 'p' + (i + 1) : ''}">${i + 1}</div><div class="grow"><div style="font-weight:700" class="ell">${esc(t.name)}</div><div class="small mut">${t.n}/${ev.suertes.length} faenas · ${t.malos} puntos malos</div></div><div class="pts">${t.pts}<small>pts</small></div></div><div class="bar"><i style="width:${Math.max(0, Math.round(t.pts / max * 100))}%"></i></div>
+    h += `<div class="card pad0 mt">${st.map((t, i) => `<div class="rank" style="display:block"><div class="row"><div class="pos ${i < 3 && t.n ? 'p' + (i + 1) : ''}">${i + 1}</div><div class="grow"><div style="font-weight:700" class="ell">${esc(t.name)}</div><div class="small mut">${ev.mode === 'escaramuza' ? `${t.n}/5 juezas · ${t.malos} infracciones` : `${t.n}/${ev.suertes.length} faenas · ${t.malos} puntos malos`}</div></div><div class="pts">${t.pts}<small>pts</small></div></div><div class="bar"><i style="width:${Math.max(0, Math.round(t.pts / max * 100))}%"></i></div>
       <div class="row" style="justify-content:flex-end;margin-top:6px"><a class="small" href="#hoja-${ev.id}-${t.id}">${I.doc.replace('<svg', '<svg style="width:13px;height:13px;vertical-align:-2px"')} Hoja de calificación${sheetOf(ev.id, t.id) && sheetOf(ev.id, t.id).entregada ? ' · entregada ✓' : ''}</a></div></div>`).join('')}</div>`;
     const done = ev.suertes.filter(fk => sc.some(s => s.faena === fk));
     if (done.length) h += `<div class="h2">Por faena</div><div class="card pad0" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:${130 + st.length * 74}px">
@@ -1791,6 +1856,13 @@ const adjMark = on => on ? ' · <span class="chip" style="padding:1px 6px;font-s
 const isFeatured = (kind, id) => !!(adjOf(kind, id) || {}).featured;
 const featChip = (kind, id) => isFeatured(kind, id) ? ' <span class="chip gold" style="padding:1px 7px;font-size:10px">Destacado</span>' : '';
 const unverMark = on => on ? ' · <span class="chip" style="padding:1px 6px;font-size:10px">Sin verificar</span>' : '';
+function rankingEsc(opt){
+  const m = {};
+  rankingEvents({ ...opt, mode: 'escaramuza' }).forEach(ev => ev.teams.forEach(t => { const f = escFinal(ev, t.id); if (!f.n) return;
+    const k = norm(t.name), r = m[k] = m[k] || { name: t.name, state: t.state, sum: 0, evs: 0, best: -999, inf: 0, off: false };
+    r.sum += f.score; r.evs++; r.best = Math.max(r.best, f.score); r.inf += f.inf; if (ev.official) r.off = true; }));
+  return Object.values(m).map(r => ({ ...r, avg: Math.round(100 * r.sum / r.evs) / 100, infAvg: r.inf / r.evs })).sort((a, b) => b.avg - a.avg || a.infAvg - b.infAvg);
+}
 function rankingEquipos(opt, mode){
   const m = {};
   rankingEvents({ ...opt, mode }).forEach(ev => teamStandings(ev).forEach((t, i) => {
@@ -1805,12 +1877,18 @@ function vRanking(){
   const years = [...new Set(publicEvents().map(e => e.date.slice(0, 4)))].sort().reverse(), estados = [...new Set(publicEvents().map(e => lienzo(e.lienzoId).state))].sort();
   const opt = { year: State.rankYear, oficial: State.rankOficial, suerte: State.rankSuerte, estado: State.rankEstado };
   let h = `<div class="h1">Ranking nacional</div><div class="sub" style="margin-top:4px">Puntos netos (buenos menos malos) en charreadas ${State.rankOficial ? 'oficiales ' : ''}finalizadas.</div>
-    <div class="seg mt">${[['charros','Charros'],['equipos','Equipos'],['completo','Completo'],['caballos','Caballos']].map(([k, l]) => `<button class="${State.rankTab === k ? 'on' : ''}" data-act="ranktab" data-k="${k}">${l}</button>`).join('')}</div>
+    <div class="scroller mt">${[['charros','Charros'],['equipos','Equipos'],['completo','Charro completo'],['escaramuzas','Escaramuzas'],['caballos','Caballos'],['ganado','Ganado']].map(([k, l]) => `<button class="tog ${State.rankTab === k ? 'on' : ''}" data-act="ranktab" data-k="${k}">${l}</button>`).join('')}</div>
     <div class="row mt" style="gap:8px"><select class="in" data-model="rankYear"><option value="">Histórico</option>${years.map(y => `<option ${y === State.rankYear ? 'selected' : ''}>${y}</option>`).join('')}</select>
     <select class="in" data-model="rankSuerte"><option value="">Todas las faenas</option>${RULES.ORDER_EQ.map(k => `<option value="${k}" ${k === State.rankSuerte ? 'selected' : ''}>${esc(FN(k))}</option>`).join('')}</select></div>
     <div class="row mt" style="gap:8px"><select class="in" data-model="rankEstado"><option value="">Todo México</option>${estados.map(s => `<option ${s === State.rankEstado ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
     <button class="tog ${State.rankOficial ? 'on' : ''}" data-act="rankOficial" style="white-space:nowrap">Solo oficiales</button></div>`;
   if (State.rankTab === 'charros') { const r = rankingCharros(opt); h += r.length ? `<div class="card pad0 mt">${r.slice(0, 100).map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.evs.size} charreadas · mejor ${c.best}${unverMark(!c.off && !isOfficial('charro', regCharro(c.name)))}${adjMark(c.adj)}`, c.pts, 'pts', true)).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
+  else if (State.rankTab === 'escaramuzas') { const r = rankingEsc(opt);
+    h += r.length ? `<div class="small mut mt">Promedio de la calificación oficial de cada escaramuza en sus competencias (desempate: menos infracciones).</div><div class="card pad0 mt">${r.map((x, i) => rankRow(i, x.name, `${esc(x.state || '')} · ${x.evs} ${x.evs === 1 ? 'competencia' : 'competencias'} · mejor ${x.best}${unverMark(!x.off)}`, x.avg, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin escaramuzas para este filtro', 'Aparecen cuando un lienzo registra una competencia de escaramuzas y las juezas la califican.')}</div>`; }
+  else if (State.rankTab === 'ganado') { const k = State.gRank || 'todos';
+    const L = DB.all('stock').filter(x => (k === 'todos' || x.kind === k) && isOfficial('stock', x) && isOfficial('ranch', DB.get('ranches', x.ranchId))).map(x => ({ x, q: stockQuality(x.id) })).filter(o => o.q).sort((a, b) => b.q.overall - a.q.overall || b.q.n - a.q.n);
+    h += `<div class="seg mt">${[['todos','Todos'],['toro','Toros'],['yegua','Yeguas brutas']].map(([v, l]) => `<button class="${k === v ? 'on' : ''}" data-act="grank" data-k="${v}">${l}</button>`).join('')}</div>`;
+    h += L.length ? `<div class="small mut mt">Calidad promedio (1 a 5) que dan juezas, jueces y lienzos después de cada charreada. Solo ganado y ganaderías verificados. <a href="#ganado" style="color:var(--gold2)">Ver ganado</a></div><div class="card pad0 mt">${L.map(({ x, q }, i) => rankRow(i, stockTitle(x), `${esc((DB.get('ranches', x.ranchId) || {}).name || '')} · ${q.n} calificaciones · ${q.evs} charreadas`, q.overall.toFixed(1), '/5', 's:' + x.id)).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin ganado calificado', 'Se califica desde la mesa del juez o el panel del lienzo en cada charreada.')}</div>`; }
   else if (State.rankTab === 'caballos') { const by = State.hRankBy || 'puntos';
     h += `<div class="seg mt">${[['puntos','Por puntos'],['valor','Por valor']].map(([k, l]) => `<button class="${by === k ? 'on' : ''}" data-act="hrankby" data-k="${k}">${l}</button>`).join('')}</div>`;
     if (by === 'valor') { const r = DB.all('horses').filter(x => x.pricePublic && isOfficial('horse', x) && hasCarnet(x)).map(x => ({ h: x, S: horseStats(x) })).sort((a, b) => b.S.val.value - a.S.val.value);
@@ -1997,10 +2075,11 @@ function vPanelEvento(){
     ${isSuper(u) ? `<button class="tog ${ev.official ? 'on' : ''}" data-act="toggleOfficial" data-id="${ev.id}">${ev.official ? 'Oficial' : 'Hacer oficial'}</button>` : ev.official ? `<span class="chip gold">${I.shield}Oficial</span>` : `<button class="tog ${ev.requestOfficial ? 'on' : ''}" data-act="reqOfficial">${ev.requestOfficial ? 'Solicitado' : 'Solicitar'}</button>`}</div></div>`;
   h += `<div class="h2">Datos</div><form class="card" data-form="evData"><label class="f" style="margin-top:0">Nombre de la charreada</label><input class="in" name="title" value="${esc(ev.title)}" required ${dis}>
     <div class="row" style="gap:8px"><div class="grow"><label class="f">Fecha</label><input class="in" type="date" name="date" value="${esc(ev.date)}" required ${dis}></div><div class="grow"><label class="f">Categoría</label><select class="in" name="category" ${dis}>${CATEGORIAS.map(c => `<option ${c === ev.category ? 'selected' : ''}>${c}</option>`).join('')}</select></div></div>
-    <label class="f">Modalidad</label><select class="in" name="mode" ${dis || hasScores || ev.teams.length ? 'disabled' : ''}><option value="equipos" ${!cc ? 'selected' : ''}>Charreada por equipos</option><option value="completo" ${cc ? 'selected' : ''}>Charro completo</option></select>
+    <label class="f">Modalidad</label><select class="in" name="mode" ${dis || hasScores || ev.teams.length ? 'disabled' : ''}><option value="equipos" ${!cc ? 'selected' : ''}>Charreada por equipos</option><option value="escaramuza" ${ev.mode === 'escaramuza' ? 'selected' : ''}>Escaramuzas (categoría libre)</option><option value="completo" ${cc ? 'selected' : ''}>Charro completo</option></select>
     ${locked ? '' : '<button class="btn block mt">Guardar datos</button>'}</form>`;
-  h += `<div class="h2">Faenas</div><div class="card"><div class="chips">${order.map(k => `<button class="tog ${ev.suertes.includes(k) ? 'on' : ''}" data-act="toggleSuerte" data-s="${k}" ${dis}>${esc(FN(k))}</button>`).join('')}</div><div class="small mut mt">Orden oficial de las faenas conforme al reglamento.</div></div>`;
-  h += `<div class="h2">${cc ? 'Charros completos inscritos' : 'Equipos y charros'}</div>`;
+  const esz = ev.mode === 'escaramuza';
+  if (!esz) h += `<div class="h2">Faenas</div><div class="card"><div class="chips">${order.map(k => `<button class="tog ${ev.suertes.includes(k) ? 'on' : ''}" data-act="toggleSuerte" data-s="${k}" ${dis}>${esc(FN(k))}</button>`).join('')}</div><div class="small mut mt">Orden oficial de las faenas conforme al reglamento.</div></div>`;
+  h += `<div class="h2">${esz ? 'Escaramuzas inscritas' : cc ? 'Charros completos inscritos' : 'Equipos y charros'}</div>`;
   const chip = (t, cls) => ` <span class="chip ${cls}" style="padding:1px 6px;font-size:10px">${t}</span>`;
   const chRow = (c, del) => `<div class="chr"${c.addedBy ? ` title="Agregado por ${esc(c.addedByName || 'juez')}${c.note ? ' · ' + esc(c.note) : ''}"` : ''}>
       <div class="row" style="gap:6px;align-items:center"><button class="lnk grow" data-act="card" data-n="${esc(c.name)}"><span class="ell">${esc(c.name)}</span>${c.refId ? chip('registrado', 'green') : ''}${c.addedBy ? chip('juez', 'blue') : ''}</button>
@@ -2008,14 +2087,16 @@ function vPanelEvento(){
       <select class="in" data-horse="${c.id}" ${locked ? 'disabled' : ''} aria-label="Caballo de ${esc(c.name)}" style="min-height:40px;padding:6px 10px;font-size:13px;margin-top:6px">${horseOpts(c.horseId)}</select></div>`;
   h += charroDL() + ev.teams.map(t => { const inEv = ev.charros.filter(c => c.teamId === t.id), avail = t.refId ? rosterOf(t.refId).filter(c => !ev.charros.some(x => x.refId === c.id)) : [];
     return `<div class="team"><div class="row between"><div><div style="font-weight:800">${esc(t.name)}${t.refId ? chip('oficial', 'green') : ''}</div><div class="small mut">${esc(cc ? (t.assoc || '') + (t.state ? ' · ' + t.state : '') : (t.state || '') + (t.capitan ? ' · Capitán: ' + t.capitan : ''))}</div></div>${locked ? '' : `<button class="btn ghost sm" data-act="delTeam" data-id="${t.id}" aria-label="Quitar ${esc(t.name)}">${I.x}</button>`}</div>
-    ${cc ? inEv.map(c => chRow(c, false)).join('') : `${inEv.length ? `<div class="small mut mt">Charro · caballo que monta</div>${inEv.map(c => chRow(c, true)).join('')}` : '<div class="small mut mt">Sin charros todavía</div>'}
+    ${esz ? `<div class="small mut mt">${(t.members || []).length ? 'Integrantes: ' + t.members.map(esc).join(', ') : 'Sin integrantes capturadas'}</div>` : cc ? inEv.map(c => chRow(c, false)).join('') : `${inEv.length ? `<div class="small mut mt">Charro · caballo que monta</div>${inEv.map(c => chRow(c, true)).join('')}` : '<div class="small mut mt">Sin charros todavía</div>'}
     ${locked ? '' : `${avail.length ? `<form class="row mt" data-form="addRoster" data-team="${t.id}" style="gap:8px"><select class="in" name="charroId" required><option value="">＋ Del roster oficial (${avail.length})</option>${avail.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select><button class="btn sm" style="min-height:46px" aria-label="Agregar del roster">${I.plus}</button></form>` : ''}
       <form class="row mt" data-form="addCharro" data-team="${t.id}" style="gap:8px"><input class="in" name="name" list="dl-charros" placeholder="Nombre del charro (registrado u otro)" autocomplete="off" required><button class="btn sm" style="min-height:46px" aria-label="Agregar charro">${I.plus}</button></form>`}`}</div>`; }).join('');
   const offTeams = DB.all('teams').filter(t => !ev.teams.some(x => x.refId === t.id)).sort((a, b) => ((b.lienzoId === ev.lienzoId && b.lienzoStatus === 'aprobado') - (a.lienzoId === ev.lienzoId && a.lienzoStatus === 'aprobado')) || byName(a, b));
-  if (!locked && !cc && offTeams.length) h += `<form class="team" data-form="addOfficialTeam" style="border-style:dashed"><div style="font-weight:700">Agregar equipo oficial</div><div class="small mut" style="margin-top:2px">Equipos registrados en la app, con su roster aprobado.</div>
+  if (!locked && !cc && !esz && offTeams.length) h += `<form class="team" data-form="addOfficialTeam" style="border-style:dashed"><div style="font-weight:700">Agregar equipo oficial</div><div class="small mut" style="margin-top:2px">Equipos registrados en la app, con su roster aprobado.</div>
     <select class="in mt" name="teamId" required><option value="">— Elegir equipo —</option>${offTeams.map(t => `<option value="${t.id}">${esc(t.name)} · ${rosterOf(t.id).length} charros${t.lienzoId === ev.lienzoId && t.lienzoStatus === 'aprobado' ? ' · afiliado a este lienzo' : ''}</option>`).join('')}</select>
     <label class="row small mt" style="gap:8px"><input type="checkbox" name="all" checked> Inscribir a todo su roster</label><button class="btn pri block mt">${I.plus} Agregar equipo oficial</button></form>`;
-  if (!locked) h += cc ? `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Inscribir charro completo</div><input class="in mt" name="name" list="dl-charros" placeholder="Nombre del charro (registrado u otro)" autocomplete="off" required><input class="in mt" name="assoc" placeholder="Equipo / asociación"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><select class="in mt" name="horseId" aria-label="Caballo">${horseOpts('')}</select><button class="btn block mt">${I.plus} Inscribir</button></form>`
+  if (!locked && esz) h += `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Inscribir escaramuza</div><input class="in mt" name="name" placeholder="Nombre de la escaramuza" required><input class="in mt" name="assoc" placeholder="Asociación"><input class="in mt" name="capitan" placeholder="Capitana"><select class="in mt" name="state">${ESTADOS.map(x => `<option ${x === lienzo(ev.lienzoId).state ? 'selected' : ''}>${x}</option>`).join('')}</select>
+      <textarea class="in mt" name="members" rows="4" placeholder="Integrantes (una por renglón, 8 y suplente)"></textarea><button class="btn block mt">${I.plus} Inscribir escaramuza</button></form>`;
+  else if (!locked) h += cc ? `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Inscribir charro completo</div><input class="in mt" name="name" list="dl-charros" placeholder="Nombre del charro (registrado u otro)" autocomplete="off" required><input class="in mt" name="assoc" placeholder="Equipo / asociación"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><select class="in mt" name="horseId" aria-label="Caballo">${horseOpts('')}</select><button class="btn block mt">${I.plus} Inscribir</button></form>`
     : `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">${offTeams.length ? 'Agregar otro equipo (no registrado)' : 'Agregar equipo'}</div><input class="in mt" name="name" placeholder="Nombre del equipo / asociación" required><input class="in mt" name="capitan" placeholder="Capitán"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn block mt">${I.plus} Agregar equipo</button></form>`;
   h += eventStockSection(ev, u, canManage(u, ev));
   h += `<div class="h2">Transmisión en vivo</div><form class="card" data-form="stream"><div class="small mut">Transmite desde YouTube Live o Facebook Live y pega aquí el enlace.</div><input class="in mt" name="url" type="url" placeholder="https://youtube.com/live/…" value="${esc(ev.streamUrl)}"><button class="btn block mt">Guardar enlace</button></form>`;
@@ -2160,6 +2241,59 @@ function faenaForm(ev, team, fk){
   return { html: h, r };
 }
 
+function vJuezEsc(ev){
+  const u = State.user; let J = State.ej; if (!J || J.eid !== ev.id) J = State.ej = { eid: ev.id, tid: ev.teams[0].id, d: null, dirty: false, col: 'e' };
+  if (!ev.teams.some(t => t.id === J.tid)) { J.tid = ev.teams[0].id; J.d = null; }
+  const team = ev.teams.find(t => t.id === J.tid), sid = `${ev.id}-${team.id}-esc-${u.id}`, mine = DB.get('scores', sid), locked = (isLocked(ev, team.id) && !isSuper(u)) || ev.status !== 'en_vivo';
+  if (!J.d) J.d = mine ? clone(mine.input) : escBlank();
+  const d = J.d, r = calcEsc(d), dis = locked ? 'disabled' : '';
+  const cnt = (path, label, val, extra = '') => { const n = +getP(d, path) || 0; return `<div class="esc-c ${n ? 'on' : ''}"><span>${esc(label)} <b>${val === 1 && /puntos/.test(label) ? '' : '−' + val}</b>${extra}</span><span class="n"><button type="button" data-ec="${path}" data-d="-1" ${dis} aria-label="Quitar">−</button><b>${n}</b><button type="button" data-ec="${path}" data-d="1" ${dis} aria-label="Sumar">+</button></span></div>`; };
+  const sel = (path, opts, cur, num) => `<select class="in" data-ep="${path}" ${num ? 'data-num="1"' : ''} ${dis}>${opts.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(cur) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`;
+  const chk = (path, label, on) => `<label class="tog ${on ? 'on' : ''}" style="cursor:pointer"><input type="checkbox" data-ep="${path}" ${on ? 'checked' : ''} ${dis} style="margin-right:6px">${esc(label)}</label>`;
+  const cols = [['e', 'Entrada'], ...d.ej.map((e, i) => [String(i), String(i + 1)]), ['s', 'Salida']], col = J.col || 'e';
+  const colInf = c => c === 'e' ? d.es.e.inf : c === 's' ? d.es.s.inf : d.ej[+c].inf, colPath = c => c === 'e' ? 'es.e.inf' : c === 's' ? 'es.s.inf' : `ej.${c}.inf`;
+  let h = `<a class="back" href="#evento-${ev.id}">${I.arrow} Ver pública</a><div class="row" style="gap:6px">${statusChip(ev)}<span class="chip">Escaramuzas · Libre</span></div><div style="font-weight:800;font-size:17px;margin-top:6px" class="ell">${esc(ev.title)}</div>
+    <label class="f">Escaramuza</label><div class="scroller">${ev.teams.map(t => { const m = DB.get('scores', `${ev.id}-${t.id}-esc-${u.id}`); return `<button class="tog ${t.id === J.tid ? 'on' : ''}" data-ejteam="${t.id}">${esc(t.name)}${m ? ` · <b>${m.total}</b>` : ''}${isLocked(ev, t.id) ? ' 🔒' : ''}</button>`; }).join('')}</div>`;
+  if (locked) h += `<div class="banner warn mt">${I.info}<span>${ev.status !== 'en_vivo' ? 'La competencia no está en vivo: la hoja es de solo lectura.' : 'La hoja de esta escaramuza ya se entregó.'}</span></div>`;
+  h += `<div class="h2">Puntas</div>` + d.puntas.map((p, i) => { const c = r.P[i]; return `<div class="card mt"><div class="row between"><b>Punta ${i + 1}</b><span class="chip gold">${c.total} pts</span></div>
+      <label class="f">Competidora</label><input class="in" data-ep="puntas.${i}.name" value="${esc(p.name)}" placeholder="Nombre de la competidora" ${dis}>
+      <div class="chips mt">${PUNTA_ADIC.map(([k, l]) => chk(`puntas.${i}.adic.${k}`, l + ' +1', !!p.adic[k])).join('')}</div>
+      <div class="grid2"><div><label class="f">Tiempos (con 6 m o más)</label>${sel(`puntas.${i}.tiempos`, PUNTA_TIEMPOS.map(t => [t[0], t[1]]), p.tiempos, true)}</div><div><label class="f">Total metros</label><input class="in" type="number" min="0" step="0.01" data-ep="puntas.${i}.metros" data-num="1" value="${esc(p.metros)}" placeholder="Ej. 12.40" ${dis}></div></div>
+      <div class="small mut" style="margin-top:4px">Adicionales: ${c.ad} (tiempos +${c.tp}, metros +${c.mt}) · Infracciones −${c.inf}</div>
+      <details class="mt"><summary class="small" style="cursor:pointer">Infracciones de la punta</summary>${PUNTA_INF.map(([k, l, v]) => cnt(`puntas.${i}.inf.${k}`, l, v)).join('')}</details>
+      <div class="chips mt">${chk(`puntas.${i}.desc`, 'Punta descalificada', !!p.desc)}</div>${p.desc ? `<input class="in mt" data-ep="puntas.${i}.motivo" value="${esc(p.motivo)}" placeholder="Motivo de descalificación" ${dis}>` : ''}</div>`; }).join('');
+  h += `<div class="h2">Rutina obligatoria</div><div class="card"><div class="esc-ej small mut" style="border:0"><span>#</span><span>Concepto</span><span>Valor</span><span>Adic.</span></div>
+    ${d.ej.map((e, i) => `<div class="esc-ej"><b>${i + 1}</b>${sel(`ej.${i}.c`, ESC_CONC, e.c)}${sel(`ej.${i}.v`, [16, 20, 26, 28], e.v, true)}${sel(`ej.${i}.ad`, escAdicOpts(e.c, e.v).map(x => [x, '+' + x]), e.ad, true)}</div>
+      ${e.desc || e.lost ? `<div class="small" style="color:#ff9a9a;padding:2px 0 4px 32px">${e.desc ? 'Descalificado (100%)' : 'Pierde adicionales'}</div>` : ''}`).join('')}
+    <div class="small mut mt">Suma base <b style="color:var(--text)">${r.base}</b> / ${ESC_MAX} · Adicionales <b style="color:var(--text)">${r.adic}</b> / ${ESC_ADIC_MAX}</div></div>`;
+  h += `<div class="h2">Infracciones en rutina</div><div class="scroller">${cols.map(([k, l]) => { const n = Object.values(colInf(k)).reduce((a, x) => a + (+x || 0), 0); return `<button class="tog ${k === col ? 'on' : ''}" data-ecol="${k}">${l}${n ? ` · ${n}` : ''}</button>`; }).join('')}</div>
+    <div class="card mt"><div style="font-weight:800">${col === 'e' ? 'Entrada' : col === 's' ? 'Salida' : `Ejercicio ${+col + 1} · ${esc(d.ej[+col].c)} ${d.ej[+col].v}`}</div>
+    ${ESC_RINF.filter(x => !x[3] || (x[3].includes(col))).map(([k, l, v]) => cnt(`${colPath(col)}.${k}`, l, v)).join('')}
+    ${col !== 'e' && col !== 's' ? `<div class="chips mt">${chk(`ej.${col}.lost`, 'Pérdida de adicionales', !!d.ej[+col].lost)}${chk(`ej.${col}.desc`, 'Descalificación 100%', !!d.ej[+col].desc)}</div>` : ''}</div>`;
+  h += `<div class="h2">Presentación y varias</div><div class="card"><div class="small mut">Infracciones en presentación</div>${ESC_PRES.map(([k, l, v]) => cnt(`pres.${k}`, l, v)).join('')}</div>
+    <div class="card mt"><div class="small mut">Infracciones varias</div>${ESC_VAR.map(([k, l, v]) => cnt(`var.${k}`, l, v)).join('')}</div>
+    <div class="card mt">${cnt('noRut', 'No rutina obligatoria (falta valor o concepto)', 25)}<label class="f">Descalificación del equipo</label>${sel('disq', ESC_DQ.map(x => [x, x || '— Ninguna —']), d.disq)}
+      <div class="grid2"><div><label class="f">Tiempo puntas</label><input class="in" data-ep="times.puntas" value="${esc(d.times.puntas)}" placeholder="mm:ss" ${dis}></div><div><label class="f">Tiempo rutina</label><input class="in" data-ep="times.rutina" value="${esc(d.times.rutina)}" placeholder="mm:ss" ${dis}></div></div>
+      <label class="f">Comentarios</label><input class="in" data-ep="notes" value="${esc(d.notes)}" ${dis}></div>`;
+  if (r.warn.length) h += `<div class="banner warn mt">${I.info}<span>${r.warn.map(esc).join('<br>')}</span></div>`;
+  h += `<div class="sum-bar"><div class="grow"><div class="small mut">${esc(team.name)} · ${mine ? (J.dirty ? 'cambios sin publicar' : 'publicada ' + ftime(mine.updatedAt)) : 'sin publicar'}</div><div class="small">Rutina ${r.ejVal} + adic. ${r.adic} + puntas ${r.puntas} − infr. ${r.infTot}${d.disq ? ' · DESCALIFICADA' : ''}</div></div><div class="pts" style="font-size:26px">${r.total}</div></div>
+    ${locked ? '' : `<button class="btn pri block mt" data-act="escSave">${I.check} ${mine ? 'Publicar corrección' : 'Publicar calificación'}</button>`}
+    <div class="btns mt2"><a class="btn" href="#hoja-${ev.id}-${team.id}">${I.doc} Vaciado y hoja de ${esc(team.name)}</a></div>
+    <div class="small mut2 center mt">Cada jueza califica por separado. Con 5 juezas se descartan la calificación más alta y la más baja y se promedian 3.</div>`;
+  return h;
+}
+function escSheetHTML(ev, team){
+  const f = escFinal(ev, team.id), J = f.rows.slice().sort((a, b) => a.createdAt - b.createdAt), C = J.map(s => ({ s, c: calcEsc(s.input) }));
+  const used = new Set(f.used.map(s => s.id)), R = [['Nombre de cada juez', x => esc(x.s.judgeName)], ['Rutina base', x => x.c.ejVal], ['Adicionales', x => x.c.adic], ['Total de puntas', x => x.c.puntas], ['Infracciones en rutina', x => '−' + x.c.infRut], ['Infracciones en presentación', x => '−' + x.c.infPres], ['Infracciones varias', x => '−' + x.c.infVar], ['Rutina no obligatoria', x => x.c.noRut ? '−' + x.c.noRut : '0'], ['Total de cada juez', x => `<b>${x.s.total}</b>`]];
+  const pn = C[0] ? C[0].s.input.puntas.map(p => p.name).filter(Boolean) : [];
+  return `<div class="card"><div class="row between wrapf" style="gap:8px"><div><div class="small mut">Hoja de calificación · Escaramuzas · Categoría Libre</div><div style="font-weight:800;font-size:17px">${esc(team.name)}</div><div class="small mut">${esc([team.assoc, team.state, team.capitan ? 'Capitana: ' + team.capitan : ''].filter(Boolean).join(' · '))}</div></div>
+    <div style="text-align:right"><div class="small mut">Calificación oficial</div><div style="font-family:'Cinzel',serif;font-size:28px;color:var(--gold2);line-height:1">${f.n ? f.score : '—'}</div></div></div>
+    ${pn.length ? `<div class="small mt">Puntas: ${pn.map(esc).join(' · ')}</div>` : ''}${(team.members || []).length ? `<div class="small mut mt">Integrantes: ${team.members.map(esc).join(', ')}</div>` : ''}</div>
+    <div class="h2">Vaciado general de jueces</div>${C.length ? `<div class="card" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;min-width:${160 + C.length * 90}px">
+      <tr><th style="text-align:left;padding:6px 4px;color:var(--mut)">Concepto</th>${C.map((x, i) => `<th style="text-align:right;padding:6px 4px;color:${used.has(x.s.id) ? 'var(--gold2)' : 'var(--mut2)'}">Juez ${i + 1}${used.has(x.s.id) ? '' : ' (descartada)'}</th>`).join('')}</tr>
+      ${R.map(([l, fn]) => `<tr><td style="padding:6px 4px;border-top:1px solid var(--line)">${l}</td>${C.map(x => `<td style="text-align:right;padding:6px 4px;border-top:1px solid var(--line);${used.has(x.s.id) ? '' : 'opacity:.55'}">${fn(x)}</td>`).join('')}</tr>`).join('')}</table>
+      <div class="small mut mt">${esc(f.method)}. Calificación promedio: <b style="color:var(--gold2)">${f.score}</b> · infracciones promedio ${f.inf}. Los decimales se conservan; el empate se resuelve a favor de menos infracciones.</div></div>` : '<div class="card small mut">Aún no hay hojas de juezas.</div>'}`;
+}
 function vJuez(){
   const u = State.user; if (!u) return needLogin();
   if (!isApproved(u)) return `<a class="back" href="#cuenta">${I.arrow} Cuenta</a>` + emptyState(I.shield, 'Cuenta en revisión', 'Podrás calificar cuando el administrador autorice tu cuenta.');
@@ -2171,6 +2305,7 @@ function vJuez(){
   const ev = DB.get('events', State.param);
   if (!ev || !canSheet(u, ev)) return `<a class="back" href="#juez">${I.arrow} Mesa del juez</a>` + emptyState(I.shield, 'Sin acceso a esta charreada', 'No tienes permiso en este lienzo o la charreada no ha iniciado.');
   if (!ev.teams.length) return `<a class="back" href="#juez">${I.arrow} Mesa del juez</a>` + emptyState(I.info, 'Sin inscritos', 'La charreada no tiene equipos o charros.');
+  if (ev.mode === 'escaramuza') return vJuezEsc(ev);
   // estado de captura
   let j = State.j;
   if (!j || j.eid !== ev.id) j = State.j = { eid: ev.id, tid: ev.teams[0].id, fk: ev.suertes[0], d: null };
@@ -2296,7 +2431,7 @@ function vHoja(){
     <button class="btn pri block mt">${I.check} Firmar y entregar hoja</button></form></div>`;
   if (can && sh && sh.entregada && !sh.jueces.some(x => x.id === u.id) && sh.jueces.length < 3 && u.role !== 'lienzo') h += `<button class="btn block mt" data-act="cosign" data-id="${sh.id}">${I.gavel} Firmar también como juez</button>`;
   if (isSuper(u) && sh && sh.entregada) h += `<button class="btn ghost block mt" data-act="reopenSheet" data-id="${sh.id}">Reabrir hoja (súper usuario)</button>`;
-  h += `</div><div class="sheet-wrap mt">${sheetHTML(ev, team)}</div>`;
+  h += ev.mode === 'escaramuza' ? `</div><div class="mt">${escSheetHTML(ev, team)}</div>` : `</div><div class="sheet-wrap mt">${sheetHTML(ev, team)}</div>`;
   return h;
 }
 
@@ -2416,7 +2551,10 @@ const ACT = {
   rankOficial(){ State.rankOficial = !State.rankOficial; render(); }, histOficial(){ State.histOficial = !State.histOficial; render(); },
   authmode(el){ State.authMode = el.dataset.k; render(); },
   card(el){ openCard(el.dataset.n); },
-  hcard(el){ openHorse(el.dataset.id); },
+  hcard(el){ openHorse(el.dataset.id); }, grank(el){ State.gRank = el.dataset.k; render(); },
+  async escSave(){ const ev = curEv(), J = State.ej, u = State.user; if (!ev || !J) return; const team = ev.teams.find(t => t.id === J.tid), r = calcEsc(J.d), id = `${ev.id}-${team.id}-esc-${u.id}`, prev = DB.get('scores', id);
+    await safe(async () => { await DB.put('scores', { id, eventId: ev.id, teamId: team.id, teamName: team.name, faena: 'escaramuza', input: clone(J.d), buenos: r.ejVal + r.adic + r.puntas + r.infTot - r.infTot, malos: r.infTot, total: r.total, eq: 0, net: r.total, parts: [], judgeId: u.id, judgeName: u.name, createdAt: prev ? prev.createdAt : Date.now(), updatedAt: Date.now(), history: prev ? [...(prev.history || []), { total: prev.total, ts: prev.updatedAt }] : [] });
+      await audit(prev ? 'corrige' : 'califica', `${prev ? 'Corrigió' : 'Calificó'} a ${team.name} en “${ev.title}”: ${r.total} pts`); J.dirty = false; }, prev ? 'Corrección publicada' : 'Calificación publicada'); },
   upgrade(el){ openUpgrade(el.dataset.why || ''); },
   async cardHD(el){ if (needPro('La tarjeta en alta resolución es una función Pro.')) return; await safe(() => downloadNode($('#tcard'), `tarjeta-${slug(el.dataset.n)}.png`), 'Tarjeta descargada'); },
   report(el){ if (needPro('Los reportes en PDF son una función Pro.')) return; openReport(el.dataset.k, el.dataset.id); },
@@ -2535,6 +2673,9 @@ const ACT = {
 function jMark(){ State.j.dirty = true; render(); }
 document.addEventListener('click', async e => {
   const t = e.target;
+  const ec = t.closest('[data-ec]'); if (ec && State.ej && State.ej.d) { e.preventDefault(); const v = Math.max(0, (+getP(State.ej.d, ec.dataset.ec) || 0) + (+ec.dataset.d)); setP(State.ej.d, ec.dataset.ec, v); State.ej.dirty = true; return render(); }
+  const eco = t.closest('[data-ecol]'); if (eco && State.ej) { e.preventDefault(); State.ej.col = eco.dataset.ecol; return render(); }
+  const ejt = t.closest('[data-ejteam]'); if (ejt && State.ej) { e.preventDefault(); if (State.ej.dirty && !(await ask('Cambios sin publicar', 'Tienes cambios sin publicar en esta hoja. ¿Descartarlos?', 'Descartar', true))) return; State.ej.tid = ejt.dataset.ejteam; State.ej.d = null; State.ej.dirty = false; return render(); }
   const jt = t.closest('[data-jt]'); if (jt) { e.preventDefault(); setP(State.j.d, jt.dataset.jt, !getP(State.j.d, jt.dataset.jt)); return jMark(); }
   const ja = t.closest('[data-ja]'); if (ja) { e.preventDefault(); const a = getP(State.j.d, ja.dataset.ja) || []; const v = ja.dataset.v; setP(State.j.d, ja.dataset.ja, a.includes(v) ? a.filter(x => x !== v) : [...a, v]); return jMark(); }
   const js = t.closest('[data-js]'); if (js) { e.preventDefault(); const v = (+getP(State.j.d, js.dataset.js) || 0) + (+js.dataset.d); setP(State.j.d, js.dataset.js, Math.max(+js.dataset.min, Math.min(+js.dataset.max, v))); return jMark(); }
@@ -2553,6 +2694,9 @@ document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === 
 document.addEventListener('change', async e => {
   const el = e.target;
   if (el.dataset.skind || el.dataset.smode) { if (el.dataset.skind) State.sKind = el.value; else State.sMode = el.value; const f = el.closest('form'); if (f && f.dataset.form === 'stockNew') { render(); } return; }
+  if (el.dataset.ep && State.ej && State.ej.d) { let v = el.type === 'checkbox' ? el.checked : el.value; if (el.dataset.num) v = el.value === '' ? '' : +el.value;
+    setP(State.ej.d, el.dataset.ep, v); const m = el.dataset.ep.match(/^ej\.(\d+)\.(c|v)$/); if (m) { const e = State.ej.d.ej[+m[1]]; if (!escAdicOpts(e.c, e.v).includes(+e.ad)) e.ad = 0; }
+    State.ej.dirty = true; return render(); }
   if (el.dataset.horse) { const ev = curEv(); if (!ev) return; const hz = DB.get('horses', el.value);
     return safe(() => updEv({ charros: ev.charros.map(c => c.id === el.dataset.horse ? { ...c, horseId: el.value || null } : c) }), hz ? `Caballo asignado: ${hz.name}` : 'Caballo quitado'); }
   if (el.dataset.photo) { const f = el.files[0]; el.value = ''; if (!f) return; return safe(async () => savePhoto(el.dataset.photo, await readPhoto(f)), 'Foto actualizada'); }
@@ -2568,6 +2712,7 @@ document.addEventListener('change', async e => {
 let searchT;
 document.addEventListener('input', e => {
   const el = e.target;
+  if (el.dataset.ep && State.ej && State.ej.d && el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'number') { setP(State.ej.d, el.dataset.ep, el.value); State.ej.dirty = true; return; }
   if (el.dataset.jp === 'notes') { setP(State.j.d, 'notes', el.value); State.j.dirty = true; return; }
   if (el.dataset.model === 'histQ') { clearTimeout(searchT); searchT = setTimeout(() => { State.histQ = el.value; const pos = el.selectionStart; render(); const n = document.querySelector('[data-model="histQ"]'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 250); }
 });
@@ -2618,8 +2763,9 @@ document.addEventListener('submit', async e => {
       alias: (d.alias || '').trim(), category: d.category, teamReq: d.teamReq || null, teamName: (d.teamName || '').trim(), assoc: (d.assoc || '').trim(), lienzoAfil: d.lienzoAfil || null };
     if (OPEN_ROLES.includes(payload.role)) payload.invite = null;
     return safe(async () => { const r = await DB.backend.register(payload, d.pass); if (r.needsConfirm) { toast('Revisa tu correo para confirmar la cuenta y luego entra.', 'ok'); State.authMode = 'login'; return; } State.user = r.profile; go('cuenta'); }); }
-  if (k === 'evData') { const ev = curEv(); const patch = { title: d.title.trim(), date: d.date, category: d.category }; if (d.mode && d.mode !== (ev.mode || 'equipos')) { patch.mode = d.mode; patch.suertes = (d.mode === 'completo' ? RULES.ORDER_CC : RULES.ORDER_EQ).slice(); } return safe(() => updEv(patch), 'Datos guardados'); }
+  if (k === 'evData') { const ev = curEv(); const patch = { title: d.title.trim(), date: d.date, category: d.category }; if (d.mode && d.mode !== (ev.mode || 'equipos')) { patch.mode = d.mode; patch.suertes = d.mode === 'escaramuza' ? [] : (d.mode === 'completo' ? RULES.ORDER_CC : RULES.ORDER_EQ).slice(); } return safe(() => updEv(patch), 'Datos guardados'); }
   if (k === 'addTeam') { const ev = curEv(); const id = 't' + uid();
+    if (ev.mode === 'escaramuza') return safe(() => updEv({ teams: [...ev.teams, { id, name: d.name.trim(), assoc: (d.assoc || '').trim(), capitan: (d.capitan || '').trim(), state: d.state, members: String(d.members || '').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 10) }] }), 'Escaramuza inscrita');
     if (ev.mode === 'completo') { const rc = regCharro(d.name), name = rc ? rc.name : d.name.trim(), rt = rc && DB.get('teams', rc.teamId);
       return safe(() => updEv({ teams: [...ev.teams, { id, name, assoc: (d.assoc || '').trim() || (rt ? rt.name : ''), state: d.state, refId: rc ? rc.id : null }], charros: [...ev.charros, { id: 'c' + uid(), name, teamId: id, refId: rc ? rc.id : null, horseId: d.horseId || null }] }), 'Charro inscrito'); }
     return safe(() => updEv({ teams: [...ev.teams, { id, name: d.name.trim(), state: d.state, capitan: (d.capitan || '').trim() }] }), 'Equipo agregado'); }
@@ -2636,7 +2782,7 @@ document.addEventListener('submit', async e => {
   if (k === 'entrega') { const ev = DB.get('events', State.param), team = ev.teams.find(t => t.id === State.param2), u = State.user, id = `${ev.id}-${team.id}`, prev = DB.get('sheets', id);
     const missing = ev.suertes.filter(fk => !evScores(ev.id).some(s => s.teamId === team.id && s.faena === fk));
     if (missing.length && !(await ask('Faenas sin calificar', `Faltan: ${missing.map(FN).join(', ')}. Se entregarán en cero.`, 'Entregar así'))) return;
-    return safe(async () => { await DB.put('sheets', { id, eventId: ev.id, teamId: team.id, capitan: d.capitan.trim(), capitanFirma: d.capitan.trim(), hora: d.hora || '', entregada: true, entregadaAt: Date.now(), jueces: [{ id: u.id, name: u.name, ts: Date.now() }], reopened: prev ? prev.reopened : undefined, totals: { final: sum(evScores(ev.id).filter(s => s.teamId === team.id).map(s => s.net)) } });
+    return safe(async () => { await DB.put('sheets', { id, eventId: ev.id, teamId: team.id, capitan: d.capitan.trim(), capitanFirma: d.capitan.trim(), hora: d.hora || '', entregada: true, entregadaAt: Date.now(), jueces: [{ id: u.id, name: u.name, ts: Date.now() }], reopened: prev ? prev.reopened : undefined, totals: { final: ev.mode === 'escaramuza' ? escFinal(ev, team.id).score : sum(evScores(ev.id).filter(s => s.teamId === team.id).map(s => s.net)) } });
       await audit('entrega', `Entregó la hoja de ${team.name} en “${ev.title}”`); }, 'Hoja firmada y entregada'); }
   if (k === 'invite') { if (d.role === 'juez' && !d.lienzoId) return toast('Elige el lienzo del juez', 'err'); const code = genCode(d.role === 'juez' ? 'JUEZ' : 'LIENZO');
     return safe(async () => { await DB.put('invites', { id: code, code, role: d.role, lienzoId: d.role === 'juez' ? d.lienzoId : null, used: false, createdBy: State.user.id, createdAt: Date.now() }); await audit('invitacion', `Creó invitación ${code} (${roleName(d.role)})`); }, 'Código creado: ' + code); }
