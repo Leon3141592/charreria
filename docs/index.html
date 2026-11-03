@@ -575,7 +575,7 @@ if (typeof module !== 'undefined') module.exports = RULES;
 const CONFIG = {"APP_NAME":"Charrería Pro","SUPABASE_URL":"https://bezwxvslwhrjcciedqed.supabase.co","SUPABASE_ANON_KEY":"sb_publishable_TifAmeErrljgdPR5VTmglQ_vf3YSU32","MODE":"real"};
 const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
 const CATEGORIAS = ['Libre','Juvenil'];
-const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests'];
+const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings'];
 const FN = k => RULES.F[k].name;
 
 /* ------------------------- ICONOS ------------------------- */
@@ -636,9 +636,13 @@ const DB = {
     try { await this.backend.put(t, row); }
     catch (e) { const j = arr.findIndex(r => r.id === row.id); if (prev) arr[j] = prev; else arr.splice(j, 1); throw e; }
     return row;
+  },
+  async del(t, id){
+    const arr = this.data[t] || [], i = arr.findIndex(r => r.id === id); if (i < 0) return; const prev = arr[i]; arr.splice(i, 1);
+    try { await this.backend.del(t, id); } catch (e) { arr.splice(i, 0, prev); throw e; }
   }
 };
-const LS_KEY = 'charreriapro_demo_v5', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v6', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -653,6 +657,7 @@ const Local = {
   reload(){ try { const r = localStorage.getItem(LS_KEY); if (r) DB.data = JSON.parse(r); } catch(e){} onRemoteChange(); },
   persist(){ try { localStorage.setItem(LS_KEY, JSON.stringify(DB.data)); } catch(e){} },
   async put(){ this.persist(); if (this.bc) this.bc.postMessage('sync'); },
+  async del(){ this.persist(); if (this.bc) this.bc.postMessage('sync'); },
   sessionGet(){ try { return localStorage.getItem(SS_KEY); } catch(e){ return memSession; } },
   sessionSet(v){ memSession = v; try { v ? localStorage.setItem(SS_KEY, v) : localStorage.removeItem(SS_KEY); } catch(e){} },
   async restore(){ const id = this.sessionGet(); return id ? DB.get('profiles', id) || null : null; },
@@ -680,6 +685,14 @@ const Local = {
     if (d === 'aprobado' && r.type === 'afiliacion') { const t = DB.get('teams', r.teamId); if (t) await DB.put('teams', { ...t, lienzoId: r.lienzoId, lienzoStatus: 'aprobado' }); }
   },
   async rosterRemove(c){ await DB.put('charros', { ...c, teamId: null }); },
+  async claimHorse(code){
+    const u = State.user, r = DB.all('requests').find(x => x.type === 'transfer' && x.status === 'pendiente' && x.code === code.trim().toUpperCase());
+    if (!r) throw new Error('Código inválido o ya usado'); const h = DB.get('horses', r.horseId); if (!h) throw new Error('El caballo ya no existe');
+    if (h.ownerId === u.id) throw new Error('Este caballo ya es tuyo');
+    await DB.put('horses', { ...h, history: [...(h.history || []), { label: h.ownerPublic && h.ownerName ? h.ownerName : 'Dueño anterior (privado)', from: h.ownerSince || h.createdAt, to: Date.now() }], ownerId: u.id, ownerName: '', ownerPublic: false, forSale: false, ownerSince: Date.now() });
+    await DB.put('requests', { ...r, status: 'aprobado', decidedBy: u.id, decidedByName: u.name, decidedAt: Date.now() });
+    return h.id;
+  },
   async changePassword(pass, userId){ const p = DB.get('profiles', userId || this.sessionGet()); if (!p) throw new Error('Sesión no encontrada'); await DB.put('profiles', { ...p, passHash: demoHash(pass) }); this.sessionSet(p.id); return p; },
   async uploadVideo(file){ return URL.createObjectURL(file); },
   async reset(){ try { localStorage.removeItem(LS_KEY); localStorage.removeItem(SS_KEY); } catch(e){} DB.data = seed(); this.persist(); }
@@ -727,12 +740,15 @@ const Remote = {
     return {};
   },
   async rpc(fn, args){
-    const { error } = await this.sb.rpc(fn, args);
-    if (error) throw new Error(/function .* does not exist|schema cache/i.test(error.message) ? 'Falta instalar la actualización de perfiles en la base de datos' : error.message);
-    await Promise.all(['requests','charros','teams'].map(async t => { const { data, error: e } = await this.sb.from(t).select('id,data').limit(20000); if (!e) DB.data[t] = data.map(r => r.data); }));
+    const { data, error } = await this.sb.rpc(fn, args);
+    if (error) throw new Error(/function .* does not exist|schema cache/i.test(error.message) ? 'Falta instalar la actualización más reciente en la base de datos' : error.message);
+    await Promise.all(['requests','charros','teams','horses'].map(async t => { const { data: rows, error: e } = await this.sb.from(t).select('id,data').limit(20000); if (!e) DB.data[t] = rows.map(r => r.data); }));
+    return data;
   },
+  async del(t, id){ const { error } = await this.sb.from(t).delete().eq('id', id); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
   decide(r, d){ return this.rpc('decide_request', { rid: r.id, decision: d }); },
   rosterRemove(c){ return this.rpc('roster_remove', { cid: c.id }); },
+  claimHorse(code){ return this.rpc('claim_horse', { code: code.trim().toUpperCase() }); },
   async verifyPassword(email, pass){ const { error } = await this.sb.auth.signInWithPassword({ email, password: pass }); if (error) throw new Error('La contraseña actual no es correcta'); },
   async changePassword(pass){
     const { data, error } = await this.sb.auth.updateUser({ password: pass });
@@ -828,10 +844,11 @@ function seed(){
     ['Hacienda San Isidro','Guanajuato',['Rubén Escamilla','Jacinto Mora','Leonel Treviño','Bruno Castañón','Isaac Ponce','Adrián Becerra']],
     ['Los Alazanes','Aguascalientes',['Octavio Rentería','Valente Rocha','Abel Santillán','Pablo Urías','Felipe Macías','Ulises Durán']]
   ];
+  const HM = { 'Ernesto Villaseñor': 'cb1', 'Alberto Fidencio Ramírez': 'cb2', 'Lorenzo Vázquez': 'cb3', 'Gerardo Solís': 'cb4', 'Efraín Gallardo': 'cb5', 'Saúl Medrano': 'cb6' };
   const judgeOf = l => l === 'lvilla' ? ['ujuez','Juez Ricardo Ponce'] : ['ujuez2','Juez Ana Lucía Bravo'];
   const mkEvent = (id, title, lienzoId, date, idxs, status, official, extra = {}) => {
     const teams = [], charros = [];
-    idxs.forEach(i => { const tid = 't' + i; teams.push({ id: tid, name: TEAMS[i][0], state: TEAMS[i][1], capitan: TEAMS[i][2][0] }); TEAMS[i][2].forEach((n, k) => charros.push({ id: `c${i}x${k}`, name: n, teamId: tid })); });
+    idxs.forEach(i => { const tid = 't' + i; teams.push({ id: tid, name: TEAMS[i][0], state: TEAMS[i][1], capitan: TEAMS[i][2][0] }); TEAMS[i][2].forEach((n, k) => charros.push({ id: `c${i}x${k}`, name: n, teamId: tid, horseId: HM[n] || null })); });
     const ev = { id, title, lienzoId, date, mode: 'equipos', category: 'Libre', status, official, requestOfficial: official, suertes: RULES.ORDER_EQ.slice(), teams, charros, streamUrl: '', videoUrl: '', createdAt: Date.now(), ...extra };
     E.push(ev); return ev;
   };
@@ -868,8 +885,20 @@ function seed(){
   prof('udueno','Gabriel Montaño','dueno@demo.mx','dueno','aprobado',null);
   CH.push({ id:'hfausto', name:'Fausto Herrera', alias:'El Güero', state:'Ciudad de México', category:'Libre', photo:'', teamId:null, userId:'ucharro', createdAt: Date.now()-3*864e5 });
   RQ.push({ id:'rq1', type:'roster', charroId:'hfausto', teamId:'q0', status:'pendiente', createdBy:'ucharro', createdAt: Date.now()-864e5 });
+  const yr = new Date().getFullYear(), ago = d => Date.now() - d * 864e5;
+  const HS = [];
+  const horse = (id, name, discipline, sex, age, breed, coat, registry, ownerId, ownerName, ownerPublic, pricePublic, forSale, extra = {}) =>
+    HS.push({ id, name, discipline, sex, birthYear: yr - age, breed, coat, registry, photo: '', ownerId, ownerName: ownerPublic ? ownerName : '', ownerPublic, pricePublic, forSale, history: [], ownerSince: ago(400), createdAt: ago(400), ...extra });
+  horse('cb1','Lucero','Cala de caballo','Castrado',9,'Cuarto de milla','Alazán','AMCC-10432','ucap','Ernesto Villaseñor',true,true,false);
+  horse('cb2','Relámpago','Piales en el lienzo','Macho',7,'Azteca','Tordillo','FMCH-22817','udueno','Gabriel Montaño',true,true,true,{ history: [{ label: 'Hacienda La Gloria', from: ago(1500), to: ago(400) }] });
+  horse('cb3','Canelo','Coleadero','Castrado',11,'Cuarto de milla','Alazán tostado','','udueno','Gabriel Montaño',false,true,true);
+  horse('cb4','Tormenta','Terna en el ruedo','Hembra',6,'Azteca','Moro','FMCH-30155','udueno','Gabriel Montaño',true,false,true);
+  horse('cb5','El Moro','Cala de caballo','Macho',14,'Criollo','Moro','','uext1','Rancho Los Arcos',true,true,false);
+  horse('cb6','Centella','Manganas','Hembra',5,'Azteca','Palomino','FMCH-33901','uext2','',false,false,false,{ history: [{ label: 'Rancho San Rafael', from: ago(900), to: ago(200) }] });
+  horse('cb7','Diamante','Piales en el lienzo','Macho',3,'Cuarto de milla','Bayo','','udueno','Gabriel Montaño',true,true,true);
+  RQ.push({ id:'rq3', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Fausto Herrera', contact:'55 1234 5678', message:'Me interesa para la temporada; ¿se puede ver en Texcoco?', status:'pendiente', createdBy:'ucharro', createdAt: ago(1) });
   RQ.push({ id:'rq2', type:'afiliacion', teamId:'q5', lienzoId:'lvilla', status:'pendiente', createdBy:'ucap2', createdAt: Date.now()-2*864e5 });
-  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ };
+  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, settings:[{ id:'valuacion', min:60000, max:800000 }] };
 }
 
 /* ------------------------- LÓGICA ------------------------- */
@@ -880,6 +909,8 @@ const myTeam = u => u && DB.all('teams').find(t => t.captainId === u.id);
 const rosterOf = tid => DB.all('charros').filter(c => c.teamId === tid).sort((a, b) => a.name.localeCompare(b.name));
 function canDecide(u, r){
   if (!isApproved(u) || !r || r.status !== 'pendiente') return false;
+  if (r.type === 'interes') return (DB.get('horses', r.horseId) || {}).ownerId === u.id;   // el contacto del comprador solo lo ve el dueño
+  if (r.type === 'transfer') return false;
   if (isSuper(u)) return true;
   if (r.type === 'afiliacion') return ownsLienzo(u, r.lienzoId);
   const t = DB.get('teams', r.teamId); if (!t) return false;
@@ -900,7 +931,7 @@ function readPhoto(file){   // recorta al centro y reduce a 320 px para guardarl
   });
 }
 async function savePhoto(key, src){
-  const [kind, id] = key.split(':'), table = { profile: 'profiles', charro: 'charros', team: 'teams', lienzo: 'lienzos' }[kind], row = table && DB.get(table, id);
+  const [kind, id] = key.split(':'), table = { profile: 'profiles', charro: 'charros', team: 'teams', lienzo: 'lienzos', horse: 'horses' }[kind], row = table && DB.get(table, id);
   if (!row) throw new Error('No se encontró el registro');
   const n = await DB.put(table, { ...row, photo: src }); if (kind === 'profile') State.user = n;
 }
@@ -944,7 +975,7 @@ const State = { user: null, route: 'inicio', param: null, param2: null,
 function go(h){ if (location.hash.slice(1) === h) render(); else location.hash = h; }
 function parseRoute(){
   const h = location.hash.slice(1) || 'inicio';
-  const m = h.match(/^(evento|panel-evento|juez|hoja)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
+  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
   if (m) { State.route = m[1]; State.param = m[2]; State.param2 = m[3] || null; } else { State.route = h; State.param = State.param2 = null; }
 }
 window.addEventListener('hashchange', () => { parseRoute(); render(); window.scrollTo(0, 0); });
@@ -957,9 +988,9 @@ function render(){
     <a class="avatar" href="#cuenta" aria-label="Cuenta" style="overflow:hidden">${u ? (safeImg(u.photo || (myCharro(u) || {}).photo) ? `<img class="ph" src="${esc(safeImg(u.photo || myCharro(u).photo))}" alt="" style="width:100%;height:100%;border:0">` : esc(initials(u.name))) : '<span style="width:18px;height:18px;display:block">' + I.user + '</span>'}</a>`;
   const liveN = publicEvents().filter(e => e.status === 'en_vivo').length, pend = isSuper(u) ? pendingCount() : 0;
   const tabs = [['inicio','Inicio',I.home],['vivo','En vivo',I.live,liveN],['historial','Historial',I.clock],['ranking','Ranking',I.trophy],['cuenta', u ? (isSuper(u) ? 'Admin' : 'Mi panel') : 'Entrar', isSuper(u) ? I.shield : I.user, 0, pend]];
-  const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta', solicitudes:'cuenta' }[State.route] || State.route;
+  const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta', solicitudes:'cuenta', caballos:'ranking', caballo:'cuenta' }[State.route] || State.route;
   $('#nav').innerHTML = tabs.map(([k, l, ic, dot, badge]) => `<a href="#${k === 'cuenta' && isSuper(u) ? 'admin' : k}" class="${active === k ? 'on' : ''}">${ic}${dot ? '<span class="dot"></span>' : ''}${badge ? `<span class="badge-n" style="position:absolute;top:0;right:calc(50% - 22px)">${badge}</span>` : ''}<span>${l}</span></a>`).join('');
-  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes };
+  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo };
   $('#view').className = 'wrap' + (State.route === 'hoja' ? ' wide' : '');
   $('#view').innerHTML = State.recovery ? vNewPass() : (views[State.route] || vInicio)();
   fitSheet();
@@ -1010,7 +1041,8 @@ function videoBlock(ev){
     <div class="row between small" style="margin-top:8px"><span class="mut">${label}</span><a href="${esc(url)}" target="_blank" rel="noopener">Abrir en otra ventana ↗</a></div>`;
 }
 function rankRow(i, name, meta, pts, unit, card){
-  return `<div class="rank${card ? ' tap' : ''}"${card ? ` data-act="card" data-n="${esc(name)}" role="button" tabindex="0" aria-label="Ver tarjeta de ${esc(name)}"` : ''}><div class="pos ${i < 3 ? 'p' + (i + 1) : ''}">${i + 1}</div><div class="grow"><div class="ell" style="font-weight:700">${esc(name)}</div><div class="small mut ell">${meta}</div></div><div class="pts">${pts}<small>${unit}</small></div></div>`;
+  const hc = typeof card === 'string' && card.startsWith('h:');
+  return `<div class="rank${card ? ' tap' : ''}"${hc ? ` data-act="hcard" data-id="${esc(card.slice(2))}" role="button" tabindex="0" aria-label="Ver tarjeta de ${esc(name)}"` : card ? ` data-act="card" data-n="${esc(name)}" role="button" tabindex="0" aria-label="Ver tarjeta de ${esc(name)}"` : ''}><div class="pos ${i < 3 ? 'p' + (i + 1) : ''}">${i + 1}</div><div class="grow"><div class="ell" style="font-weight:700">${esc(name)}</div><div class="small mut ell">${meta}</div></div><div class="pts">${pts}<small>${unit}</small></div></div>`;
 }
 
 /* ---------- INICIO ---------- */
@@ -1036,6 +1068,7 @@ function vInicio(){
   h += `<div class="h2">Próximas charreadas</div>` + (next.length ? `<div class="list">${next.map(eventCard).join('')}</div>` : emptyState(I.clock, 'Sin charreadas programadas', 'Cuando un lienzo publique su próxima charreada aparecerá aquí.'));
   h += `<div class="h2">Top charros ${new Date().getFullYear()}<a href="#ranking">Ver todo</a></div>` + (top.length ? `<div class="card pad0">${top.map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.n} faenas`, c.pts, 'pts', true)).join('')}</div>` : emptyState(I.trophy, 'Aún sin ranking', 'Se forma con las charreadas oficiales finalizadas.'));
   h += `<div class="h2">Resultados recientes<a href="#historial">Historial</a></div><div class="list">${past.map(eventCard).join('') || emptyState(I.clock, 'Sin resultados', '')}</div>`;
+  { const nh = DB.all('horses').length, ns = DB.all('horses').filter(x => x.forSale).length; if (nh) h += `<div class="h2">Caballos<a href="#caballos">Ver todos</a></div><div class="list">${menuItem('#caballos', I.horse, 'Vitrina de caballos', `${nh} ejemplares${ns ? ` · ${ns} en venta` : ''} · desempeño y valuación`)}</div>`; }
   if (!State.user) h += `<div class="card mt2" style="background:linear-gradient(160deg,#2a1510,#1c1510)"><div style="font-weight:800;font-size:16px">¿Tienes un lienzo charro?</div>
     <div class="sub" style="margin-top:4px">Registra tu lienzo, califica con tus jueces desde el celular, entrega la hoja oficial digital y transmite tus charreadas.</div>
     <a class="btn pri block mt" href="#cuenta" data-act="reg">${I.plus} Registrar mi lienzo</a></div>`;
@@ -1155,6 +1188,164 @@ function charroStats(name){
   R.rank = idx;
   return R;
 }
+/* ---------- CABALLOS ---------- */
+const DISCIPLINAS = ['Cala de caballo','Piales en el lienzo','Coleadero','Jineteo','Terna en el ruedo','Manganas','Paso de la muerte','Multidisciplina'];
+const SEXOS = ['Macho','Hembra','Castrado'];
+const mxn = v => '$' + Math.round(v).toLocaleString('es-MX');
+const mxnK = v => v >= 1e6 ? '$' + (v / 1e6).toFixed(1).replace('.0', '') + ' M' : '$' + Math.round(v / 1000) + ' mil';
+const horseAge = h => h.birthYear ? new Date().getFullYear() - h.birthYear : null;
+const valCfg = () => { const c = DB.get('settings', 'valuacion') || {}; return { min: +c.min || 60000, max: +c.max || 800000 }; };
+const isHorseOwner = (u, h) => !!(u && h && h.ownerId === u.id);
+const ownerLabel = (h, u) => isHorseOwner(u, h) ? 'Tú' + (h.ownerPublic ? '' : ' (privado)') : h.ownerPublic && h.ownerName ? h.ownerName : 'Dueño privado';
+const canSeePrice = (h, u) => h.pricePublic || isHorseOwner(u, h) || isSuper(u);
+let horseCache = null;
+function horseTable(){   // faenas de cada caballo: las del charro que lo montó en cada charreada
+  const key = DB.all('scores').length + ':' + DB.all('events').length + ':' + DB.all('horses').length;
+  if (horseCache && horseCache.key === key) return horseCache;
+  const evs = new Map(cardEvents().map(e => [e.id, e])), M = {};
+  DB.all('scores').forEach(s => { const ev = evs.get(s.eventId); if (!ev) return; s.parts.forEach(p => { const c = ev.charros.find(x => x.id === p.id); if (!c || !c.horseId) return;
+    const R = M[c.horseId] = M[c.horseId] || { pts: 0, n: 0, pos: 0, best: null, suertes: {}, evs: new Map() };
+    R.pts += p.pts; R.n++; if (p.pts > 0) R.pos++; R.best = Math.max(R.best ?? -999, p.pts); R.suertes[s.faena] = (R.suertes[s.faena] || 0) + p.pts;
+    const e = R.evs.get(ev.id) || { ev, pts: 0, n: 0, riders: new Set(), teamId: s.teamId, team: s.teamName }; e.pts += p.pts; e.n++; e.riders.add(c.name); R.evs.set(ev.id, e); }); });
+  let tp = 0, tn = 0; Object.values(M).forEach(r => { tp += r.pts; tn += r.n; });
+  const g = tn ? tp / tn : 0, adj = r => (r.pts + 3 * g) / (r.n + 3), list = Object.values(M).map(adj).sort((a, b) => a - b);
+  return horseCache = { key, M, adj, list };
+}
+function horseStats(h){
+  const T = horseTable(), R = { ...(T.M[h.id] || { pts: 0, n: 0, pos: 0, best: null, suertes: {}, evs: new Map() }) };
+  R.wins = 0; R.evs.forEach(e => { if (e.ev.status === 'finalizado') { const st = teamStandings(e.ev); if (st[0] && st[0].id === e.teamId && st[0].pts > 0) R.wins++; } });
+  R.live = cardEvents().find(e => e.status === 'en_vivo' && e.charros.some(c => c.horseId === h.id)) || null;
+  R.pct = R.n ? T.list.filter(x => x <= T.adj(R)).length / T.list.length : 0;
+  R.ovr = R.n ? Math.min(R.n < 3 ? 72 : 99, Math.round(45 + 54 * Math.pow(R.pct, 1.6))) : 40;
+  R.tier = R.ovr >= 90 ? 'leyenda' : R.ovr >= 78 ? 'oro' : R.ovr >= 64 ? 'plata' : 'bronce';
+  R.eff = R.n ? Math.round(100 * R.pos / R.n) : 0; R.avg = R.n ? Math.round(R.pts / R.n) : 0;
+  R.val = horseValue(h, R);
+  return R;
+}
+function ageFactor(a){ if (a == null) return .85; if (a < 3) return .55; if (a <= 4) return .75; if (a <= 6) return .9; if (a <= 12) return 1; if (a <= 15) return .8; if (a <= 18) return .6; return .4; }
+function horseValue(h, R){   // valuación estimada dentro del rango que fija el súper usuario
+  const { min, max } = valCfg(), age = horseAge(h);
+  const f = { perf: R.n ? R.pct : .2, eff: R.n ? R.eff / 100 : .3, exp: Math.min(1, R.evs.size / 8), reg: h.registry ? 1 : 0 };
+  const q = .40 * f.perf + .20 * f.eff + .25 * f.exp + .15 * f.reg, A = ageFactor(age), v = (min + (max - min) * q) * A, r5 = x => Math.round(x / 5000) * 5000;
+  return { value: r5(v), low: r5(v * .88), high: r5(v * 1.12), q, A, f, age };
+}
+function horseCardHTML(h, R){
+  const u = State.user, photo = safeImg(h.photo), age = horseAge(h), seeP = canSeePrice(h, u);
+  const sub = [h.discipline, age != null ? age + ' años' : '', h.breed].filter(Boolean).join(' · ');
+  const top = Object.entries(R.suertes).sort((a, b) => b[1] - a[1]).slice(0, 3), mx = Math.max(1, ...top.map(x => Math.abs(x[1])));
+  const rk = horseRanking(), idx = rk.findIndex(x => x.h.id === h.id), badges = [];
+  if (h.forSale) badges.push('En venta');
+  if (idx >= 0 && idx < 3) badges.push('Top ' + (idx + 1) + ' caballos');
+  if (R.wins) badges.push('Campeón' + (R.wins > 1 ? ' ×' + R.wins : ''));
+  if (h.registry) badges.push('Registrado');
+  if (R.evs.size >= 5) badges.push('Veterano');
+  if (R.n >= 5 && R.eff >= 75) badges.push('Efectividad élite');
+  return `<div class="tc-wrap"><div class="tc ${R.tier}" id="tcard"><div class="in">
+    <div class="pic">${photo ? `<img src="${esc(photo)}" alt="">` : `<span style="width:92px;height:92px;color:var(--t1);opacity:.8">${I.horse}</span>`}
+      <div class="ovr"><b>${R.ovr}</b><span>Media</span></div><span class="tier">${TIER_LBL[R.tier]}</span>${R.live ? '<span class="live">● EN VIVO</span>' : ''}</div>
+    <div class="band"><div class="nm">${esc(h.name)}</div><div class="sb">${esc(sub || 'Caballo charro')}</div></div>
+    <div class="st"><div><b>${R.pts}</b><span>Puntos</span></div><div><b>${R.n}</b><span>Faenas</span></div><div><b>${R.eff}%</b><span>Efectividad</span></div>
+      <div><b>${R.evs.size}</b><span>Torneos</span></div><div><b>${age ?? '—'}</b><span>Edad</span></div><div><b style="font-size:13px">${seeP ? mxnK(R.val.value) : 'Privado'}</b><span>Valor est.</span></div></div>
+    <div class="su">${top.length ? top.map(([fk, v]) => `<div><span class="ell">${esc(FN(fk))}</span><span class="bar" style="margin:0"><i style="width:${Math.max(4, Math.round(100 * Math.max(0, v) / mx))}%"></i></span><b>${v}</b></div>`).join('') : '<div style="grid-template-columns:1fr;text-align:center">Aún sin faenas calificadas</div>'}</div>
+    <div class="bd">${badges.slice(0, 4).map(b => `<span>${esc(b)}</span>`).join('')}<span>${esc(h.sex || 'Caballo')}</span></div>
+    <div class="ft"><span>Dueño: ${esc(ownerLabel(h, u))}</span><span>${esc(h.coat || CONFIG.APP_NAME)}</span></div></div></div></div>`;
+}
+function horseRanking(){ return DB.all('horses').map(h => ({ h, R: horseTable().M[h.id] })).filter(x => x.R && x.R.n).sort((a, b) => b.R.pts - a.R.pts); }
+function valBox(h, R){
+  const v = R.val, F = [['Desempeño en torneos', v.f.perf, '40%'], ['Efectividad', v.f.eff, '20%'], ['Experiencia (torneos)', v.f.exp, '25%'], ['Registro de raza', v.f.reg, '15%']];
+  return `<div class="card"><div class="small mut">Valuación estimada de mercado</div><div style="font-family:'Cinzel',serif;font-size:28px;color:var(--gold2);line-height:1.1;margin-top:4px">${mxn(v.value)}</div><div class="small mut">Rango: ${mxn(v.low)} a ${mxn(v.high)} MXN</div>
+    <div class="mt">${F.map(([l, x, w]) => `<div class="row between small" style="margin-top:6px"><span>${l} <span class="mut2">(${w})</span></span><b>${Math.round(x * 100)}%</b></div><div class="bar"><i style="width:${Math.round(x * 100)}%"></i></div>`).join('')}
+    <div class="row between small" style="margin-top:8px"><span>Ajuste por edad${v.age != null ? ` (${v.age} años)` : ''}</span><b>×${v.A.toFixed(2)}</b></div></div>
+    <div class="small mut2 mt">Es un estimado automático con los resultados registrados en la app, no un avalúo ni una oferta. La app no interviene en pagos.</div></div>`;
+}
+function openHorse(id){
+  const h = DB.get('horses', id); if (!h) return toast('Caballo no encontrado', 'err');
+  const u = State.user, R = horseStats(h), own = isHorseOwner(u, h), list = [...R.evs.values()].sort((a, b) => b.ev.date.localeCompare(a.ev.date));
+  const iInt = u && DB.all('requests').find(r => r.type === 'interes' && r.horseId === h.id && r.createdBy === u.id && r.status === 'pendiente');
+  $('#modal').innerHTML = `<div class="modal"><div class="box" role="dialog" aria-label="Tarjeta de ${esc(h.name)}"><div class="row between"><div style="font-weight:800;font-size:15px">Tarjeta de caballo</div><button class="btn sm" data-close="1">Cerrar</button></div>
+    ${horseCardHTML(h, R)}
+    ${own ? `<a class="btn pri block mt" href="#caballo-${h.id}" data-close="1">${I.edit} Administrar mi caballo</a>` : h.forSale ? (iInt ? `<div class="banner ok mt">${I.check}<span>Ya enviaste tu interés. El dueño tiene tu contacto.</span></div>` : `<button class="btn pri block mt" data-act="interes" data-id="${h.id}">Me interesa este caballo</button>`) : ''}
+    ${R.live ? `<a class="btn vino block mt" href="#evento-${R.live.id}" data-close="1">${I.live} Verlo en vivo: ${esc(R.live.title)}</a>` : ''}
+    <div class="h2">Ficha</div><div class="card small">${[['Disciplina', h.discipline], ['Sexo', h.sex], ['Raza', h.breed], ['Pelaje', h.coat], ['Registro', h.registry || 'Sin registro'], ['Dueño', ownerLabel(h, u)]].map(([k, v]) => `<div class="row between" style="padding:3px 0"><span class="mut">${k}</span><b>${esc(v || '—')}</b></div>`).join('')}</div>
+    ${canSeePrice(h, u) ? `<div class="h2">Valuación</div>${valBox(h, R)}` : ''}
+    <div class="h2">Torneos</div>${list.length ? `<div class="card pad0">${list.slice(0, 12).map(e => `<a class="rank" href="#evento-${e.ev.id}" data-close="1" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:700">${esc(e.ev.title)}</div><div class="small mut ell">${fdate(e.ev.date)} · Montado por ${esc([...e.riders].join(', '))}</div></div><div class="pts">${e.pts}<small>pts</small></div></a>`).join('')}</div>` : '<div class="card small mut">Todavía no tiene faenas calificadas. Se suman cuando un charro lo monta en una charreada.</div>'}
+    ${(h.history || []).length ? `<div class="h2">Dueños anteriores</div><div class="card small">${h.history.slice().reverse().map(x => `<div class="row between" style="padding:3px 0"><b>${esc(x.label)}</b><span class="mut">${fdate(localISO(x.from))} – ${fdate(localISO(x.to))}</span></div>`).join('')}</div>` : ''}</div></div>`;
+  wireCardModal();
+}
+function wireCardModal(){
+  const box = $('#modal .modal'), card = $('#tcard'), still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const onKey = e => { if (e.key === 'Escape') close(); }, close = () => { $('#modal').innerHTML = ''; document.removeEventListener('keydown', onKey); };
+  document.addEventListener('keydown', onKey);
+  box.onclick = e => { if (e.target === box || e.target.closest('[data-close]')) close(); };
+  if (card && !still) {
+    card.onpointermove = e => { const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      card.style.transform = `rotateY(${(x - .5) * 14}deg) rotateX(${(.5 - y) * 14}deg)`; card.style.setProperty('--mx', x * 100 + '%'); card.style.setProperty('--my', y * 100 + '%'); };
+    card.onpointerleave = () => { card.style.transform = ''; };
+  }
+}
+function horseRow(h){ const u = State.user, age = horseAge(h), R = horseStats(h);
+  return `<div class="rank tap" data-act="hcard" data-id="${h.id}" role="button" tabindex="0">${av(h.photo, h.name, 44)}<div class="grow"><div class="ell" style="font-weight:700">${esc(h.name)} ${h.forSale ? '<span class="chip gold" style="padding:1px 7px;font-size:10px">En venta</span>' : ''}</div><div class="small mut ell">${esc([h.discipline, age != null ? age + ' años' : '', ownerLabel(h, u)].filter(Boolean).join(' · '))}</div></div><div class="pts" style="font-size:15px">${canSeePrice(h, u) ? mxnK(R.val.value) : '<small>Privado</small>'}</div></div>`; }
+function vCaballos(){
+  const f = State.hFilter || 'todos', d = State.hDisc || '';
+  const list = DB.all('horses').filter(h => (f !== 'venta' || h.forSale) && (!d || h.discipline === d)).map(h => ({ h, o: horseStats(h).ovr })).sort((a, b) => (b.h.forSale - a.h.forSale) || b.o - a.o).map(x => x.h);
+  let h = `<div class="h1">Caballos</div><div class="sub" style="margin-top:4px">Ejemplares registrados, su desempeño en charreadas y la vitrina de venta. La app no interviene en pagos.</div>
+    <div class="seg mt">${[['todos','Todos'],['venta','En venta']].map(([k, l]) => `<button class="${f === k ? 'on' : ''}" data-act="hfilter" data-k="${k}">${l}</button>`).join('')}</div>
+    <select class="in mt" data-model="hDisc"><option value="">Todas las disciplinas</option>${DISCIPLINAS.map(x => `<option ${x === d ? 'selected' : ''}>${x}</option>`).join('')}</select>`;
+  h += list.length ? `<div class="card pad0 mt">${list.map(horseRow).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin caballos para este filtro', 'Los dueños registran sus caballos desde Mi cuenta.')}</div>`;
+  return h + (State.user ? `<a class="btn block mt2" href="#cuenta">${I.plus} Registrar mi caballo</a>` : '');
+}
+function horseFields(h = {}){
+  const yr = new Date().getFullYear();
+  return `<label class="f">Nombre del caballo</label><input class="in" name="name" value="${esc(h.name || '')}" required>
+    <div class="grid2"><div><label class="f">Disciplina</label><select class="in" name="discipline">${DISCIPLINAS.map(x => `<option ${x === h.discipline ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+    <div><label class="f">Sexo</label><select class="in" name="sex">${SEXOS.map(x => `<option ${x === h.sex ? 'selected' : ''}>${x}</option>`).join('')}</select></div></div>
+    <div class="grid2"><div><label class="f">Año de nacimiento</label><input class="in" name="birthYear" type="number" min="${yr - 35}" max="${yr}" value="${esc(h.birthYear || '')}" required></div>
+    <div><label class="f">Raza</label><input class="in" name="breed" value="${esc(h.breed || '')}" placeholder="Cuarto de milla, Azteca…"></div></div>
+    <div class="grid2"><div><label class="f">Pelaje</label><input class="in" name="coat" value="${esc(h.coat || '')}" placeholder="Alazán, Tordillo…"></div>
+    <div><label class="f">No. de registro (opcional)</label><input class="in" name="registry" value="${esc(h.registry || '')}"></div></div>`;
+}
+const horseData = d => ({ name: d.name.trim(), discipline: d.discipline, sex: d.sex, birthYear: +d.birthYear || null, breed: (d.breed || '').trim(), coat: (d.coat || '').trim(), registry: (d.registry || '').trim() });
+function horsesSection(u){
+  const mine = DB.all('horses').filter(h => h.ownerId === u.id).sort((a, b) => a.name.localeCompare(b.name));
+  const nInt = DB.all('requests').filter(r => r.type === 'interes' && r.status === 'pendiente' && mine.some(h => h.id === r.horseId)).length;
+  if (u.role !== 'dueno' && !mine.length) return `<div class="h2">Caballos<a href="#caballos">Vitrina</a></div><div class="card"><div class="small mut">¿Tienes caballos? Regístralos para que sumen su desempeño y su valuación.</div>
+    <div class="btns mt"><button class="btn sm" data-act="newHorse">${I.plus} Registrar caballo</button></div>${State.newHorse ? `<form data-form="horseNew" class="mt">${horseFields()}<button class="btn pri block mt2">Registrar caballo</button></form>` : ''}${claimForm()}</div>`;
+  let h = `<div class="h2">Mis caballos<a href="#caballos">Vitrina</a></div>`;
+  if (nInt) h += `<a class="banner ok" href="#solicitudes" style="text-decoration:none">${I.info}<span>${nInt} ${nInt === 1 ? 'persona interesada' : 'personas interesadas'} en tus caballos. Ver contactos.</span></a>`;
+  h += mine.length ? `<div class="card pad0${nInt ? ' mt' : ''}">${mine.map(x => horseRow(x).replace('data-act="hcard"', 'data-act="hmanage"')).join('')}</div>` : `<div class="card small mut">Aún no registras caballos.</div>`;
+  h += `<div class="card mt"><button class="btn block" data-act="newHorse">${I.plus} ${State.newHorse ? 'Cancelar' : 'Registrar caballo'}</button>${State.newHorse ? `<form data-form="horseNew" class="mt">${horseFields()}<button class="btn pri block mt2">Registrar caballo</button></form>` : ''}${claimForm()}</div>`;
+  return h;
+}
+const claimForm = () => `<form data-form="claimHorse" class="mt"><label class="f">¿Te transfirieron un caballo? Escribe el código</label><div class="row" style="gap:8px"><input class="in" name="code" placeholder="CAB-XXXXXX" style="text-transform:uppercase" required><button class="btn sm" style="min-height:46px">Recibir</button></div></form>`;
+function vCaballo(){
+  const u = State.user, h = DB.get('horses', State.param);
+  if (!h) return `<a class="back" href="#caballos">${I.arrow} Caballos</a>` + emptyState(I.horse, 'Caballo no encontrado', '');
+  if (!isHorseOwner(u, h) && !isSuper(u)) { setTimeout(() => openHorse(h.id), 0); return vCaballos(); }
+  const R = horseStats(h), tr = DB.all('requests').find(r => r.type === 'transfer' && r.horseId === h.id && r.status === 'pendiente' && r.createdBy === u.id);
+  const ints = DB.all('requests').filter(r => r.type === 'interes' && r.horseId === h.id).sort((a, b) => b.createdAt - a.createdAt);
+  const tg = (k, on, l, d) => `<button class="tog ${on ? 'on' : ''}" data-act="horseFlag" data-id="${h.id}" data-k="${k}" style="text-align:left;width:100%;display:flex;justify-content:space-between;gap:10px;align-items:center"><span><b>${l}</b><br><span class="small mut">${d}</span></span><span>${on ? 'Sí' : 'No'}</span></button>`;
+  let o = `<a class="back" href="#cuenta">${I.arrow} Mi cuenta</a><div class="row between"><div class="h1">${esc(h.name)}</div><button class="btn sm" data-act="hcard" data-id="${h.id}">${I.trophy} Ver tarjeta</button></div>`;
+  o += `<div class="card mt">${photoBox('horse', h.id, h.photo, h.name)}<form data-form="horseEdit" data-id="${h.id}" class="mt">${horseFields(h)}<button class="btn block mt2">Guardar ficha</button></form></div>`;
+  o += `<div class="h2">Privacidad y venta</div><div class="list">${tg('ownerPublic', h.ownerPublic, 'Mostrar mi nombre como dueño', 'Si está apagado, el público ve “Dueño privado”.')}${tg('pricePublic', h.pricePublic, 'Mostrar valuación', 'Si está apagado, solo tú ves el precio estimado.')}${tg('forSale', h.forSale, 'En venta (vitrina)', 'Aparece en la vitrina y los interesados te dejan su contacto.')}</div>`;
+  o += `<div class="h2">Valuación</div>${valBox(h, R)}`;
+  if (ints.length) o += `<div class="h2">Interesados</div><div class="list">${ints.map(r => reqCard(r, canDecide(u, r))).join('')}</div>`;
+  o += `<div class="h2">Cambio de dueño</div><div class="card">` + (tr ? `<div class="small mut">Comparte este código con el nuevo dueño. Él lo escribe en Mi cuenta → Caballos y el caballo pasa a su nombre.</div>
+      <div class="row between mt" style="gap:8px"><b style="font-family:monospace;font-size:20px;letter-spacing:.06em">${esc(tr.code)}</b><button class="btn sm" data-act="copy" data-t="${esc(tr.code)}">Copiar</button></div>
+      <button class="btn ghost sm block mt" data-act="decideReq" data-id="${tr.id}" data-d="cancelado">Cancelar transferencia</button>`
+    : `<div class="small mut">Genera un código para transferir el caballo a otra cuenta. Tú dejas de ser el dueño cuando el nuevo dueño lo acepte, y quedas en el historial.</div><button class="btn block mt" data-act="horseTransfer" data-id="${h.id}">${I.key} Generar código de transferencia</button>`) + `</div>`;
+  if ((h.history || []).length) o += `<div class="h2">Dueños anteriores</div><div class="card small">${h.history.slice().reverse().map(x => `<div class="row between" style="padding:3px 0"><b>${esc(x.label)}</b><span class="mut">${fdate(localISO(x.from))} – ${fdate(localISO(x.to))}</span></div>`).join('')}</div>`;
+  o += `<button class="btn ghost block mt2" data-act="horseDel" data-id="${h.id}">${I.x} Eliminar caballo</button>`;
+  return o;
+}
+function openInterest(h){
+  const u = State.user;
+  $('#modal').innerHTML = `<div class="modal"><div class="box"><div style="font-weight:800;font-size:17px">Me interesa ${esc(h.name)}</div><div class="sub" style="margin-top:6px">Solo el dueño verá tu contacto. La app no interviene en pagos ni en la negociación.</div>
+    <label class="f">Teléfono o correo para que te contacte</label><input class="in" id="inC" value="${esc(u.phone || '')}" autocomplete="tel"><label class="f">Mensaje (opcional)</label><input class="in" id="inM" placeholder="Ej. ¿Se puede ver este fin de semana?">
+    <div class="btns mt2"><button class="btn" id="askNo">Cancelar</button><button class="btn pri" id="askOk">Enviar</button></div></div></div>`;
+  const close = () => { $('#modal').innerHTML = ''; }; $('#askNo').onclick = close; $('#modal .modal').onclick = e => { if (e.target.classList.contains('modal')) close(); };
+  $('#askOk').onclick = async () => { const contact = $('#inC').value.trim(), message = $('#inM').value.trim(); if (contact.length < 7) return toast('Escribe un teléfono o correo válido', 'err'); close();
+    await safe(async () => { await DB.put('requests', { id: 'r' + uid(), type: 'interes', horseId: h.id, ownerId: h.ownerId, buyerName: u.name, contact, message, status: 'pendiente', createdBy: u.id, createdAt: Date.now() }); await audit('interes', `${u.name} mostró interés en ${h.name}`); }, 'Listo: el dueño recibió tu contacto'); };
+}
 const TIER_LBL = { bronce: 'Bronce', plata: 'Plata', oro: 'Oro', leyenda: 'Leyenda' };
 function cardHTML(R){
   const P = R.prof, photo = safeImg(P && P.photo), sub = [P && P.alias ? `“${P.alias}”` : '', R.team, P && P.state].filter(Boolean).join(' · ') || 'Charro';
@@ -1206,12 +1397,13 @@ function vRanking(){
   const years = [...new Set(publicEvents().map(e => e.date.slice(0, 4)))].sort().reverse(), estados = [...new Set(publicEvents().map(e => lienzo(e.lienzoId).state))].sort();
   const opt = { year: State.rankYear, oficial: State.rankOficial, suerte: State.rankSuerte, estado: State.rankEstado };
   let h = `<div class="h1">Ranking nacional</div><div class="sub" style="margin-top:4px">Puntos netos (buenos menos malos) en charreadas ${State.rankOficial ? 'oficiales ' : ''}finalizadas.</div>
-    <div class="seg mt">${[['charros','Charros'],['equipos','Equipos'],['completo','Charro completo']].map(([k, l]) => `<button class="${State.rankTab === k ? 'on' : ''}" data-act="ranktab" data-k="${k}">${l}</button>`).join('')}</div>
+    <div class="seg mt">${[['charros','Charros'],['equipos','Equipos'],['completo','Completo'],['caballos','Caballos']].map(([k, l]) => `<button class="${State.rankTab === k ? 'on' : ''}" data-act="ranktab" data-k="${k}">${l}</button>`).join('')}</div>
     <div class="row mt" style="gap:8px"><select class="in" data-model="rankYear"><option value="">Histórico</option>${years.map(y => `<option ${y === State.rankYear ? 'selected' : ''}>${y}</option>`).join('')}</select>
     <select class="in" data-model="rankSuerte"><option value="">Todas las faenas</option>${RULES.ORDER_EQ.map(k => `<option value="${k}" ${k === State.rankSuerte ? 'selected' : ''}>${esc(FN(k))}</option>`).join('')}</select></div>
     <div class="row mt" style="gap:8px"><select class="in" data-model="rankEstado"><option value="">Todo México</option>${estados.map(s => `<option ${s === State.rankEstado ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
     <button class="tog ${State.rankOficial ? 'on' : ''}" data-act="rankOficial" style="white-space:nowrap">Solo oficiales</button></div>`;
   if (State.rankTab === 'charros') { const r = rankingCharros(opt); h += r.length ? `<div class="card pad0 mt">${r.slice(0, 100).map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.evs.size} charreadas · mejor ${c.best}`, c.pts, 'pts', true)).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
+  else if (State.rankTab === 'caballos') { const r = horseRanking(); h += r.length ? `<div class="small mut mt">Puntos de las faenas hechas por el charro que lo montó (todas las charreadas). <a href="#caballos" style="color:var(--gold2)">Vitrina</a></div><div class="card pad0 mt">${r.map((x, i) => rankRow(i, x.h.name, `${esc(x.h.discipline || '')} · ${x.R.evs.size} charreadas · ${esc(ownerLabel(x.h, State.user))}`, x.R.pts, 'pts', 'h:' + x.h.id)).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin caballos con faenas', 'Se suman cuando un charro monta un caballo registrado en una charreada.')}</div>`; }
   else { const r = rankingEquipos(opt, State.rankTab === 'completo' ? 'completo' : 'equipos'); h += r.length ? `<div class="card pad0 mt">${r.map((t, i) => rankRow(i, t.name, `${esc(t.state || '')} · ${t.evs} charreadas${t.wins ? ` · ${t.wins} 🏆` : ''}`, t.pts, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
   return h;
 }
@@ -1235,7 +1427,7 @@ function vCuenta(){
     if (tools) h += `<div class="h2">Herramientas</div><div class="list">${tools}</div>`;
     if (u.role === 'charro') h += charroSection(u);
     if (u.role === 'equipo') h += teamSection(u);
-    if (u.role === 'dueno') h += `<div class="h2">Mis caballos</div><div class="card small mut">Muy pronto podrás registrar tus caballos, cambiar de dueño y ver su valuación estimada.</div>`;
+    if (u.role !== 'juez') h += horsesSection(u);
     if (u.role === 'lienzo' && L) h += `<div class="h2">Foto del lienzo</div><div class="card">${photoBox('lienzo', L.id, L.photo, L.name)}</div>`;
   }
   if (u.role !== 'charro') h += `<div class="h2">Foto de perfil</div><div class="card">${photoBox('profile', u.id, u.photo, u.name)}</div>`;
@@ -1275,9 +1467,17 @@ function teamSection(u){
   h += `</div><div class="h2">Roster oficial<a href="#solicitudes">${nPend ? nPend + ' por revisar' : 'Solicitudes'}</a></div><div class="card pad0">${roster.length ? roster.map(c => `<div class="rank tap" data-act="card" data-n="${esc(c.name)}" role="button" tabindex="0">${av(c.photo, c.name, 36)}<div class="grow"><div style="font-weight:700" class="ell">${esc(c.name)}${c.alias ? ` <span class="small mut">“${esc(c.alias)}”</span>` : ''}</div><div class="small mut">${esc(c.state || '')} · ${esc(c.category || 'Libre')}</div></div><button class="btn ghost sm" data-act="rosterRm" data-id="${c.id}" aria-label="Quitar del equipo">${I.x}</button></div>`).join('') : `<div class="empty small">Aún no hay charros en el roster. Los charros se registran en la app y piden unirse a tu equipo.</div>`}</div>`;
   return h;
 }
-function reqText(r){ const c = DB.get('charros', r.charroId), t = DB.get('teams', r.teamId); return r.type === 'roster' ? `la solicitud de ${c ? c.name : 'un charro'} para unirse a ${t ? t.name : 'un equipo'}` : `la afiliación de ${t ? t.name : 'un equipo'} a ${lienzo(r.lienzoId).name}`; }
+function reqText(r){ const c = DB.get('charros', r.charroId), t = DB.get('teams', r.teamId), hz = DB.get('horses', r.horseId);
+  if (r.type === 'interes') return `el interés de ${r.buyerName || 'un comprador'} en ${hz ? hz.name : 'un caballo'}`;
+  if (r.type === 'transfer') return `la transferencia de ${hz ? hz.name : 'un caballo'}`;
+  return r.type === 'roster' ? `la solicitud de ${c ? c.name : 'un charro'} para unirse a ${t ? t.name : 'un equipo'}` : `la afiliación de ${t ? t.name : 'un equipo'} a ${lienzo(r.lienzoId).name}`; }
 const reqSt = s => ({ pendiente: '<span class="chip blue">Pendiente</span>', aprobado: `<span class="chip green">${I.check}Aprobada</span>`, rechazado: '<span class="chip red">Rechazada</span>', cancelado: '<span class="chip">Cancelada</span>' }[s] || '');
 function reqCard(r, canAct){
+  if (r.type === 'interes') { const hz = DB.get('horses', r.horseId), u = State.user, seeContact = u && (r.createdBy === u.id || (hz && hz.ownerId === u.id));
+    return `<div class="card"><div class="row" style="gap:10px">${av(hz && hz.photo, hz ? hz.name : '?', 44)}<div class="grow"><div style="font-weight:800">${esc(r.buyerName || 'Comprador')}</div><div class="small">le interesa <b>${esc(hz ? hz.name : 'un caballo')}</b></div>${seeContact ? `<div class="small mut">Contacto: <b style="color:var(--text)">${esc(r.contact || '')}</b></div>${r.message ? `<div class="small mut" style="margin-top:2px">“${esc(r.message)}”</div>` : ''}` : ''}</div>${reqSt(r.status).replace('Aprobada', 'Atendida').replace('Rechazada', 'Descartada')}</div>
+      <div class="small mut2" style="margin-top:6px">Interés de compra · ${fdt(r.createdAt)}</div>
+      ${canAct ? `<div class="btns mt"><button class="btn pri sm" data-act="decideReq" data-id="${r.id}" data-d="aprobado">${I.check} Marcar atendido</button><button class="btn sm" data-act="decideReq" data-id="${r.id}" data-d="rechazado">Descartar</button></div>`
+        : r.status === 'pendiente' && u && r.createdBy === u.id ? `<button class="btn ghost sm mt" data-act="decideReq" data-id="${r.id}" data-d="cancelado">Retirar interés</button>` : ''}</div>`; }
   const ro = r.type === 'roster', c = DB.get('charros', r.charroId), t = DB.get('teams', r.teamId), who = ro ? c : t;
   const what = ro ? `quiere unirse a <b>${esc(t ? t.name : 'un equipo')}</b>` : `pide afiliarse a <b>${esc(lienzo(r.lienzoId).name)}</b>`;
   const sub = (ro ? [c && c.state, c && c.category, c && c.teamId && c.teamId !== r.teamId ? 'hoy en ' + ((DB.get('teams', c.teamId) || {}).name || 'otro equipo') : ''] : [t && t.state, t && t.captainName ? 'Capitán: ' + t.captainName : '']).filter(Boolean).join(' · ');
@@ -1288,8 +1488,8 @@ function reqCard(r, canAct){
 }
 function vSolicitudes(){
   const u = State.user; if (!u) return needLogin();
-  const R = DB.all('requests').slice().sort((a, b) => b.createdAt - a.createdAt), dec = R.filter(r => canDecide(u, r)), mine = R.filter(r => r.createdBy === u.id), done = R.filter(r => r.status !== 'pendiente' && r.decidedBy === u.id && r.createdBy !== u.id).slice(0, 20);
-  let h = `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="h1">Solicitudes</div><div class="sub" style="margin-top:4px">Aprueba quién forma parte oficial de cada equipo y qué equipos se afilian a un lienzo.</div>`;
+  const R = DB.all('requests').slice().sort((a, b) => b.createdAt - a.createdAt), dec = R.filter(r => canDecide(u, r)), mine = R.filter(r => r.createdBy === u.id && r.type !== 'transfer'), done = R.filter(r => r.status !== 'pendiente' && r.decidedBy === u.id && r.createdBy !== u.id).slice(0, 20);
+  let h = `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="h1">Solicitudes</div><div class="sub" style="margin-top:4px">Rosters de equipos, afiliaciones a lienzos e interesados en tus caballos.</div>`;
   h += `<div class="h2">Por revisar</div>` + (dec.length ? `<div class="list">${dec.map(r => reqCard(r, true)).join('')}</div>` : `<div class="card small mut">No hay solicitudes pendientes. ✓</div>`);
   if (mine.length) h += `<div class="h2">Enviadas por mí</div><div class="list">${mine.map(r => reqCard(r, false)).join('')}</div>`;
   if (done.length) h += `<div class="h2">Resueltas por mí</div><div class="list">${done.map(r => reqCard(r, false)).join('')}</div>`;
@@ -1665,7 +1865,7 @@ function vAdmin(){
   const P = DB.all('profiles'), Ls = DB.all('lienzos'), Es = DB.all('events'), pend = P.filter(p => p.status === 'pendiente'), offReq = Es.filter(e => e.requestOfficial && !e.official && e.status !== 'borrador'), t = State.adminTab;
   let h = `<div class="row between"><div><div class="h1">Súper usuario</div><div class="sub" style="margin-top:3px">Control y credibilidad de la plataforma</div></div><a class="btn sm" href="#cuenta">${I.key} Mi cuenta</a></div>
     <div class="kpis mt"><div class="kpi"><b>${Ls.filter(l => l.status === 'aprobado').length}</b><span>Lienzos verificados</span></div><div class="kpi"><b>${P.filter(p => p.role === 'juez' && p.status === 'aprobado').length}</b><span>Jueces activos</span></div><div class="kpi"><b>${DB.all('sheets').filter(s => s.entregada).length}</b><span>Hojas entregadas</span></div></div>
-    <div class="scroller mt">${[['solicitudes','Solicitudes',pend.length + offReq.length + DB.all('requests').filter(r => r.status === 'pendiente').length],['lienzos','Lienzos'],['usuarios','Usuarios'],['eventos','Charreadas'],['invitaciones','Invitaciones'],['bitacora','Bitácora']].map(([k, l, n]) => `<button class="tog ${t === k ? 'on' : ''}" data-act="admintab" data-k="${k}">${l}${n ? ` <span class="badge-n">${n}</span>` : ''}</button>`).join('')}</div>`;
+    <div class="scroller mt">${[['solicitudes','Solicitudes',pend.length + offReq.length + DB.all('requests').filter(r => r.status === 'pendiente').length],['lienzos','Lienzos'],['usuarios','Usuarios'],['eventos','Charreadas'],['invitaciones','Invitaciones'],['valuacion','Valuación'],['bitacora','Bitácora']].map(([k, l, n]) => `<button class="tog ${t === k ? 'on' : ''}" data-act="admintab" data-k="${k}">${l}${n ? ` <span class="badge-n">${n}</span>` : ''}</button>`).join('')}</div>`;
   if (t === 'solicitudes') { const nr = DB.all('requests').filter(r => r.status === 'pendiente').length;
     h += `<div class="h2">Rosters y afiliaciones</div><div class="list">${menuItem('#solicitudes', I.check, 'Solicitudes de equipos', nr ? `${nr} pendientes` : 'Sin pendientes')}</div>`;
     h += `<div class="h2">Cuentas por autorizar</div>` + (pend.length ? `<div class="list">${pend.map(p => { const L = p.role === 'lienzo' ? DB.get('lienzos', p.lienzoId) : lienzo(p.lienzoId); return `<div class="card"><div class="row"><div class="avatar">${esc(initials(p.name))}</div><div class="grow"><div style="font-weight:800">${esc(p.name)}</div><div class="small mut">${roleName(p.role)} · ${esc(p.email)}${p.phone ? ' · ' + esc(p.phone) : ''}</div></div></div>
@@ -1685,6 +1885,11 @@ function vAdmin(){
       <label class="f">Tipo</label><select class="in" name="role"><option value="juez">Juez</option><option value="lienzo">Lienzo</option></select>
       <label class="f">Lienzo (solo para jueces)</label><select class="in" name="lienzoId"><option value="">—</option>${Ls.filter(l => l.status === 'aprobado').map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select><button class="btn pri block mt2">${I.key} Generar código</button></form>
       <div class="h2">Códigos</div>` + (inv.length ? `<div class="card pad0">${inv.map(i => `<div class="rank"><div class="grow"><div style="font-weight:800;font-family:monospace;font-size:15px">${esc(i.code)}</div><div class="small mut">${roleName(i.role)}${i.lienzoId ? ' · ' + esc(lienzo(i.lienzoId).name) : ''} · ${fdt(i.createdAt)}</div></div>${i.used ? '<span class="chip">Usado</span>' : `<button class="btn sm" data-act="copy" data-t="${esc(i.code)}">Copiar</button>`}</div>`).join('')}</div>` : `<div class="card small mut">Sin códigos.</div>`); }
+  if (t === 'valuacion') { const c = valCfg();
+    h += `<form class="card mt" data-form="valCfg"><div style="font-weight:800">Rango de valuación de caballos</div><div class="small mut" style="margin-top:3px">Cada caballo se ubica en este rango según desempeño (40%), efectividad (20%), experiencia (25%) y registro (15%), y luego se ajusta por edad.</div>
+      <div class="grid2"><div><label class="f">Mínimo (MXN)</label><input class="in" name="min" type="number" min="0" step="5000" value="${c.min}" required></div><div><label class="f">Máximo (MXN)</label><input class="in" name="max" type="number" min="0" step="5000" value="${c.max}" required></div></div>
+      <button class="btn pri block mt2">Guardar rango</button></form>
+      <div class="h2">Caballos registrados</div>${DB.all('horses').length ? `<div class="card pad0">${DB.all('horses').map(horseRow).join('')}</div>` : '<div class="card small mut">Aún no hay caballos.</div>'}`; }
   if (t === 'bitacora') { const A = DB.all('audit').slice().sort((a, b) => b.ts - a.ts).slice(0, 200);
     h += `<div class="small mut mt">Registro de todo lo que pasa en la plataforma. No se puede editar.</div><div class="card pad0 mt">${A.map(a => `<div class="rank" style="align-items:flex-start"><span class="chip" style="min-width:76px;justify-content:center">${esc(a.action)}</span><div class="grow"><div class="small" style="color:var(--text)">${esc(a.detail)}</div><div class="small mut2">${esc(a.actorName)} · ${fdt(a.ts)}</div></div></div>`).join('') || '<div class="empty">Sin registros</div>'}</div>`; }
   return h;
@@ -1733,9 +1938,19 @@ const ACT = {
   rankOficial(){ State.rankOficial = !State.rankOficial; render(); }, histOficial(){ State.histOficial = !State.histOficial; render(); },
   authmode(el){ State.authMode = el.dataset.k; render(); },
   card(el){ openCard(el.dataset.n); },
+  hcard(el){ openHorse(el.dataset.id); }, hmanage(el){ go('caballo-' + el.dataset.id); },
+  hfilter(el){ State.hFilter = el.dataset.k; render(); }, newHorse(){ State.newHorse = !State.newHorse; render(); },
+  interes(el){ const h = DB.get('horses', el.dataset.id); if (!h) return; $('#modal').innerHTML = ''; if (!State.user) { toast('Inicia sesión para dejar tu contacto'); return go('cuenta'); } openInterest(h); },
+  async horseFlag(el){ const h = DB.get('horses', el.dataset.id), k = el.dataset.k, v = !h[k], patch = { [k]: v };
+    if (k === 'ownerPublic') patch.ownerName = v ? State.user.name : '';   // el nombre solo se guarda si el dueño decide mostrarlo
+    await safe(() => DB.put('horses', { ...h, ...patch }), { ownerPublic: v ? 'Tu nombre ya es visible' : 'Ahora apareces como dueño privado', pricePublic: v ? 'Valuación visible' : 'Valuación oculta', forSale: v ? 'Publicado en la vitrina' : 'Retirado de la vitrina' }[k]); },
+  async horseTransfer(el){ const h = DB.get('horses', el.dataset.id); if (!(await ask('Transferir caballo', `Se generará un código. Cuando la otra persona lo use, ${h.name} pasará a su cuenta.`, 'Generar código'))) return;
+    await safe(async () => { await DB.put('requests', { id: 'r' + uid(), type: 'transfer', horseId: h.id, code: genCode('CAB'), status: 'pendiente', createdBy: State.user.id, createdAt: Date.now() }); await audit('transferencia', `Generó código de transferencia para ${h.name}`); }, 'Código generado'); },
+  async horseDel(el){ const h = DB.get('horses', el.dataset.id); if (!(await ask('Eliminar caballo', `Se borrará la ficha de ${h.name}. Sus faenas en charreadas se conservan.`, 'Eliminar', true))) return;
+    await safe(async () => { await DB.del('horses', h.id); await audit('caballo', `Eliminó la ficha de ${h.name}`); go('cuenta'); }, 'Caballo eliminado'); },
   async decideReq(el){ const r = DB.get('requests', el.dataset.id), d = el.dataset.d; if (!r) return;
-    if (d === 'rechazado' && !(await ask('Rechazar solicitud', 'Quien la envió verá que fue rechazada.', 'Rechazar', true))) return;
-    await safe(async () => { const txt = reqText(r); await DB.backend.decide(r, d); await audit('solicitud', `${{ aprobado: 'Aprobó', rechazado: 'Rechazó', cancelado: 'Canceló' }[d]} ${txt}`); }, { aprobado: 'Solicitud aprobada', rechazado: 'Solicitud rechazada', cancelado: 'Solicitud cancelada' }[d]); },
+    if (d === 'rechazado' && r.type !== 'interes' && !(await ask('Rechazar solicitud', 'Quien la envió verá que fue rechazada.', 'Rechazar', true))) return;
+    await safe(async () => { const txt = reqText(r); await DB.backend.decide(r, d); await audit('solicitud', `${{ aprobado: 'Aprobó', rechazado: 'Rechazó', cancelado: 'Canceló' }[d]} ${txt}`); }, r.type === 'interes' ? { aprobado: 'Marcado como atendido', rechazado: 'Interés descartado', cancelado: 'Interés retirado' }[d] : r.type === 'transfer' ? 'Transferencia cancelada' : { aprobado: 'Solicitud aprobada', rechazado: 'Solicitud rechazada', cancelado: 'Solicitud cancelada' }[d]); },
   async rosterRm(el){ const c = DB.get('charros', el.dataset.id); if (!c) return; const self = c.userId === State.user.id, t = DB.get('teams', c.teamId);
     if (!(await ask(self ? 'Salir del equipo' : 'Quitar del roster', self ? `Dejarás de ser parte oficial de ${t ? t.name : 'tu equipo'}.` : `${c.name} dejará de ser parte oficial de ${t ? t.name : 'el equipo'}.`, self ? 'Salir' : 'Quitar', true))) return;
     await safe(async () => { await DB.backend.rosterRemove(c); await audit('roster', self ? `${c.name} salió de ${t ? t.name : 'su equipo'}` : `Quitó a ${c.name} del roster de ${t ? t.name : 'un equipo'}`); }, self ? 'Saliste del equipo' : 'Charro quitado del roster'); },
@@ -1842,6 +2057,12 @@ document.addEventListener('submit', async e => {
   const f = e.target; if (!f.dataset.form) return; e.preventDefault();
   const d = Object.fromEntries(new FormData(f).entries()), k = f.dataset.form;
   if (k === 'login') return safe(async () => { State.user = await DB.backend.login(d.email.trim(), d.pass); State.j = null; go(isSuper(State.user) ? 'admin' : 'cuenta'); }, 'Bienvenido');
+  if (k === 'horseNew') { const u = State.user, id = 'cb' + uid();
+    return safe(async () => { await DB.put('horses', { id, ...horseData(d), photo: '', ownerId: u.id, ownerName: '', ownerPublic: false, pricePublic: false, forSale: false, history: [], ownerSince: Date.now(), createdAt: Date.now() }); await audit('caballo', `Registró al caballo ${d.name.trim()}`); State.newHorse = false; go('caballo-' + id); }, 'Caballo registrado'); }
+  if (k === 'horseEdit') { const h = DB.get('horses', f.dataset.id); if (!h) return; return safe(() => DB.put('horses', { ...h, ...horseData(d) }), 'Ficha guardada'); }
+  if (k === 'claimHorse') return safe(async () => { const id = await DB.backend.claimHorse(d.code); const h = DB.get('horses', id); await audit('transferencia', `Recibió al caballo ${h ? h.name : ''}`); go('caballo-' + id); }, '¡El caballo ya es tuyo!');
+  if (k === 'valCfg') { const min = Math.max(0, +d.min), max = +d.max; if (!(max > min)) return toast('El máximo debe ser mayor que el mínimo', 'err');
+    return safe(async () => { await DB.put('settings', { id: 'valuacion', min, max, updatedAt: Date.now() }); await audit('valuacion', `Cambió el rango de valuación a ${mxn(min)} – ${mxn(max)}`); }, 'Rango guardado'); }
   if (k === 'charroEdit') { const C = myCharro(State.user); if (!C) return; return safe(() => DB.put('charros', { ...C, name: d.name.trim(), alias: (d.alias || '').trim(), state: d.state, category: d.category }), 'Perfil guardado'); }
   if (k === 'teamEdit') { const T = myTeam(State.user); if (!T) return; return safe(() => DB.put('teams', { ...T, name: d.name.trim(), assoc: (d.assoc || '').trim(), state: d.state }), 'Equipo guardado'); }
   if (k === 'joinTeam') { const C = myCharro(State.user), t = DB.get('teams', d.teamId); if (!C || !t) return toast('Elige un equipo', 'err');
