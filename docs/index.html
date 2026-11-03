@@ -24,6 +24,32 @@ a{color:var(--gold2)}button,input,select,textarea{font:inherit;color:inherit}
 .brand b{font-family:'Cinzel',serif;font-size:19px;font-weight:800;letter-spacing:.03em;white-space:nowrap}.brand b span{color:var(--gold)}
 .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(145deg,var(--vino2),#4a0d17);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(242,205,126,.35);flex:none}
 .logo svg{width:20px;height:20px;color:var(--gold2)}
+.rank.tap{cursor:pointer;transition:background .15s}.rank.tap:hover,.rank.tap:focus-visible{background:var(--card2);outline:none}
+/* Tarjeta coleccionable: marco metálico por rareza, foto arriba, franja vino con el nombre, estadísticas abajo */
+.tc-wrap{perspective:1100px;display:flex;justify-content:center;padding:4px 0 6px}
+.tc{--t1:#f2cd7e;--t2:#8a6420;--mx:50%;--my:30%;position:relative;width:min(318px,84vw);aspect-ratio:5/7;border-radius:18px;padding:8px;background:linear-gradient(150deg,var(--t1),var(--t2) 38%,var(--t1) 62%,var(--t2));box-shadow:0 22px 44px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.25);transform-style:preserve-3d;transition:transform .18s ease-out;user-select:none}
+.tc.bronce{--t1:#d39a68;--t2:#5a361c}.tc.plata{--t1:#e4e8ee;--t2:#646d7a}.tc.oro{--t1:#f6d68e;--t2:#8a6420}.tc.leyenda{--t1:#f6d68e;--t2:#8e1b2c}
+.tc::after{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;background:radial-gradient(circle at var(--mx) var(--my),rgba(255,255,255,.38),transparent 42%);mix-blend-mode:overlay}
+.tc .in{position:relative;height:100%;border-radius:12px;background:#120c09;overflow:hidden;display:flex;flex-direction:column}
+.tc .in>*{flex-shrink:0}
+.tc .pic{position:relative;flex:1 1 34%;min-height:112px;background:radial-gradient(circle at 50% 110%,rgba(176,42,62,.55),transparent 60%),repeating-linear-gradient(135deg,#1d1410 0 12px,#17100c 12px 24px);display:grid;place-items:center;overflow:hidden}
+.tc .pic img{width:100%;height:100%;object-fit:cover}
+.tc .pic .ini{font-family:'Cinzel',serif;font-size:64px;font-weight:800;color:var(--t1);opacity:.85;text-shadow:0 2px 0 #000}
+.tc .ovr{position:absolute;top:8px;left:8px;width:52px;padding:5px 0 4px;border-radius:10px;background:rgba(10,7,5,.78);border:1px solid var(--t1);text-align:center;line-height:1}
+.tc .ovr b{display:block;font-family:'Cinzel',serif;font-size:25px;color:var(--t1)}.tc .ovr span{font-size:8.5px;letter-spacing:.12em;font-weight:800;color:var(--text);text-transform:uppercase}
+.tc .tier{position:absolute;top:10px;right:10px;font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:rgba(10,7,5,.78);color:var(--t1);border:1px solid var(--t1)}
+.tc .live{position:absolute;bottom:8px;right:8px;font-size:9.5px;font-weight:800;letter-spacing:.08em;padding:3px 8px;border-radius:999px;background:var(--vino2);color:#fff;animation:pulse 1.6s infinite}
+.tc .band{background:linear-gradient(90deg,var(--vino),var(--vino2) 50%,var(--vino));border-block:1px solid var(--t1);padding:7px 10px 6px;text-align:center}
+.tc .band .nm{font-family:'Cinzel',serif;font-weight:800;font-size:15.5px;letter-spacing:.04em;text-transform:uppercase;color:#fff;line-height:1.15;text-wrap:balance}
+.tc .band .sb{font-size:10.5px;color:#f3d9a6;margin-top:2px}
+.tc .st{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#2a1e16;margin:8px 8px 0;border-radius:9px;overflow:hidden}
+.tc .st div{background:#18110d;padding:4px 2px 3px;text-align:center}.tc .st b{display:block;font-family:'Cinzel',serif;font-size:15px;color:var(--gold2);font-variant-numeric:tabular-nums}.tc .st span{font-size:8.5px;letter-spacing:.1em;font-weight:700;color:var(--mut);text-transform:uppercase}
+.tc .su{margin:7px 10px 0;display:grid;gap:4px}.tc .su div{display:grid;grid-template-columns:104px 1fr 28px;align-items:center;gap:6px;font-size:10px;color:var(--mut)}
+.tc .su i{display:block;height:5px;border-radius:5px;background:linear-gradient(90deg,var(--vino2),var(--t1))}.tc .su b{text-align:right;color:var(--text);font-variant-numeric:tabular-nums}
+.tc .bd{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:auto 8px 0;padding-top:6px}
+.tc .bd span{font-size:9px;font-weight:800;letter-spacing:.04em;padding:2px 7px;border-radius:999px;border:1px solid rgba(242,205,126,.45);color:var(--gold2);background:rgba(242,205,126,.07)}
+.tc .ft{display:flex;justify-content:space-between;font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut2);padding:6px 10px 7px}
+@media (prefers-reduced-motion: reduce){.tc{transition:none}.tc .live{animation:none}}
 .ph{object-fit:cover;border-radius:50%;flex:none;border:1px solid var(--line2);background:var(--card2);display:block}
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--card2);border:1px solid var(--line2);display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--gold2);text-decoration:none;flex:none}
 .wrap{max-width:560px;margin:0 auto;padding:14px 16px 24px}
@@ -983,8 +1009,8 @@ function videoBlock(ev){
   return `<div class="video">${e || `<div class="ph"><div>${I.video}<div style="font-weight:700;color:var(--text)">${label}</div></div></div>`}</div>
     <div class="row between small" style="margin-top:8px"><span class="mut">${label}</span><a href="${esc(url)}" target="_blank" rel="noopener">Abrir en otra ventana ↗</a></div>`;
 }
-function rankRow(i, name, meta, pts, unit){
-  return `<div class="rank"><div class="pos ${i < 3 ? 'p' + (i + 1) : ''}">${i + 1}</div><div class="grow"><div class="ell" style="font-weight:700">${esc(name)}</div><div class="small mut ell">${meta}</div></div><div class="pts">${pts}<small>${unit}</small></div></div>`;
+function rankRow(i, name, meta, pts, unit, card){
+  return `<div class="rank${card ? ' tap' : ''}"${card ? ` data-act="card" data-n="${esc(name)}" role="button" tabindex="0" aria-label="Ver tarjeta de ${esc(name)}"` : ''}><div class="pos ${i < 3 ? 'p' + (i + 1) : ''}">${i + 1}</div><div class="grow"><div class="ell" style="font-weight:700">${esc(name)}</div><div class="small mut ell">${meta}</div></div><div class="pts">${pts}<small>${unit}</small></div></div>`;
 }
 
 /* ---------- INICIO ---------- */
@@ -1008,7 +1034,7 @@ function vInicio(){
       <div class="btns mt2"><a class="btn pri" href="#ranking">${I.trophy} Ver ranking</a><a class="btn" href="#historial">${I.clock} Historial</a></div><div class="pattern"></div></div>`;
   }
   h += `<div class="h2">Próximas charreadas</div>` + (next.length ? `<div class="list">${next.map(eventCard).join('')}</div>` : emptyState(I.clock, 'Sin charreadas programadas', 'Cuando un lienzo publique su próxima charreada aparecerá aquí.'));
-  h += `<div class="h2">Top charros ${new Date().getFullYear()}<a href="#ranking">Ver todo</a></div>` + (top.length ? `<div class="card pad0">${top.map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.n} faenas`, c.pts, 'pts')).join('')}</div>` : emptyState(I.trophy, 'Aún sin ranking', 'Se forma con las charreadas oficiales finalizadas.'));
+  h += `<div class="h2">Top charros ${new Date().getFullYear()}<a href="#ranking">Ver todo</a></div>` + (top.length ? `<div class="card pad0">${top.map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.n} faenas`, c.pts, 'pts', true)).join('')}</div>` : emptyState(I.trophy, 'Aún sin ranking', 'Se forma con las charreadas oficiales finalizadas.'));
   h += `<div class="h2">Resultados recientes<a href="#historial">Historial</a></div><div class="list">${past.map(eventCard).join('') || emptyState(I.clock, 'Sin resultados', '')}</div>`;
   if (!State.user) h += `<div class="card mt2" style="background:linear-gradient(160deg,#2a1510,#1c1510)"><div style="font-weight:800;font-size:16px">¿Tienes un lienzo charro?</div>
     <div class="sub" style="margin-top:4px">Registra tu lienzo, califica con tus jueces desde el celular, entrega la hoja oficial digital y transmite tus charreadas.</div>
@@ -1055,7 +1081,7 @@ function vEvento(){
     h += sc.length ? `<div class="card pad0 feed mt">${sc.map(scoreItem).join('')}</div>` : `<div class="mt">${emptyState(I.gavel, 'Aún sin calificaciones', 'En cuanto el juez publique, aparecerán aquí al instante.')}</div>`;
   } else {
     const cs = charroStandings(ev);
-    h += cs.length ? `<div class="card pad0 mt">${cs.map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${esc(c.f.join(', '))}`, c.pts, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.user, 'Sin charros calificados', '')}</div>`;
+    h += cs.length ? `<div class="card pad0 mt">${cs.map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${esc(c.f.join(', '))}`, c.pts, 'pts', true)).join('')}</div>` : `<div class="mt">${emptyState(I.user, 'Sin charros calificados', '')}</div>`;
   }
   return h;
 }
@@ -1098,6 +1124,75 @@ function rankingCharros(opt){
   }));
   return Object.values(m).sort((a, b) => b.pts - a.pts || b.best - a.best);
 }
+/* ---------- TARJETAS COLECCIONABLES ---------- */
+const cardEvents = () => publicEvents().filter(e => e.status === 'en_vivo' || e.status === 'finalizado');
+let ratingCache = null;
+function ratingTable(){   // promedio por faena de cada charro, suavizado hacia el promedio general para no premiar a quien tiene 1 sola faena
+  const key = DB.all('scores').length + ':' + DB.all('events').length;
+  if (ratingCache && ratingCache.key === key) return ratingCache;
+  const ids = new Set(cardEvents().map(e => e.id)), m = {}; let tp = 0, tn = 0;
+  DB.all('scores').forEach(s => { if (!ids.has(s.eventId)) return; s.parts.forEach(p => { const r = m[norm(p.name)] = m[norm(p.name)] || { pts: 0, n: 0 }; r.pts += p.pts; r.n++; tp += p.pts; tn++; }); });
+  const g = tn ? tp / tn : 0, adj = r => (r.pts + 3 * g) / (r.n + 3);
+  const list = Object.values(m).map(adj).sort((a, b) => a - b);
+  return ratingCache = { key, g, adj, list };
+}
+function charroStats(name){
+  const k = norm(name), evs = new Map(cardEvents().map(e => [e.id, e])), R = { name, pts: 0, n: 0, pos: 0, best: null, evs: new Map(), suertes: {}, team: '', teamDate: '', wins: 0, live: null };
+  DB.all('scores').forEach(s => { const ev = evs.get(s.eventId); if (!ev) return; s.parts.forEach(p => { if (norm(p.name) !== k) return;
+    R.pts += p.pts; R.n++; if (p.pts > 0) R.pos++; R.best = Math.max(R.best ?? -999, p.pts); R.suertes[s.faena] = (R.suertes[s.faena] || 0) + p.pts;
+    const e = R.evs.get(ev.id) || { ev, pts: 0, n: 0, team: s.teamName, teamId: s.teamId }; e.pts += p.pts; e.n++; R.evs.set(ev.id, e);
+    if (ev.date >= R.teamDate) { R.team = s.teamName; R.teamDate = ev.date; } }); });
+  R.evs.forEach(e => { if (e.ev.status === 'finalizado') { const st = teamStandings(e.ev); if (st[0] && st[0].id === e.teamId && st[0].pts > 0) R.wins++; } });
+  R.live = cardEvents().find(e => e.status === 'en_vivo' && e.charros.some(c => norm(c.name) === k)) || null;
+  R.prof = DB.all('charros').find(c => norm(c.name) === k) || null;
+  if (R.prof && R.prof.teamId) { const t = DB.get('teams', R.prof.teamId); if (t) { R.official = t; R.team = t.name; } }
+  if (!R.team && R.live) { const c = R.live.charros.find(x => norm(x.name) === k), t = c && R.live.teams.find(x => x.id === c.teamId); if (t) R.team = t.name; }
+  const T = ratingTable(); if (R.n) { const a = T.adj(R), below = T.list.filter(x => x <= a).length; R.ovr = Math.round(45 + 54 * Math.pow(below / T.list.length, 1.6)); if (R.n < 3) R.ovr = Math.min(R.ovr, 72); } else R.ovr = 40;
+  R.tier = R.ovr >= 90 ? 'leyenda' : R.ovr >= 78 ? 'oro' : R.ovr >= 64 ? 'plata' : 'bronce';
+  R.eff = R.n ? Math.round(100 * R.pos / R.n) : 0; R.avg = R.n ? Math.round(R.pts / R.n) : 0;
+  const yr = String(new Date().getFullYear()); let rk = rankingCharros({ year: yr, oficial: true }), idx = rk.findIndex(x => norm(x.name) === k);
+  if (idx < 0) { rk = rankingCharros({ oficial: false }); idx = rk.findIndex(x => norm(x.name) === k); R.rankLbl = idx >= 0 ? `#${idx + 1} histórico` : ''; } else R.rankLbl = `#${idx + 1} nacional ${yr}`;
+  R.rank = idx;
+  return R;
+}
+const TIER_LBL = { bronce: 'Bronce', plata: 'Plata', oro: 'Oro', leyenda: 'Leyenda' };
+function cardHTML(R){
+  const P = R.prof, photo = safeImg(P && P.photo), sub = [P && P.alias ? `“${P.alias}”` : '', R.team, P && P.state].filter(Boolean).join(' · ') || 'Charro';
+  const top = Object.entries(R.suertes).sort((a, b) => b[1] - a[1]).slice(0, 3), mx = Math.max(1, ...top.map(x => Math.abs(x[1])));
+  const badges = [];
+  if (R.rank >= 0 && R.rank < 3 && /nacional/.test(R.rankLbl)) badges.push(['Top ' + (R.rank + 1) + ' nacional']);
+  if (R.wins) badges.push(['Campeón' + (R.wins > 1 ? ' ×' + R.wins : '')]);
+  if (R.n >= 3 && top[0] && top[0][1] > 0) badges.push(['Especialista: ' + FN(top[0][0])]);
+  if (R.evs.size >= 5) badges.push(['Veterano']);
+  if (R.n >= 5 && R.eff >= 75) badges.push(['Efectividad élite']);
+  if (R.official) badges.push(['Roster oficial']);
+  return `<div class="tc-wrap"><div class="tc ${R.tier}" id="tcard"><div class="in">
+    <div class="pic">${photo ? `<img src="${esc(photo)}" alt="">` : `<span class="ini">${esc(initials(R.name))}</span>`}
+      <div class="ovr"><b>${R.ovr}</b><span>Media</span></div><span class="tier">${TIER_LBL[R.tier]}</span>${R.live ? '<span class="live">● EN VIVO</span>' : ''}</div>
+    <div class="band"><div class="nm">${esc(R.name)}</div><div class="sb">${esc(sub)}</div></div>
+    <div class="st"><div><b>${R.pts}</b><span>Puntos</span></div><div><b>${R.n}</b><span>Faenas</span></div><div><b>${R.eff}%</b><span>Efectividad</span></div>
+      <div><b>${R.evs.size}</b><span>Torneos</span></div><div><b>${R.best ?? '—'}</b><span>Mejor</span></div><div><b>${R.avg}</b><span>Promedio</span></div></div>
+    <div class="su">${top.length ? top.map(([fk, v]) => `<div><span class="ell">${esc(FN(fk))}</span><span class="bar" style="margin:0"><i style="width:${Math.max(4, Math.round(100 * Math.max(0, v) / mx))}%"></i></span><b>${v}</b></div>`).join('') : '<div style="grid-template-columns:1fr;text-align:center">Aún sin faenas calificadas</div>'}</div>
+    <div class="bd">${badges.slice(0, 4).concat([[(P && P.category) || 'Libre']]).map(b => `<span>${esc(b[0])}</span>`).join('')}</div>
+    <div class="ft"><span>${CONFIG.APP_NAME}</span><span>${esc(R.rankLbl || 'Temporada ' + new Date().getFullYear())}</span></div></div></div></div>`;
+}
+function openCard(name){
+  const R = charroStats(name), list = [...R.evs.values()].sort((a, b) => b.ev.date.localeCompare(a.ev.date));
+  $('#modal').innerHTML = `<div class="modal"><div class="box" role="dialog" aria-label="Tarjeta de ${esc(name)}"><div class="row between"><div style="font-weight:800;font-size:15px">Tarjeta de charro</div><button class="btn sm" data-close="1">Cerrar</button></div>
+    ${cardHTML(R)}
+    ${R.live ? `<a class="btn vino block mt" href="#evento-${R.live.id}" data-close="1">${I.live} Verlo en vivo: ${esc(R.live.title)}</a>` : ''}
+    <div class="h2">Torneos</div>${list.length ? `<div class="card pad0">${list.slice(0, 12).map(e => `<a class="rank" href="#evento-${e.ev.id}" data-close="1" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:700">${esc(e.ev.title)}</div><div class="small mut ell">${fdate(e.ev.date)} · ${esc(e.team)} · ${e.n} faenas${e.ev.official ? ' · Oficial' : ''}</div></div><div class="pts">${e.pts}<small>pts</small></div></a>`).join('')}</div>` : '<div class="card small mut">Todavía no tiene faenas calificadas.</div>'}
+    <div class="small mut2 mt">La media (40 a 99) compara su promedio por faena con el de todos los charros. Con menos de 3 faenas es provisional.</div></div></div>`;
+  const box = $('#modal .modal'), card = $('#tcard'), still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const close = () => { $('#modal').innerHTML = ''; document.removeEventListener('keydown', esc_); };
+  const esc_ = e => { if (e.key === 'Escape') close(); }; document.addEventListener('keydown', esc_);
+  box.onclick = e => { if (e.target === box || e.target.closest('[data-close]')) close(); };
+  if (card && !still) {
+    card.onpointermove = e => { const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      card.style.transform = `rotateY(${(x - .5) * 14}deg) rotateX(${(.5 - y) * 14}deg)`; card.style.setProperty('--mx', x * 100 + '%'); card.style.setProperty('--my', y * 100 + '%'); };
+    card.onpointerleave = () => { card.style.transform = ''; };
+  }
+}
 function rankingEquipos(opt, mode){
   const m = {};
   rankingEvents({ ...opt, mode }).forEach(ev => teamStandings(ev).forEach((t, i) => {
@@ -1116,7 +1211,7 @@ function vRanking(){
     <select class="in" data-model="rankSuerte"><option value="">Todas las faenas</option>${RULES.ORDER_EQ.map(k => `<option value="${k}" ${k === State.rankSuerte ? 'selected' : ''}>${esc(FN(k))}</option>`).join('')}</select></div>
     <div class="row mt" style="gap:8px"><select class="in" data-model="rankEstado"><option value="">Todo México</option>${estados.map(s => `<option ${s === State.rankEstado ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
     <button class="tog ${State.rankOficial ? 'on' : ''}" data-act="rankOficial" style="white-space:nowrap">Solo oficiales</button></div>`;
-  if (State.rankTab === 'charros') { const r = rankingCharros(opt); h += r.length ? `<div class="card pad0 mt">${r.slice(0, 100).map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.evs.size} charreadas · mejor ${c.best}`, c.pts, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
+  if (State.rankTab === 'charros') { const r = rankingCharros(opt); h += r.length ? `<div class="card pad0 mt">${r.slice(0, 100).map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.evs.size} charreadas · mejor ${c.best}`, c.pts, 'pts', true)).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
   else { const r = rankingEquipos(opt, State.rankTab === 'completo' ? 'completo' : 'equipos'); h += r.length ? `<div class="card pad0 mt">${r.map((t, i) => rankRow(i, t.name, `${esc(t.state || '')} · ${t.evs} charreadas${t.wins ? ` · ${t.wins} 🏆` : ''}`, t.pts, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
   return h;
 }
@@ -1161,7 +1256,7 @@ function charroSection(u){
   let h = `<div class="h2">Mi perfil de charro</div><div class="card">${photoBox('charro', C.id, C.photo, C.name)}
     <form data-form="charroEdit" class="mt"><label class="f">Nombre</label><input class="in" name="name" value="${esc(C.name)}" required><label class="f">Apodo (opcional)</label><input class="in" name="alias" value="${esc(C.alias || '')}">
     <div class="grid2"><div><label class="f">Estado</label>${selState(C.state)}</div><div><label class="f">Categoría</label><select class="in" name="category">${CATEGORIAS.map(x => `<option ${x === C.category ? 'selected' : ''}>${x}</option>`).join('')}</select></div></div>
-    <button class="btn block mt">Guardar perfil</button></form></div><div class="h2">Mi equipo</div><div class="card">`;
+    <button class="btn block mt">Guardar perfil</button></form><button class="btn ghost block mt" data-act="card" data-n="${esc(C.name)}">${I.trophy} Ver mi tarjeta</button></div><div class="h2">Mi equipo</div><div class="card">`;
   if (T) h += `<div class="row" style="gap:10px">${av(T.photo, T.name, 44)}<div class="grow"><div style="font-weight:800">${esc(T.name)}</div><div class="small mut">${esc(T.state || '')}${T.lienzoStatus === 'aprobado' ? ' · ' + esc(lienzo(T.lienzoId).name) : ''}</div></div><span class="chip green">${I.check}Oficial</span></div><button class="btn ghost sm block mt" data-act="rosterRm" data-id="${C.id}">Salir del equipo</button>`;
   else if (!pend) h += `<div class="small mut">Aún no eres parte oficial de un equipo. Pide unirte y su capitán, el lienzo o un juez aprobará tu solicitud.</div>`;
   if (pend) h += `<div class="banner warn mt">${I.clock}<span>Tu solicitud para unirte a <b>${esc((DB.get('teams', pend.teamId) || {}).name || 'el equipo')}</b> está en revisión.</span></div><button class="btn ghost sm block mt" data-act="decideReq" data-id="${pend.id}" data-d="cancelado">Cancelar solicitud</button>`;
@@ -1177,7 +1272,7 @@ function teamSection(u){
   h += `<div class="h2">Lienzo</div><div class="card">` + (L ? `<div style="font-weight:800">${esc(L.name)} ${verifiedMark(L)}</div><div class="small mut">Afiliación aprobada. El lienzo y sus jueces también pueden aprobar charros para tu roster.</div>` : `<div class="small mut">Tu equipo aún no está afiliado a un lienzo.</div>`);
   if (afil) h += `<div class="banner warn mt">${I.clock}<span>Solicitud de afiliación a <b>${esc(lienzo(afil.lienzoId).name)}</b> en revisión.</span></div><button class="btn ghost sm block mt" data-act="decideReq" data-id="${afil.id}" data-d="cancelado">Cancelar solicitud</button>`;
   else if (Ls.length) h += `<form data-form="afiliar" class="mt"><label class="f">${L ? 'Cambiar de lienzo' : 'Pedir afiliación a un lienzo'}</label><select class="in" name="lienzoId" required><option value="">— Elegir lienzo —</option>${Ls.map(l => `<option value="${l.id}">${esc(l.name)} · ${esc(l.state)}</option>`).join('')}</select><button class="btn block mt">Enviar solicitud</button></form>`;
-  h += `</div><div class="h2">Roster oficial<a href="#solicitudes">${nPend ? nPend + ' por revisar' : 'Solicitudes'}</a></div><div class="card pad0">${roster.length ? roster.map(c => `<div class="rank">${av(c.photo, c.name, 36)}<div class="grow"><div style="font-weight:700" class="ell">${esc(c.name)}${c.alias ? ` <span class="small mut">“${esc(c.alias)}”</span>` : ''}</div><div class="small mut">${esc(c.state || '')} · ${esc(c.category || 'Libre')}</div></div><button class="btn ghost sm" data-act="rosterRm" data-id="${c.id}" aria-label="Quitar del equipo">${I.x}</button></div>`).join('') : `<div class="empty small">Aún no hay charros en el roster. Los charros se registran en la app y piden unirse a tu equipo.</div>`}</div>`;
+  h += `</div><div class="h2">Roster oficial<a href="#solicitudes">${nPend ? nPend + ' por revisar' : 'Solicitudes'}</a></div><div class="card pad0">${roster.length ? roster.map(c => `<div class="rank tap" data-act="card" data-n="${esc(c.name)}" role="button" tabindex="0">${av(c.photo, c.name, 36)}<div class="grow"><div style="font-weight:700" class="ell">${esc(c.name)}${c.alias ? ` <span class="small mut">“${esc(c.alias)}”</span>` : ''}</div><div class="small mut">${esc(c.state || '')} · ${esc(c.category || 'Libre')}</div></div><button class="btn ghost sm" data-act="rosterRm" data-id="${c.id}" aria-label="Quitar del equipo">${I.x}</button></div>`).join('') : `<div class="empty small">Aún no hay charros en el roster. Los charros se registran en la app y piden unirse a tu equipo.</div>`}</div>`;
   return h;
 }
 function reqText(r){ const c = DB.get('charros', r.charroId), t = DB.get('teams', r.teamId); return r.type === 'roster' ? `la solicitud de ${c ? c.name : 'un charro'} para unirse a ${t ? t.name : 'un equipo'}` : `la afiliación de ${t ? t.name : 'un equipo'} a ${lienzo(r.lienzoId).name}`; }
@@ -1637,6 +1732,7 @@ const ACT = {
   evtab(el){ State.homeTab = el.dataset.k; render(); }, ranktab(el){ State.rankTab = el.dataset.k; render(); },
   rankOficial(){ State.rankOficial = !State.rankOficial; render(); }, histOficial(){ State.histOficial = !State.histOficial; render(); },
   authmode(el){ State.authMode = el.dataset.k; render(); },
+  card(el){ openCard(el.dataset.n); },
   async decideReq(el){ const r = DB.get('requests', el.dataset.id), d = el.dataset.d; if (!r) return;
     if (d === 'rechazado' && !(await ask('Rechazar solicitud', 'Quien la envió verá que fue rechazada.', 'Rechazar', true))) return;
     await safe(async () => { const txt = reqText(r); await DB.backend.decide(r, d); await audit('solicitud', `${{ aprobado: 'Aprobó', rechazado: 'Rechazó', cancelado: 'Canceló' }[d]} ${txt}`); }, { aprobado: 'Solicitud aprobada', rechazado: 'Solicitud rechazada', cancelado: 'Solicitud cancelada' }[d]); },
@@ -1723,6 +1819,7 @@ document.addEventListener('click', async e => {
   if (el.dataset.act !== 'reg') e.preventDefault();
   fn(el);
 });
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role="button"][data-act]')) { e.preventDefault(); e.target.click(); } });
 document.addEventListener('change', async e => {
   const el = e.target;
   if (el.dataset.photo) { const f = el.files[0]; el.value = ''; if (!f) return; return safe(async () => savePhoto(el.dataset.photo, await readPhoto(f)), 'Foto actualizada'); }
