@@ -24,6 +24,7 @@ a{color:var(--gold2)}button,input,select,textarea{font:inherit;color:inherit}
 .brand b{font-family:'Cinzel',serif;font-size:19px;font-weight:800;letter-spacing:.03em;white-space:nowrap}.brand b span{color:var(--gold)}
 .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(145deg,var(--vino2),#4a0d17);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(242,205,126,.35);flex:none}
 .logo svg{width:20px;height:20px;color:var(--gold2)}
+.ph{object-fit:cover;border-radius:50%;flex:none;border:1px solid var(--line2);background:var(--card2);display:block}
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--card2);border:1px solid var(--line2);display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--gold2);text-decoration:none;flex:none}
 .wrap{max-width:560px;margin:0 auto;padding:14px 16px 24px}
 .wrap.wide{max-width:900px}
@@ -548,7 +549,7 @@ if (typeof module !== 'undefined') module.exports = RULES;
 const CONFIG = {"APP_NAME":"Charrería Pro","MODE":"demo","SUPABASE_URL":"","SUPABASE_ANON_KEY":""};
 const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
 const CATEGORIAS = ['Libre','Juvenil'];
-const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites'];
+const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests'];
 const FN = k => RULES.F[k].name;
 
 /* ------------------------- ICONOS ------------------------- */
@@ -611,7 +612,7 @@ const DB = {
     return row;
   }
 };
-const LS_KEY = 'charreriapro_demo_v4', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v5', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -645,6 +646,14 @@ const Local = {
     if (!p) throw new Error('No hay ninguna cuenta con ese correo'); return { demoUserId: p.id };
   },
   async verifyPassword(email, pass){ const p = DB.all('profiles').find(x => norm(x.email) === norm(email)); if (!p || p.passHash !== demoHash(pass)) throw new Error('La contraseña actual no es correcta'); },
+  async decide(r, d){
+    const u = State.user; if (!r || r.status !== 'pendiente') throw new Error('Esta solicitud ya fue resuelta');
+    if (d === 'cancelado' ? r.createdBy !== u.id : !canDecide(u, r)) throw new Error('No tienes permiso para esta acción');
+    await DB.put('requests', { ...r, status: d, decidedBy: u.id, decidedByName: u.name, decidedAt: Date.now() });
+    if (d === 'aprobado' && r.type === 'roster') { const c = DB.get('charros', r.charroId); if (c) await DB.put('charros', { ...c, teamId: r.teamId }); }
+    if (d === 'aprobado' && r.type === 'afiliacion') { const t = DB.get('teams', r.teamId); if (t) await DB.put('teams', { ...t, lienzoId: r.lienzoId, lienzoStatus: 'aprobado' }); }
+  },
+  async rosterRemove(c){ await DB.put('charros', { ...c, teamId: null }); },
   async changePassword(pass, userId){ const p = DB.get('profiles', userId || this.sessionGet()); if (!p) throw new Error('Sesión no encontrada'); await DB.put('profiles', { ...p, passHash: demoHash(pass) }); this.sessionSet(p.id); return p; },
   async uploadVideo(file){ return URL.createObjectURL(file); },
   async reset(){ try { localStorage.removeItem(LS_KEY); localStorage.removeItem(SS_KEY); } catch(e){} DB.data = seed(); this.persist(); }
@@ -691,6 +700,13 @@ const Remote = {
     if (error) throw new Error(/rate limit/i.test(error.message) ? 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' : error.message);
     return {};
   },
+  async rpc(fn, args){
+    const { error } = await this.sb.rpc(fn, args);
+    if (error) throw new Error(/function .* does not exist|schema cache/i.test(error.message) ? 'Falta instalar la actualización de perfiles en la base de datos' : error.message);
+    await Promise.all(['requests','charros','teams'].map(async t => { const { data, error: e } = await this.sb.from(t).select('id,data').limit(20000); if (!e) DB.data[t] = data.map(r => r.data); }));
+  },
+  decide(r, d){ return this.rpc('decide_request', { rid: r.id, decision: d }); },
+  rosterRemove(c){ return this.rpc('roster_remove', { cid: c.id }); },
   async verifyPassword(email, pass){ const { error } = await this.sb.auth.signInWithPassword({ email, password: pass }); if (error) throw new Error('La contraseña actual no es correcta'); },
   async changePassword(pass){
     const { data, error } = await this.sb.auth.updateUser({ password: pass });
@@ -706,6 +722,7 @@ const Remote = {
 };
 async function createAccount(id, pl, extra){
   let status = 'pendiente', lienzoId = pl.lienzoId || null; const role = pl.role; let inv = null;
+  if (OPEN_ROLES.includes(role)) { status = 'aprobado'; lienzoId = null; }
   if (pl.invite) {
     inv = DB.get('invites', pl.invite);
     if (DB.backend.mode === 'demo' && (!inv || inv.used || inv.role !== role)) throw new Error('Código de invitación inválido o ya usado');
@@ -716,6 +733,12 @@ async function createAccount(id, pl, extra){
   await DB.put('profiles', prof);
   if (role === 'lienzo') await DB.put('lienzos', { id: lienzoId, name: pl.lienzoName, city: pl.city, state: pl.state, ownerId: id, status, createdAt: Date.now() });
   if (inv && DB.backend.mode === 'demo') await DB.put('invites', { ...inv, used: true, usedBy: id, usedAt: Date.now() });
+  if (role === 'charro') { const cid = 'h' + uid();
+    await DB.put('charros', { id: cid, name: pl.name, alias: pl.alias || '', state: pl.state, category: pl.category || 'Libre', photo: '', teamId: null, userId: id, createdAt: Date.now() });
+    if (pl.teamReq) await DB.put('requests', { id: 'r' + uid(), type: 'roster', charroId: cid, teamId: pl.teamReq, status: 'pendiente', createdBy: id, createdAt: Date.now() }); }
+  if (role === 'equipo') { const tid = 'q' + uid();
+    await DB.put('teams', { id: tid, name: pl.teamName, state: pl.state, assoc: pl.assoc || '', photo: '', captainId: id, captainName: pl.name, lienzoId: null, lienzoStatus: '', createdAt: Date.now() });
+    if (pl.lienzoAfil) await DB.put('requests', { id: 'r' + uid(), type: 'afiliacion', teamId: tid, lienzoId: pl.lienzoAfil, status: 'pendiente', createdBy: id, createdAt: Date.now() }); }
   await audit('registro', `${pl.name} se registró como ${roleName(role)}${pl.invite ? ' con invitación ' + pl.invite : ''}`, id, pl.name);
   return prof;
 }
@@ -808,11 +831,54 @@ function seed(){
   A.push({ id:'a2', actorId:'uadmin', actorName:'Súper Usuario', action:'oficial', detail:'Marcó como oficial: Torneo Nacional Charro Bicentenario', ts: Date.now()-2*864e5 });
   A.push({ id:'a3', actorId:'uherr', actorName:'Lienzo El Herradero', action:'registro', detail:'Lienzo El Herradero se registró como Lienzo', ts: Date.now()-2*864e5 });
   IV.push({ id:'JUEZ-7KQ2M9', code:'JUEZ-7KQ2M9', role:'juez', lienzoId:'lvilla', used:false, createdBy:'uadmin', createdAt: Date.now()-864e5 });
-  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV };
+  // Perfiles de equipos y charros (rosters oficiales)
+  const T = [], CH = [], RQ = [];
+  TEAMS.forEach(([name, state, ch], i) => { const id = 'q' + i, lz = i === 5 ? null : (i % 2 ? 'lstm' : 'lvilla');
+    T.push({ id, name, state, assoc: '', photo: '', captainId: i === 0 ? 'ucap' : i === 5 ? 'ucap2' : null, captainName: ch[0], lienzoId: lz, lienzoStatus: lz ? 'aprobado' : '', createdAt: Date.now() - 150*864e5 });
+    ch.forEach((n, k) => CH.push({ id: `h${i}x${k}`, name: n, alias: '', state, category: 'Libre', photo: '', teamId: id, userId: null, createdAt: Date.now() - 150*864e5 })); });
+  prof('ucap','Ernesto Villaseñor','capitan@demo.mx','equipo','aprobado',null);
+  prof('ucap2','Octavio Rentería','alazanes@demo.mx','equipo','aprobado',null);
+  prof('ucharro','Fausto Herrera','charro@demo.mx','charro','aprobado',null);
+  prof('udueno','Gabriel Montaño','dueno@demo.mx','dueno','aprobado',null);
+  CH.push({ id:'hfausto', name:'Fausto Herrera', alias:'El Güero', state:'Ciudad de México', category:'Libre', photo:'', teamId:null, userId:'ucharro', createdAt: Date.now()-3*864e5 });
+  RQ.push({ id:'rq1', type:'roster', charroId:'hfausto', teamId:'q0', status:'pendiente', createdBy:'ucharro', createdAt: Date.now()-864e5 });
+  RQ.push({ id:'rq2', type:'afiliacion', teamId:'q5', lienzoId:'lvilla', status:'pendiente', createdBy:'ucap2', createdAt: Date.now()-2*864e5 });
+  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ };
 }
 
 /* ------------------------- LÓGICA ------------------------- */
-const roleName = r => ({ superadmin:'Súper usuario', lienzo:'Lienzo', juez:'Juez' }[r] || r);
+const roleName = r => ({ superadmin:'Súper usuario', lienzo:'Lienzo', juez:'Juez', charro:'Charro', equipo:'Capitán de equipo', dueno:'Dueño de caballos' }[r] || r);
+const OPEN_ROLES = ['charro','equipo','dueno'];   // cuentas activas al registrarse; lo oficial lo da una solicitud aprobada
+const myCharro = u => u && DB.all('charros').find(c => c.userId === u.id);
+const myTeam = u => u && DB.all('teams').find(t => t.captainId === u.id);
+const rosterOf = tid => DB.all('charros').filter(c => c.teamId === tid).sort((a, b) => a.name.localeCompare(b.name));
+function canDecide(u, r){
+  if (!isApproved(u) || !r || r.status !== 'pendiente') return false;
+  if (isSuper(u)) return true;
+  if (r.type === 'afiliacion') return ownsLienzo(u, r.lienzoId);
+  const t = DB.get('teams', r.teamId); if (!t) return false;
+  return t.captainId === u.id || (t.lienzoStatus === 'aprobado' && (ownsLienzo(u, t.lienzoId) || isJudgeOf(u, t.lienzoId)));
+}
+const myRequests = u => DB.all('requests').filter(r => canDecide(u, r));
+const safeImg = s => /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s || '') || /^https:\/\/[^\s"'<>()]+$/i.test(s || '') ? s : '';
+const av = (src, name, px = 34) => safeImg(src) ? `<img class="ph" src="${esc(safeImg(src))}" alt="" style="width:${px}px;height:${px}px">` : `<div class="avatar" style="width:${px}px;height:${px}px;font-size:${Math.round(px * .36)}px">${esc(initials(name))}</div>`;
+const selState = (cur, name = 'state') => `<select class="in" name="${name}" required>${ESTADOS.map(x => `<option ${x === cur ? 'selected' : ''}>${x}</option>`).join('')}</select>`;
+function readPhoto(file){   // recorta al centro y reduce a 320 px para guardarla ligera
+  return new Promise((ok, ko) => {
+    if (!/^image\//.test(file.type)) return ko(new Error('El archivo no es una imagen'));
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const S = 320, w = img.naturalWidth, hh = img.naturalHeight, m = Math.min(w, hh), c = document.createElement('canvas'); c.width = c.height = S;
+      c.getContext('2d').drawImage(img, (w - m) / 2, (hh - m) / 2, m, m, 0, 0, S, S); URL.revokeObjectURL(url); ok(c.toDataURL('image/jpeg', .82)); };
+    img.onerror = () => { URL.revokeObjectURL(url); ko(new Error('No se pudo leer la imagen')); };
+    img.src = url;
+  });
+}
+async function savePhoto(key, src){
+  const [kind, id] = key.split(':'), table = { profile: 'profiles', charro: 'charros', team: 'teams', lienzo: 'lienzos' }[kind], row = table && DB.get(table, id);
+  if (!row) throw new Error('No se encontró el registro');
+  const n = await DB.put(table, { ...row, photo: src }); if (kind === 'profile') State.user = n;
+}
+const photoBox = (kind, id, src, name, px = 64) => `<div class="row" style="gap:12px">${av(src, name, px)}<div class="btns" style="margin:0"><label class="btn sm" style="cursor:pointer">${I.upload} Subir foto<input type="file" accept="image/*" data-photo="${kind}:${id}" hidden></label><button class="btn ghost sm" data-act="photoUrl" data-k="${kind}:${id}">Usar URL</button>${src ? `<button class="btn ghost sm" data-act="photoDel" data-k="${kind}:${id}">Quitar</button>` : ''}</div></div>`;
 const lienzo = id => DB.get('lienzos', id) || { name:'Lienzo', state:'', city:'' };
 const isApproved = u => u && u.status === 'aprobado';
 const isSuper = u => u && u.role === 'superadmin' && isApproved(u);
@@ -862,12 +928,12 @@ function render(){
   State.pendingRender = false; const u = State.user;
   $('#top').innerHTML = `<a class="brand" href="#inicio"><span class="logo">${I.horse}</span><b>Charrería <span>Pro</span></b></a>
     ${DB.backend.mode === 'demo' ? '<span class="chip blue">DEMO</span>' : ''}
-    <a class="avatar" href="#cuenta" aria-label="Cuenta">${u ? esc(initials(u.name)) : '<span style="width:18px;height:18px;display:block">' + I.user + '</span>'}</a>`;
+    <a class="avatar" href="#cuenta" aria-label="Cuenta" style="overflow:hidden">${u ? (safeImg(u.photo || (myCharro(u) || {}).photo) ? `<img class="ph" src="${esc(safeImg(u.photo || myCharro(u).photo))}" alt="" style="width:100%;height:100%;border:0">` : esc(initials(u.name))) : '<span style="width:18px;height:18px;display:block">' + I.user + '</span>'}</a>`;
   const liveN = publicEvents().filter(e => e.status === 'en_vivo').length, pend = isSuper(u) ? pendingCount() : 0;
   const tabs = [['inicio','Inicio',I.home],['vivo','En vivo',I.live,liveN],['historial','Historial',I.clock],['ranking','Ranking',I.trophy],['cuenta', u ? (isSuper(u) ? 'Admin' : 'Mi panel') : 'Entrar', isSuper(u) ? I.shield : I.user, 0, pend]];
-  const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta' }[State.route] || State.route;
+  const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta', solicitudes:'cuenta' }[State.route] || State.route;
   $('#nav').innerHTML = tabs.map(([k, l, ic, dot, badge]) => `<a href="#${k === 'cuenta' && isSuper(u) ? 'admin' : k}" class="${active === k ? 'on' : ''}">${ic}${dot ? '<span class="dot"></span>' : ''}${badge ? `<span class="badge-n" style="position:absolute;top:0;right:calc(50% - 22px)">${badge}</span>` : ''}<span>${l}</span></a>`).join('');
-  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja };
+  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes };
   $('#view').className = 'wrap' + (State.route === 'hoja' ? ' wide' : '');
   $('#view').innerHTML = State.recovery ? vNewPass() : (views[State.route] || vInicio)();
   fitSheet();
@@ -1059,18 +1125,25 @@ function vRanking(){
 function vCuenta(){
   const u = State.user; if (!u) return vAuth();
   const L = myLienzo(u) || (u.lienzoId ? lienzo(u.lienzoId) : null);
-  let h = `<div class="card"><div class="row"><div class="avatar" style="width:52px;height:52px;font-size:18px">${esc(initials(u.name))}</div>
+  let h = `<div class="card"><div class="row">${av(u.role === 'charro' && myCharro(u) ? myCharro(u).photo : u.photo, u.name, 52)}
     <div class="grow"><div style="font-weight:800;font-size:17px" class="ell">${esc(u.name)}</div><div class="small mut ell">${esc(u.email)}</div>
     <div class="row wrapf" style="gap:6px;margin-top:6px"><span class="chip gold">${roleName(u.role)}</span>${u.status === 'aprobado' ? `<span class="chip green">${I.check}Verificada</span>` : u.status === 'pendiente' ? '<span class="chip blue">En revisión</span>' : `<span class="chip red">${esc(u.status)}</span>`}</div></div></div>
     ${L && u.role !== 'superadmin' ? `<div class="sep"></div><div class="small mut">Lienzo</div><div style="font-weight:700">${esc(L.name)} ${verifiedMark(L)}</div><div class="small mut">${esc(L.city || '')}${L.city ? ', ' : ''}${esc(L.state || '')}</div>` : ''}</div>`;
   if (u.status === 'pendiente') h += `<div class="banner warn mt">${I.info}<span>Tu cuenta está en revisión. El administrador la verificará para que puedas ${u.role === 'juez' ? 'calificar' : 'publicar charreadas'}.</span></div>`;
   if (u.status === 'rechazado' || u.status === 'suspendido') h += `<div class="banner err mt">${I.info}<span>Tu cuenta está ${esc(u.status)}. Contacta al administrador.</span></div>`;
   if (isApproved(u)) {
-    h += `<div class="h2">Herramientas</div><div class="list">`;
-    if (u.role === 'superadmin') h += menuItem('#admin', I.shield, 'Panel de súper usuario', `${pendingCount()} pendientes por autorizar`);
-    if (u.role === 'lienzo' || u.role === 'superadmin') h += menuItem('#panel', I.horse, u.role === 'superadmin' ? 'Charreadas (todas)' : 'Mis charreadas', 'Crear, transmitir, subir video');
-    h += menuItem('#juez', I.gavel, 'Mesa del juez', 'Calificar por faena y entregar la hoja oficial') + `</div>`;
+    const staff = ['superadmin','lienzo','juez'].includes(u.role), nReq = myRequests(u).length; let tools = '';
+    if (u.role === 'superadmin') tools += menuItem('#admin', I.shield, 'Panel de súper usuario', `${pendingCount()} pendientes por autorizar`);
+    if (u.role === 'lienzo' || u.role === 'superadmin') tools += menuItem('#panel', I.horse, u.role === 'superadmin' ? 'Charreadas (todas)' : 'Mis charreadas', 'Crear, transmitir, subir video');
+    if (staff) tools += menuItem('#juez', I.gavel, 'Mesa del juez', 'Calificar por faena y entregar la hoja oficial');
+    if (staff || u.role === 'equipo') tools += menuItem('#solicitudes', I.check, 'Solicitudes', nReq ? `${nReq} por revisar` : 'Rosters de equipos y afiliaciones');
+    if (tools) h += `<div class="h2">Herramientas</div><div class="list">${tools}</div>`;
+    if (u.role === 'charro') h += charroSection(u);
+    if (u.role === 'equipo') h += teamSection(u);
+    if (u.role === 'dueno') h += `<div class="h2">Mis caballos</div><div class="card small mut">Muy pronto podrás registrar tus caballos, cambiar de dueño y ver su valuación estimada.</div>`;
+    if (u.role === 'lienzo' && L) h += `<div class="h2">Foto del lienzo</div><div class="card">${photoBox('lienzo', L.id, L.photo, L.name)}</div>`;
   }
+  if (u.role !== 'charro') h += `<div class="h2">Foto de perfil</div><div class="card">${photoBox('profile', u.id, u.photo, u.name)}</div>`;
   h += `<div class="h2">Seguridad</div>` + (State.changePass ? passForm(true) : `<button class="btn block" data-act="changepass">${I.key} Cambiar contraseña</button>`);
   h += `<button class="btn block mt2" data-act="logout">${I.logout} Cerrar sesión</button>`;
   return h + (DB.backend.mode === 'demo' ? demoBox() : '');
@@ -1078,8 +1151,54 @@ function vCuenta(){
 const menuItem = (href, ic, t, d) => `<a class="card evc row" style="display:flex" href="${href}"><span class="logo" style="width:40px;height:40px">${ic}</span><div class="grow"><div class="t">${t}</div><div class="meta">${d}</div></div><span class="marrow">${I.arrow}</span></a>`;
 function demoBox(){
   return `<div class="h2">Modo demostración</div><div class="card"><div class="small mut">Entra con una cuenta de prueba para ver cada rol. Abre la app en dos pestañas para ver las calificaciones llegar en vivo.</div>
-    <div class="btns mt"><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez</button></div>
+    <div class="btns mt"><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez</button><button class="btn sm" data-act="demo" data-e="capitan@demo.mx" data-p="demo123">Capitán</button><button class="btn sm" data-act="demo" data-e="charro@demo.mx" data-p="demo123">Charro</button><button class="btn sm" data-act="demo" data-e="dueno@demo.mx" data-p="demo123">Dueño</button></div>
     <button class="btn ghost sm block mt" data-act="reset">Restablecer datos de ejemplo</button></div>`;
+}
+function charroSection(u){
+  const C = myCharro(u); if (!C) return `<div class="h2">Mi perfil de charro</div><div class="card small mut">No encontramos tu perfil de charro. Contacta al administrador.</div>`;
+  const T = C.teamId && DB.get('teams', C.teamId), pend = DB.all('requests').find(r => r.type === 'roster' && r.charroId === C.id && r.status === 'pendiente');
+  const teams = DB.all('teams').filter(t => t.id !== C.teamId).sort((a, b) => a.name.localeCompare(b.name));
+  let h = `<div class="h2">Mi perfil de charro</div><div class="card">${photoBox('charro', C.id, C.photo, C.name)}
+    <form data-form="charroEdit" class="mt"><label class="f">Nombre</label><input class="in" name="name" value="${esc(C.name)}" required><label class="f">Apodo (opcional)</label><input class="in" name="alias" value="${esc(C.alias || '')}">
+    <div class="grid2"><div><label class="f">Estado</label>${selState(C.state)}</div><div><label class="f">Categoría</label><select class="in" name="category">${CATEGORIAS.map(x => `<option ${x === C.category ? 'selected' : ''}>${x}</option>`).join('')}</select></div></div>
+    <button class="btn block mt">Guardar perfil</button></form></div><div class="h2">Mi equipo</div><div class="card">`;
+  if (T) h += `<div class="row" style="gap:10px">${av(T.photo, T.name, 44)}<div class="grow"><div style="font-weight:800">${esc(T.name)}</div><div class="small mut">${esc(T.state || '')}${T.lienzoStatus === 'aprobado' ? ' · ' + esc(lienzo(T.lienzoId).name) : ''}</div></div><span class="chip green">${I.check}Oficial</span></div><button class="btn ghost sm block mt" data-act="rosterRm" data-id="${C.id}">Salir del equipo</button>`;
+  else if (!pend) h += `<div class="small mut">Aún no eres parte oficial de un equipo. Pide unirte y su capitán, el lienzo o un juez aprobará tu solicitud.</div>`;
+  if (pend) h += `<div class="banner warn mt">${I.clock}<span>Tu solicitud para unirte a <b>${esc((DB.get('teams', pend.teamId) || {}).name || 'el equipo')}</b> está en revisión.</span></div><button class="btn ghost sm block mt" data-act="decideReq" data-id="${pend.id}" data-d="cancelado">Cancelar solicitud</button>`;
+  else if (teams.length) h += `<form data-form="joinTeam" class="mt"><label class="f">${T ? 'Cambiarme a otro equipo' : 'Pedir unirme a un equipo'}</label><select class="in" name="teamId" required><option value="">— Elegir equipo —</option>${teams.map(t => `<option value="${t.id}">${esc(t.name)} · ${esc(t.state || '')}</option>`).join('')}</select><button class="btn block mt">Enviar solicitud</button></form>`;
+  return h + '</div>';
+}
+function teamSection(u){
+  const T = myTeam(u); if (!T) return `<div class="h2">Mi equipo</div><div class="card small mut">No encontramos tu equipo. Contacta al administrador.</div>`;
+  const R = DB.all('requests'), afil = R.find(r => r.type === 'afiliacion' && r.teamId === T.id && r.status === 'pendiente'), roster = rosterOf(T.id);
+  const nPend = R.filter(r => r.type === 'roster' && r.teamId === T.id && r.status === 'pendiente').length, Ls = DB.all('lienzos').filter(l => l.status === 'aprobado' && l.id !== T.lienzoId), L = T.lienzoStatus === 'aprobado' && lienzo(T.lienzoId);
+  let h = `<div class="h2">Mi equipo</div><div class="card">${photoBox('team', T.id, T.photo, T.name)}
+    <form data-form="teamEdit" class="mt"><label class="f">Nombre del equipo</label><input class="in" name="name" value="${esc(T.name)}" required><label class="f">Asociación (opcional)</label><input class="in" name="assoc" value="${esc(T.assoc || '')}"><label class="f">Estado</label>${selState(T.state)}<button class="btn block mt">Guardar equipo</button></form></div>`;
+  h += `<div class="h2">Lienzo</div><div class="card">` + (L ? `<div style="font-weight:800">${esc(L.name)} ${verifiedMark(L)}</div><div class="small mut">Afiliación aprobada. El lienzo y sus jueces también pueden aprobar charros para tu roster.</div>` : `<div class="small mut">Tu equipo aún no está afiliado a un lienzo.</div>`);
+  if (afil) h += `<div class="banner warn mt">${I.clock}<span>Solicitud de afiliación a <b>${esc(lienzo(afil.lienzoId).name)}</b> en revisión.</span></div><button class="btn ghost sm block mt" data-act="decideReq" data-id="${afil.id}" data-d="cancelado">Cancelar solicitud</button>`;
+  else if (Ls.length) h += `<form data-form="afiliar" class="mt"><label class="f">${L ? 'Cambiar de lienzo' : 'Pedir afiliación a un lienzo'}</label><select class="in" name="lienzoId" required><option value="">— Elegir lienzo —</option>${Ls.map(l => `<option value="${l.id}">${esc(l.name)} · ${esc(l.state)}</option>`).join('')}</select><button class="btn block mt">Enviar solicitud</button></form>`;
+  h += `</div><div class="h2">Roster oficial<a href="#solicitudes">${nPend ? nPend + ' por revisar' : 'Solicitudes'}</a></div><div class="card pad0">${roster.length ? roster.map(c => `<div class="rank">${av(c.photo, c.name, 36)}<div class="grow"><div style="font-weight:700" class="ell">${esc(c.name)}${c.alias ? ` <span class="small mut">“${esc(c.alias)}”</span>` : ''}</div><div class="small mut">${esc(c.state || '')} · ${esc(c.category || 'Libre')}</div></div><button class="btn ghost sm" data-act="rosterRm" data-id="${c.id}" aria-label="Quitar del equipo">${I.x}</button></div>`).join('') : `<div class="empty small">Aún no hay charros en el roster. Los charros se registran en la app y piden unirse a tu equipo.</div>`}</div>`;
+  return h;
+}
+function reqText(r){ const c = DB.get('charros', r.charroId), t = DB.get('teams', r.teamId); return r.type === 'roster' ? `la solicitud de ${c ? c.name : 'un charro'} para unirse a ${t ? t.name : 'un equipo'}` : `la afiliación de ${t ? t.name : 'un equipo'} a ${lienzo(r.lienzoId).name}`; }
+const reqSt = s => ({ pendiente: '<span class="chip blue">Pendiente</span>', aprobado: `<span class="chip green">${I.check}Aprobada</span>`, rechazado: '<span class="chip red">Rechazada</span>', cancelado: '<span class="chip">Cancelada</span>' }[s] || '');
+function reqCard(r, canAct){
+  const ro = r.type === 'roster', c = DB.get('charros', r.charroId), t = DB.get('teams', r.teamId), who = ro ? c : t;
+  const what = ro ? `quiere unirse a <b>${esc(t ? t.name : 'un equipo')}</b>` : `pide afiliarse a <b>${esc(lienzo(r.lienzoId).name)}</b>`;
+  const sub = (ro ? [c && c.state, c && c.category, c && c.teamId && c.teamId !== r.teamId ? 'hoy en ' + ((DB.get('teams', c.teamId) || {}).name || 'otro equipo') : ''] : [t && t.state, t && t.captainName ? 'Capitán: ' + t.captainName : '']).filter(Boolean).join(' · ');
+  return `<div class="card"><div class="row" style="gap:10px">${av(who && who.photo, who ? who.name : '?', 44)}<div class="grow"><div style="font-weight:800">${esc(who ? who.name : 'Registro eliminado')}</div><div class="small">${what}</div>${sub ? `<div class="small mut">${esc(sub)}</div>` : ''}</div>${reqSt(r.status)}</div>
+    <div class="small mut2" style="margin-top:6px">${ro ? 'Roster' : 'Afiliación'} · ${fdt(r.createdAt)}${r.decidedByName ? ' · resolvió ' + esc(r.decidedByName) : ''}</div>
+    ${canAct ? `<div class="btns mt"><button class="btn pri sm" data-act="decideReq" data-id="${r.id}" data-d="aprobado">${I.check} Aprobar</button><button class="btn sm" data-act="decideReq" data-id="${r.id}" data-d="rechazado">${I.x} Rechazar</button></div>`
+      : r.status === 'pendiente' && State.user && r.createdBy === State.user.id ? `<button class="btn ghost sm mt" data-act="decideReq" data-id="${r.id}" data-d="cancelado">Cancelar solicitud</button>` : ''}</div>`;
+}
+function vSolicitudes(){
+  const u = State.user; if (!u) return needLogin();
+  const R = DB.all('requests').slice().sort((a, b) => b.createdAt - a.createdAt), dec = R.filter(r => canDecide(u, r)), mine = R.filter(r => r.createdBy === u.id), done = R.filter(r => r.status !== 'pendiente' && r.decidedBy === u.id && r.createdBy !== u.id).slice(0, 20);
+  let h = `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="h1">Solicitudes</div><div class="sub" style="margin-top:4px">Aprueba quién forma parte oficial de cada equipo y qué equipos se afilian a un lienzo.</div>`;
+  h += `<div class="h2">Por revisar</div>` + (dec.length ? `<div class="list">${dec.map(r => reqCard(r, true)).join('')}</div>` : `<div class="card small mut">No hay solicitudes pendientes. ✓</div>`);
+  if (mine.length) h += `<div class="h2">Enviadas por mí</div><div class="list">${mine.map(r => reqCard(r, false)).join('')}</div>`;
+  if (done.length) h += `<div class="h2">Resueltas por mí</div><div class="list">${done.map(r => reqCard(r, false)).join('')}</div>`;
+  return h;
 }
 const passForm = withCurrent => `<form class="card" data-form="newpass">${withCurrent ? '<label class="f" style="margin-top:0">Contraseña actual</label><input class="in" name="current" type="password" autocomplete="current-password" required>' : ''}
   <label class="f"${withCurrent ? '' : ' style="margin-top:0"'}>Contraseña nueva</label><input class="in" name="pass" type="password" minlength="8" autocomplete="new-password" required>
@@ -1093,20 +1212,33 @@ function vNewPass(){
 function vAuth(){
   const m = State.authMode, lienzosOk = DB.all('lienzos').filter(l => l.status === 'aprobado');
   let h = `<div class="center" style="margin:10px 0 18px"><span class="logo" style="width:56px;height:56px;margin:0 auto;border-radius:16px"><span style="width:30px;height:30px;display:block;color:var(--gold2)">${I.horse}</span></span>
-    <div class="h1" style="margin-top:12px">${m === 'register' ? 'Crear cuenta' : 'Bienvenido'}</div><div class="sub" style="margin-top:4px">${m !== 'register' ? 'Entra para administrar tu lienzo o calificar.' : 'Cada cuenta es revisada y autorizada por el administrador.'}</div></div>
+    <div class="h1" style="margin-top:12px">${m === 'register' ? 'Crear cuenta' : 'Bienvenido'}</div><div class="sub" style="margin-top:4px">${m !== 'register' ? 'Entra para administrar tu lienzo, tu equipo o calificar.' : 'Lienzos y jueces son autorizados por el administrador; charros, equipos y dueños quedan activos al instante.'}</div></div>
     <div class="seg"><button class="${m === 'login' ? 'on' : ''}" data-act="authmode" data-k="login">Entrar</button><button class="${m === 'register' ? 'on' : ''}" data-act="authmode" data-k="register">Registrarme</button></div>`;
   if (m === 'login') h += `<form class="card mt" data-form="login"><label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required><label class="f">Contraseña</label><input class="in" name="pass" type="password" autocomplete="current-password" required><button class="btn pri block mt2">Entrar</button><button type="button" class="btn ghost sm block mt" data-act="authmode" data-k="forgot">¿Olvidaste tu contraseña?</button></form>
     <div class="small mut center mt">¿Solo quieres ver calificaciones? No necesitas cuenta.</div>`;
   else if (m === 'forgot') h += `<form class="card mt" data-form="forgot"><div style="font-weight:800">Recuperar contraseña</div><div class="small mut" style="margin-top:4px">Escribe el correo de tu cuenta. Te enviaremos un enlace para crear una contraseña nueva.</div>
     <label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required><button class="btn pri block mt2">Enviarme el enlace</button><button type="button" class="btn ghost sm block mt" data-act="authmode" data-k="login">Volver a entrar</button></form>`;
-  else { const r = State.regRole;
-    h += `<form class="card mt" data-form="register"><label class="f">Tipo de cuenta</label><div class="seg"><button type="button" class="${r === 'lienzo' ? 'on' : ''}" data-act="regrole" data-k="lienzo">Lienzo charro</button><button type="button" class="${r === 'juez' ? 'on' : ''}" data-act="regrole" data-k="juez">Juez</button></div>
-      <label class="f">${r === 'lienzo' ? 'Nombre del responsable' : 'Nombre completo'}</label><input class="in" name="name" required><label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required>
+  else { const r = State.regRole, teamsAll = DB.all('teams').slice().sort((a, b) => a.name.localeCompare(b.name));
+    const ROLES = [['lienzo','Lienzo charro'],['juez','Juez'],['charro','Charro'],['equipo','Equipo'],['dueno','Dueño de caballos']];
+    const help = { lienzo: 'El administrador revisa y autoriza cada lienzo.', juez: 'El administrador autoriza a cada juez para su lienzo.',
+      charro: 'Tu cuenta queda activa al instante. Para ser parte oficial de un equipo, su capitán, el lienzo o un juez aprueba tu solicitud.',
+      equipo: 'Registras tu equipo como capitán. El lienzo al que te afilies aprueba la afiliación, y tú apruebas a los charros de tu roster.',
+      dueno: 'Tu cuenta queda activa al instante. Pronto podrás registrar tus caballos.' }[r];
+    const extra = {
+      lienzo: `<label class="f">Nombre del lienzo</label><input class="in" name="lienzoName" required><div class="row" style="gap:8px"><div class="grow"><label class="f">Municipio</label><input class="in" name="city" required></div><div class="grow"><label class="f">Estado</label>${selState('')}</div></div>`,
+      juez: `<label class="f">Lienzo donde calificas</label><select class="in" name="lienzoId" required>${lienzosOk.map(l => `<option value="${l.id}">${esc(l.name)} · ${esc(l.state)}</option>`).join('')}</select>`,
+      charro: `<label class="f">Apodo (opcional)</label><input class="in" name="alias"><div class="grid2"><div><label class="f">Estado</label>${selState('')}</div><div><label class="f">Categoría</label><select class="in" name="category">${CATEGORIAS.map(x => `<option>${x}</option>`).join('')}</select></div></div>
+        <label class="f">Equipo al que quieres unirte (opcional)</label><select class="in" name="teamReq"><option value="">— Por ahora ninguno —</option>${teamsAll.map(t => `<option value="${t.id}">${esc(t.name)} · ${esc(t.state || '')}</option>`).join('')}</select>`,
+      equipo: `<label class="f">Nombre del equipo</label><input class="in" name="teamName" required><label class="f">Asociación (opcional)</label><input class="in" name="assoc"><label class="f">Estado</label>${selState('')}
+        <label class="f">Lienzo al que te afilias (opcional)</label><select class="in" name="lienzoAfil"><option value="">— Después —</option>${lienzosOk.map(l => `<option value="${l.id}">${esc(l.name)} · ${esc(l.state)}</option>`).join('')}</select>`,
+      dueno: `<label class="f">Estado</label>${selState('')}` }[r];
+    h += `<form class="card mt" data-form="register"><label class="f">Tipo de cuenta</label><div class="chips">${ROLES.map(([k, l]) => `<button type="button" class="tog ${r === k ? 'on' : ''}" data-act="regrole" data-k="${k}">${l}</button>`).join('')}</div>
+      <div class="small mut" style="margin-top:8px">${help}</div>
+      <label class="f">${{ lienzo: 'Nombre del responsable', equipo: 'Nombre del capitán' }[r] || 'Nombre completo'}</label><input class="in" name="name" required><label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required>
       <label class="f">Teléfono / WhatsApp</label><input class="in" name="phone" type="tel" autocomplete="tel"><label class="f">Contraseña</label><input class="in" name="pass" type="password" minlength="6" autocomplete="new-password" required>
-      ${r === 'lienzo' ? `<label class="f">Nombre del lienzo</label><input class="in" name="lienzoName" required><div class="row" style="gap:8px"><div class="grow"><label class="f">Municipio</label><input class="in" name="city" required></div><div class="grow"><label class="f">Estado</label><select class="in" name="state" required>${ESTADOS.map(s => `<option>${s}</option>`).join('')}</select></div></div>`
-        : `<label class="f">Lienzo donde calificas</label><select class="in" name="lienzoId" required>${lienzosOk.map(l => `<option value="${l.id}">${esc(l.name)} · ${esc(l.state)}</option>`).join('')}</select>`}
-      <label class="f">Código de invitación (opcional)</label><input class="in" name="invite" placeholder="Ej. JUEZ-AB12CD" style="text-transform:uppercase">
-      <div class="small mut" style="margin-top:6px">Con un código del administrador tu cuenta queda aprobada al instante.</div><button class="btn pri block mt2">Crear cuenta</button></form>`; }
+      ${extra}
+      ${OPEN_ROLES.includes(r) ? '' : `<label class="f">Código de invitación (opcional)</label><input class="in" name="invite" placeholder="Ej. JUEZ-AB12CD" style="text-transform:uppercase"><div class="small mut" style="margin-top:6px">Con un código del administrador tu cuenta queda aprobada al instante.</div>`}
+      <button class="btn pri block mt2">Crear cuenta</button></form>`; }
   return h + (DB.backend.mode === 'demo' ? demoBox() : '');
 }
 
@@ -1429,7 +1561,7 @@ function vHoja(){
 }
 
 /* ---------- SÚPER USUARIO ---------- */
-function pendingCount(){ return DB.all('profiles').filter(p => p.status === 'pendiente').length + DB.all('events').filter(e => e.requestOfficial && !e.official && e.status !== 'borrador').length; }
+function pendingCount(){ return DB.all('profiles').filter(p => p.status === 'pendiente').length + DB.all('requests').filter(r => r.status === 'pendiente').length + DB.all('events').filter(e => e.requestOfficial && !e.official && e.status !== 'borrador').length; }
 const statusLabel = s => ({ borrador:'Borrador', programado:'Programada', en_vivo:'En vivo', finalizado:'Finalizada' }[s] || s);
 const stChip = s => s === 'aprobado' ? `<span class="chip green">${I.check}Verificado</span>` : s === 'pendiente' ? '<span class="chip blue">Pendiente</span>' : `<span class="chip red">${esc(s)}</span>`;
 function vAdmin(){
@@ -1438,8 +1570,9 @@ function vAdmin(){
   const P = DB.all('profiles'), Ls = DB.all('lienzos'), Es = DB.all('events'), pend = P.filter(p => p.status === 'pendiente'), offReq = Es.filter(e => e.requestOfficial && !e.official && e.status !== 'borrador'), t = State.adminTab;
   let h = `<div class="row between"><div><div class="h1">Súper usuario</div><div class="sub" style="margin-top:3px">Control y credibilidad de la plataforma</div></div><a class="btn sm" href="#cuenta">${I.key} Mi cuenta</a></div>
     <div class="kpis mt"><div class="kpi"><b>${Ls.filter(l => l.status === 'aprobado').length}</b><span>Lienzos verificados</span></div><div class="kpi"><b>${P.filter(p => p.role === 'juez' && p.status === 'aprobado').length}</b><span>Jueces activos</span></div><div class="kpi"><b>${DB.all('sheets').filter(s => s.entregada).length}</b><span>Hojas entregadas</span></div></div>
-    <div class="scroller mt">${[['solicitudes','Solicitudes',pend.length + offReq.length],['lienzos','Lienzos'],['usuarios','Usuarios'],['eventos','Charreadas'],['invitaciones','Invitaciones'],['bitacora','Bitácora']].map(([k, l, n]) => `<button class="tog ${t === k ? 'on' : ''}" data-act="admintab" data-k="${k}">${l}${n ? ` <span class="badge-n">${n}</span>` : ''}</button>`).join('')}</div>`;
-  if (t === 'solicitudes') {
+    <div class="scroller mt">${[['solicitudes','Solicitudes',pend.length + offReq.length + DB.all('requests').filter(r => r.status === 'pendiente').length],['lienzos','Lienzos'],['usuarios','Usuarios'],['eventos','Charreadas'],['invitaciones','Invitaciones'],['bitacora','Bitácora']].map(([k, l, n]) => `<button class="tog ${t === k ? 'on' : ''}" data-act="admintab" data-k="${k}">${l}${n ? ` <span class="badge-n">${n}</span>` : ''}</button>`).join('')}</div>`;
+  if (t === 'solicitudes') { const nr = DB.all('requests').filter(r => r.status === 'pendiente').length;
+    h += `<div class="h2">Rosters y afiliaciones</div><div class="list">${menuItem('#solicitudes', I.check, 'Solicitudes de equipos', nr ? `${nr} pendientes` : 'Sin pendientes')}</div>`;
     h += `<div class="h2">Cuentas por autorizar</div>` + (pend.length ? `<div class="list">${pend.map(p => { const L = p.role === 'lienzo' ? DB.get('lienzos', p.lienzoId) : lienzo(p.lienzoId); return `<div class="card"><div class="row"><div class="avatar">${esc(initials(p.name))}</div><div class="grow"><div style="font-weight:800">${esc(p.name)}</div><div class="small mut">${roleName(p.role)} · ${esc(p.email)}${p.phone ? ' · ' + esc(p.phone) : ''}</div></div></div>
       <div class="small" style="margin-top:8px">${p.role === 'lienzo' ? `Lienzo: <b>${esc(L && L.name)}</b> · ${esc(L && L.city)}, ${esc(L && L.state)}` : `Juez en: <b>${esc(L.name)}</b>`}</div><div class="small mut2" style="margin-top:2px">Solicitado ${fdt(p.createdAt)}</div>
       <div class="btns mt"><button class="btn pri sm" data-act="approve" data-id="${p.id}">${I.check} Autorizar</button><button class="btn sm" data-act="reject" data-id="${p.id}">${I.x} Rechazar</button></div></div>`; }).join('')}</div>` : `<div class="card small mut">No hay cuentas pendientes. ✓</div>`);
@@ -1466,9 +1599,9 @@ function vAdmin(){
 function toast(msg, type = ''){ const box = $('#toasts'); while (box.children.length > 1) box.firstChild.remove(); const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg; box.appendChild(t); setTimeout(() => t.remove(), 3200); }
 function ask(title, text, okLabel = 'Confirmar', danger = false, withInput = false){
   return new Promise(res => {
-    $('#modal').innerHTML = `<div class="modal"><div class="box"><div style="font-weight:800;font-size:17px">${esc(title)}</div><div class="sub" style="margin-top:6px">${esc(text)}</div>${withInput ? '<input class="in mt" id="askIn" placeholder="Motivo">' : ''}<div class="btns mt2"><button class="btn" id="askNo">Cancelar</button><button class="btn ${danger ? 'vino' : 'pri'}" id="askOk">${esc(okLabel)}</button></div></div></div>`;
+    $('#modal').innerHTML = `<div class="modal"><div class="box"><div style="font-weight:800;font-size:17px">${esc(title)}</div><div class="sub" style="margin-top:6px">${esc(text)}</div>${withInput ? `<input class="in mt" id="askIn" placeholder="${esc(typeof withInput === 'string' ? withInput : 'Motivo')}">` : ''}<div class="btns mt2"><button class="btn" id="askNo">Cancelar</button><button class="btn ${danger ? 'vino' : 'pri'}" id="askOk">${esc(okLabel)}</button></div></div></div>`;
     const close = v => { $('#modal').innerHTML = ''; res(v); };
-    $('#askNo').onclick = () => close(false); $('#askOk').onclick = () => close(withInput ? ($('#askIn').value.trim() || 'Sin motivo') : true);
+    $('#askNo').onclick = () => close(false); $('#askOk').onclick = () => close(withInput ? (typeof withInput === 'string' ? $('#askIn').value.trim() : ($('#askIn').value.trim() || 'Sin motivo')) : true);
     $('#modal .modal').onclick = e => { if (e.target.classList.contains('modal')) close(false); };
   });
 }
@@ -1503,7 +1636,17 @@ const ACT = {
   reg(){ State.authMode = 'register'; State.regRole = 'lienzo'; },
   evtab(el){ State.homeTab = el.dataset.k; render(); }, ranktab(el){ State.rankTab = el.dataset.k; render(); },
   rankOficial(){ State.rankOficial = !State.rankOficial; render(); }, histOficial(){ State.histOficial = !State.histOficial; render(); },
-  authmode(el){ State.authMode = el.dataset.k; render(); }, changepass(){ State.changePass = !State.changePass; render(); }, cancelrecovery(){ State.recovery = false; State.recoveryUser = null; go('cuenta'); }, regrole(el){ State.regRole = el.dataset.k; render(); }, admintab(el){ State.adminTab = el.dataset.k; render(); },
+  authmode(el){ State.authMode = el.dataset.k; render(); },
+  async decideReq(el){ const r = DB.get('requests', el.dataset.id), d = el.dataset.d; if (!r) return;
+    if (d === 'rechazado' && !(await ask('Rechazar solicitud', 'Quien la envió verá que fue rechazada.', 'Rechazar', true))) return;
+    await safe(async () => { const txt = reqText(r); await DB.backend.decide(r, d); await audit('solicitud', `${{ aprobado: 'Aprobó', rechazado: 'Rechazó', cancelado: 'Canceló' }[d]} ${txt}`); }, { aprobado: 'Solicitud aprobada', rechazado: 'Solicitud rechazada', cancelado: 'Solicitud cancelada' }[d]); },
+  async rosterRm(el){ const c = DB.get('charros', el.dataset.id); if (!c) return; const self = c.userId === State.user.id, t = DB.get('teams', c.teamId);
+    if (!(await ask(self ? 'Salir del equipo' : 'Quitar del roster', self ? `Dejarás de ser parte oficial de ${t ? t.name : 'tu equipo'}.` : `${c.name} dejará de ser parte oficial de ${t ? t.name : 'el equipo'}.`, self ? 'Salir' : 'Quitar', true))) return;
+    await safe(async () => { await DB.backend.rosterRemove(c); await audit('roster', self ? `${c.name} salió de ${t ? t.name : 'su equipo'}` : `Quitó a ${c.name} del roster de ${t ? t.name : 'un equipo'}`); }, self ? 'Saliste del equipo' : 'Charro quitado del roster'); },
+  async photoUrl(el){ const v = await ask('Foto desde internet', 'Pega la dirección de la imagen. Debe empezar con https://', 'Usar foto', false, 'https://…'); if (!v) return;
+    if (!safeImg(v) || !/^https:/i.test(v)) return toast('La dirección debe empezar con https:// y no llevar espacios', 'err');
+    await safe(() => savePhoto(el.dataset.k, v), 'Foto actualizada'); },
+  async photoDel(el){ await safe(() => savePhoto(el.dataset.k, ''), 'Foto quitada'); }, changepass(){ State.changePass = !State.changePass; render(); }, cancelrecovery(){ State.recovery = false; State.recoveryUser = null; go('cuenta'); }, regrole(el){ State.regRole = el.dataset.k; render(); }, admintab(el){ State.adminTab = el.dataset.k; render(); },
   fit(){ State.fit = !State.fit; render(); },
   print(){ try { window.print(); } catch (e) { toast('Tu navegador no permite imprimir desde aquí. Ábrela en el sitio publicado.', 'err'); } },
   async demo(el){ await safe(async () => { State.user = await DB.backend.login(el.dataset.e, el.dataset.p); State.j = null; go(isSuper(State.user) ? 'admin' : 'cuenta'); }, 'Sesión iniciada'); },
@@ -1582,6 +1725,7 @@ document.addEventListener('click', async e => {
 });
 document.addEventListener('change', async e => {
   const el = e.target;
+  if (el.dataset.photo) { const f = el.files[0]; el.value = ''; if (!f) return; return safe(async () => savePhoto(el.dataset.photo, await readPhoto(f)), 'Foto actualizada'); }
   if (el.dataset.jp && el.value === '__nuevo') return judgeAddCharro(el.dataset.jp, el.dataset.team);
   if (el.dataset.jp) { let v = el.value; if (el.dataset.num) v = +v; if (el.type === 'number') v = el.value; setP(State.j.d, el.dataset.jp, v);
     if (el.dataset.jp.endsWith('.tipo')) { const i = el.dataset.jp.split('.')[1]; Object.assign(State.j.d.intentos[i], { res: '', fl: [], rm: [] }); }
@@ -1601,6 +1745,12 @@ document.addEventListener('submit', async e => {
   const f = e.target; if (!f.dataset.form) return; e.preventDefault();
   const d = Object.fromEntries(new FormData(f).entries()), k = f.dataset.form;
   if (k === 'login') return safe(async () => { State.user = await DB.backend.login(d.email.trim(), d.pass); State.j = null; go(isSuper(State.user) ? 'admin' : 'cuenta'); }, 'Bienvenido');
+  if (k === 'charroEdit') { const C = myCharro(State.user); if (!C) return; return safe(() => DB.put('charros', { ...C, name: d.name.trim(), alias: (d.alias || '').trim(), state: d.state, category: d.category }), 'Perfil guardado'); }
+  if (k === 'teamEdit') { const T = myTeam(State.user); if (!T) return; return safe(() => DB.put('teams', { ...T, name: d.name.trim(), assoc: (d.assoc || '').trim(), state: d.state }), 'Equipo guardado'); }
+  if (k === 'joinTeam') { const C = myCharro(State.user), t = DB.get('teams', d.teamId); if (!C || !t) return toast('Elige un equipo', 'err');
+    return safe(async () => { await DB.put('requests', { id: 'r' + uid(), type: 'roster', charroId: C.id, teamId: t.id, status: 'pendiente', createdBy: State.user.id, createdAt: Date.now() }); await audit('solicitud', `${C.name} pidió unirse a ${t.name}`); }, 'Solicitud enviada'); }
+  if (k === 'afiliar') { const T = myTeam(State.user), L = DB.get('lienzos', d.lienzoId); if (!T || !L) return toast('Elige un lienzo', 'err');
+    return safe(async () => { await DB.put('requests', { id: 'r' + uid(), type: 'afiliacion', teamId: T.id, lienzoId: L.id, status: 'pendiente', createdBy: State.user.id, createdAt: Date.now() }); await audit('solicitud', `${T.name} pidió afiliarse a ${L.name}`); }, 'Solicitud enviada'); }
   if (k === 'forgot') return safe(async () => { const r = await DB.backend.requestReset(d.email.trim());
     if (r.demoUserId) { State.recovery = true; State.recoveryUser = r.demoUserId; toast('Demo: así se ve la pantalla del enlace del correo', 'ok'); return; }
     State.authMode = 'login'; toast('Si el correo está registrado, te llegará un enlace en unos minutos. Revisa también tu correo no deseado.', 'ok'); });
@@ -1610,7 +1760,9 @@ document.addEventListener('submit', async e => {
       State.recovery = false; State.recoveryUser = null; State.changePass = false; State.authMode = 'login';
       if (p) { State.user = p; await audit('contrasena', `${p.name} cambió su contraseña`); }
       if (wasRecovery) go(p && isSuper(p) ? 'admin' : 'cuenta'); }, 'Contraseña actualizada'); }
-  if (k === 'register') { const payload = { role: State.regRole, name: d.name.trim(), email: d.email.trim().toLowerCase(), phone: d.phone || '', invite: (d.invite || '').trim().toUpperCase() || null, lienzoName: d.lienzoName, city: d.city, state: d.state, lienzoId: d.lienzoId };
+  if (k === 'register') { const payload = { role: State.regRole, name: d.name.trim(), email: d.email.trim().toLowerCase(), phone: d.phone || '', invite: (d.invite || '').trim().toUpperCase() || null, lienzoName: d.lienzoName, city: d.city, state: d.state, lienzoId: d.lienzoId,
+      alias: (d.alias || '').trim(), category: d.category, teamReq: d.teamReq || null, teamName: (d.teamName || '').trim(), assoc: (d.assoc || '').trim(), lienzoAfil: d.lienzoAfil || null };
+    if (OPEN_ROLES.includes(payload.role)) payload.invite = null;
     return safe(async () => { const r = await DB.backend.register(payload, d.pass); if (r.needsConfirm) { toast('Revisa tu correo para confirmar la cuenta y luego entra.', 'ok'); State.authMode = 'login'; return; } State.user = r.profile; go('cuenta'); }); }
   if (k === 'evData') { const ev = curEv(); const patch = { title: d.title.trim(), date: d.date, category: d.category }; if (d.mode && d.mode !== (ev.mode || 'equipos')) { patch.mode = d.mode; patch.suertes = (d.mode === 'completo' ? RULES.ORDER_CC : RULES.ORDER_EQ).slice(); } return safe(() => updEv(patch), 'Datos guardados'); }
   if (k === 'addTeam') { const ev = curEv(); const id = 't' + uid();
