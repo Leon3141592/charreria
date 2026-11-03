@@ -51,6 +51,22 @@ a{color:var(--gold2)}button,input,select,textarea{font:inherit;color:inherit}
 .tc .bd span{font-size:9px;font-weight:800;letter-spacing:.04em;padding:2px 7px;border-radius:999px;border:1px solid rgba(242,205,126,.45);color:var(--gold2);background:rgba(242,205,126,.07)}
 .tc .ft{display:flex;justify-content:space-between;font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut2);padding:6px 10px 7px}
 @media (prefers-reduced-motion: reduce){.tc{transition:none}.tc .live{animation:none}}
+.upg-badge{display:inline-flex;align-items:center;gap:6px;font-family:'Cinzel',serif;font-weight:800;letter-spacing:.12em;font-size:12px;padding:4px 12px;border-radius:999px;background:linear-gradient(135deg,var(--gold2),var(--gold));color:#1c1510}
+.upg-badge svg{width:14px;height:14px;flex:none}
+.upg-li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;font-size:14px}.upg-li svg{width:18px;height:18px;flex:none;color:var(--gold2);margin-top:2px}
+.lock{position:relative;filter:blur(3px);opacity:.5;pointer-events:none;user-select:none}
+/* Carnet: proporción de credencial (85.6 × 54 mm) */
+.carnet{position:relative;width:min(100%,520px);min-height:0;margin:0 auto;border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#1d140e,#120c09 60%,#24110f);border:1.5px solid var(--gold);box-shadow:0 18px 40px rgba(0,0,0,.5);color:var(--text);display:flex;flex-direction:column}
+.carnet .ch{display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(90deg,var(--vino),var(--vino2));border-bottom:1px solid var(--gold)}
+.carnet .ch b{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.06em;color:#fff}.carnet .ch span{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#f3d9a6;margin-left:auto;text-align:right}
+.carnet .cb{flex:1;display:flex;gap:12px;padding:10px 12px;min-height:0}
+@media (min-width:560px){.carnet{aspect-ratio:85.6/54}}
+.carnet .cp{flex:0 0 30%;min-height:150px;border-radius:10px;overflow:hidden;background:#24190f;border:1px solid var(--line2);display:grid;place-items:center}.carnet .cp img{width:100%;height:100%;object-fit:cover}
+.carnet .cf{flex:1;min-width:0;display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;align-content:start;font-size:10px}
+.carnet .cf div span{display:block;font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}.carnet .cf div b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.carnet .cf .w{grid-column:1/-1}.carnet .cf .nm b{font-family:'Cinzel',serif;font-size:16px;color:var(--gold2)}
+.carnet .cfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 12px;border-top:1px solid var(--line);font-size:8.5px;color:var(--mut2);letter-spacing:.04em}
+.carnet .seal{position:absolute;left:calc(12px + 30% - 50px);bottom:32px;width:54px;height:54px;border-radius:50%;border:2px solid var(--gold);display:grid;place-items:center;text-align:center;font-size:7px;font-weight:800;letter-spacing:.08em;color:var(--gold2);background:rgba(10,7,5,.6);transform:rotate(-12deg)}
 .ph{object-fit:cover;border-radius:50%;flex:none;border:1px solid var(--line2);background:var(--card2);display:block}
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--card2);border:1px solid var(--line2);display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--gold2);text-decoration:none;flex:none}
 .wrap{max-width:560px;margin:0 auto;padding:14px 16px 24px}
@@ -643,7 +659,7 @@ const DB = {
     try { await this.backend.del(t, id); } catch (e) { arr.splice(i, 0, prev); throw e; }
   }
 };
-const LS_KEY = 'charreriapro_demo_v11', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v12', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -689,6 +705,15 @@ const Local = {
   async setVerified(kind, d, decision, note){ const u = State.user;
     if (!canVerify(u, kind, d) || (decision === 'pendiente' && !isSuper(u))) throw new Error('No tienes permiso para verificar este registro');
     await DB.put(VK_TABLE[kind], { ...d, verif: decision, verifKey: decision === 'pendiente' ? null : verifKeyOf(kind, d), verifiedBy: u.id, verifiedByName: u.name, verifiedAt: Date.now(), verifNote: decision === 'rechazado' ? (note || '') : '' }); },
+  async activatePro(){ const u = State.user, p = DB.get('profiles', u.id); State.user = await DB.put('profiles', { ...p, subscriptionStatus: 'pro', proUntil: Math.max(+p.proUntil || 0, Date.now()) + 30 * 864e5, proRef: 'SIMULADO' }); },
+  async registerChip(kind, x, uid){ const u = State.user, id = normUid(uid);
+    if (id.length < 8 || id.length > 32) throw new Error('El UID debe tener entre 8 y 32 caracteres hexadecimales'); if (x.ownerId !== u.id) throw new Error('Solo el dueño registra el chip');
+    if (x.chipStatus === 'validado') throw new Error('Este ejemplar ya tiene un chip validado');
+    if ([...DB.all('horses'), ...DB.all('stock')].some(o => o.id !== x.id && o.chipUid === id)) throw new Error('Ese chip ya está registrado en otro ejemplar');
+    const st = DB.all('requests').some(r => r.type === 'chip_order' && r.createdBy === u.id && normUid(r.kitUid) === id && ['enviado','entregado'].includes(r.status)) ? 'validado' : 'pendiente';
+    await DB.put(kind === 'horse' ? 'horses' : 'stock', { ...x, chipUid: id, chipStatus: st, chipAt: Date.now(), chipValidatedBy: st === 'validado' ? 'kit' : null }); return st; },
+  async validateChip(kind, x, ok){ if (!isSuper(State.user)) throw new Error('Solo el súper usuario valida chips');
+    await DB.put(kind === 'horse' ? 'horses' : 'stock', { ...x, chipStatus: ok ? 'validado' : 'rechazado', chipValidatedBy: State.user.name, chipAt: Date.now() }); },
   async claimHorse(code){
     const u = State.user, r = DB.all('requests').find(x => x.type === 'transfer' && x.status === 'pendiente' && x.code === code.trim().toUpperCase());
     if (!r) throw new Error('Código inválido o ya usado'); const h = DB.get('horses', r.horseId); if (!h) throw new Error('El caballo ya no existe');
@@ -746,7 +771,7 @@ const Remote = {
   async rpc(fn, args){
     const { data, error } = await this.sb.rpc(fn, args);
     if (error) throw new Error(/function .* does not exist|schema cache/i.test(error.message) ? 'Falta instalar la actualización más reciente en la base de datos' : error.message);
-    await Promise.all(['requests','charros','teams','horses'].map(async t => { const { data: rows, error: e } = await this.sb.from(t).select('id,data').limit(20000); if (!e) DB.data[t] = rows.map(r => r.data); }));
+    await Promise.all(['requests','charros','teams','horses','stock','profiles'].map(async t => { const { data: rows, error: e } = await this.sb.from(t).select('id,data').limit(20000); if (!e) DB.data[t] = rows.map(r => r.data); }));
     return data;
   },
   async del(t, id){ const { error } = await this.sb.from(t).delete().eq('id', id); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
@@ -754,6 +779,9 @@ const Remote = {
   rosterRemove(c){ return this.rpc('roster_remove', { cid: c.id }); },
   setVerified(kind, d, decision, note){ return this.rpc('set_verified', { kind, rid: d.id, decision, note: note || '' }); },
   claimHorse(code){ return this.rpc('claim_horse', { code: code.trim().toUpperCase() }); },
+  async activatePro(){ await this.rpc('activate_pro', {}); State.user = DB.get('profiles', State.user.id) || State.user; },
+  registerChip(kind, x, uid){ return this.rpc('register_chip', { kind, rid: x.id, uid: normUid(uid) }); },
+  validateChip(kind, x, ok){ return this.rpc('validate_chip', { kind, rid: x.id, ok: !!ok }); },
   async verifyPassword(email, pass){ const { error } = await this.sb.auth.signInWithPassword({ email, password: pass }); if (error) throw new Error('La contraseña actual no es correcta'); },
   async changePassword(pass){
     const { data, error } = await this.sb.auth.updateUser({ password: pass });
@@ -918,6 +946,11 @@ function seed(){
   rate('ecirc','s1','ujuez','Juez Ricardo Ponce','juez',5,4,4,'Reparó parejo toda la faena.',40); rate('ecirc','s1','uvilla','Administración Lienzo de la Villa','lienzo',4,5,5,'',40);
   rate('ecirc','s3','ujuez','Juez Ricardo Ponce','juez',4,4,3,'Dos yeguas salieron lastimadas de una pata.',40); rate('elive','s1','ujuez','Juez Ricardo Ponce','juez',5,5,4,'Excelente toro de reparo.',0);
   rate('eoto','s2','ujuez2','Juez Ana Lucía Bravo','juez',3,4,4,'Algunos toros flojos para la terna.',12);
+  const chipOk = (x, uid) => Object.assign(x, { chipUid: uid, chipStatus: 'validado', chipAt: ago(60), chipValidatedBy: 'kit' });
+  HS.forEach(x => { const m = { cb1: '04A1C2E3F4051A', cb2: '04B7D2E1A9338C', cb5: '04C3F8A2B1774D', cb6: '04D9E0B3C2884E' }[x.id]; if (m) chipOk(x, m); });
+  HS.find(x => x.id === 'cb4').chipUid = '04E1F2A3B4C5D6'; HS.find(x => x.id === 'cb4').chipStatus = 'pendiente'; HS.find(x => x.id === 'cb4').chipAt = ago(2);
+  RQ.push({ id:'rqk1', type:'chip_order', targetKind:'horse', targetId:'cb3', targetName:'Canelo', ship:{ name:'Gabriel Montaño', phone:'55 4433 2211', street:'Av. Hidalgo 120', colonia:'Centro', city:'Texcoco', state:'Estado de México', zip:'56100', notes:'Portón negro' }, price: 699, payStatus:'pagado_simulado', status:'enviado', kitUid:'04F00DCAFE1234', tracking:'ESTAFETA 7012 3344 55', shippedAt: ago(3), createdBy:'udueno', createdAt: ago(6) });
+  P.forEach(x => { if (x.id === 'ucap') { x.subscriptionStatus = 'pro'; x.proUntil = Date.now() + 20 * 864e5; } });
   const offc = (kind, d) => Object.assign(d, { verif: 'oficial', verifKey: verifKeyOf(kind, d), verifiedBy: 'uadmin', verifiedByName: 'Súper Usuario', verifiedAt: ago(100) });
   CH.forEach(c => { if (c.id !== 'hfausto') offc('charro', c); }); T.forEach(t => { if (t.id !== 'q5') offc('team', t); }); HS.forEach(x => { if (!['cb3','cb7'].includes(x.id)) offc('horse', x); });
   offc('ranch', RA[0]); ST.forEach(x => { if (x.id !== 's4' && x.ranchId === 'g1') offc('stock', x); });
@@ -925,7 +958,7 @@ function seed(){
   RQ.push({ id:'rq5', type:'interes', horseId:'cb3', ownerId:'udueno', buyerName:'Ernesto Villaseñor', contact:'capitan@demo.mx', message:'', status:'pendiente', createdBy:'ucap', createdAt: ago(5) });
   RQ.push({ id:'rq3', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Fausto Herrera', contact:'55 1234 5678', message:'Me interesa para la temporada; ¿se puede ver en Texcoco?', status:'pendiente', createdBy:'ucharro', createdAt: ago(1) });
   RQ.push({ id:'rq2', type:'afiliacion', teamId:'q5', lienzoId:'lvilla', status:'pendiente', createdBy:'ucap2', createdAt: Date.now()-2*864e5 });
-  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, settings:[{ id:'valuacion', min:60000, max:800000 }] };
+  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }] };
 }
 
 /* ------------------------- LÓGICA ------------------------- */
@@ -944,6 +977,91 @@ function canDecide(u, r){
   return t.captainId === u.id || (t.lienzoStatus === 'aprobado' && (ownsLienzo(u, t.lienzoId) || isJudgeOf(u, t.lienzoId)));
 }
 const byName = (a, b) => a.name.localeCompare(b.name);
+/* ---------- PLAN PRO ---------- */
+const prices = () => { const c = DB.get('settings', 'precios') || {}; return { pro: +c.pro || 99, kit: +c.kit || 699 }; };
+const isPro = u => !!u && (isSuper(u) || (u.subscriptionStatus === 'pro' && (+u.proUntil || 0) > Date.now()));
+function needPro(why){ if (isPro(State.user)) return false; openUpgrade(why); return true; }
+function openUpgrade(why){
+  const u = State.user, P = prices(), li = t => `<div class="upg-li">${I.check}<span>${t}</span></div>`;
+  const body = step => step === 'pay' ? `<div class="card mt"><div style="font-weight:800">Confirmar pago</div><div class="small mut" style="margin-top:4px">Plan Pro mensual · <b style="color:var(--gold2)">${mxn(P.pro)} MXN</b></div>
+      <div class="banner warn mt">${I.info}<span>Pago de prueba: no se hace ningún cargo. Cuando se conecte el cobro real, aquí aparecerá el pago con tarjeta.</span></div>
+      <button class="btn pri block mt2" id="upgPay">Confirmar pago simulado</button><button class="btn ghost block mt" id="upgBack">Regresar</button></div>`
+    : `<div class="center" style="margin-top:6px"><span class="upg-badge">${I.trophy} PRO</span><div class="h1" style="margin-top:12px">Lleva tu charrería al siguiente nivel</div>${why ? `<div class="sub" style="margin-top:6px">${esc(why)}</div>` : ''}</div>
+      <div class="card mt">${li('Reportes detallados en PDF de charros y caballos, listos para imprimir o enviar')}${li('Historial completo: todos los torneos, estadísticas por suerte y por año')}${li('Tarjetas coleccionables en alta resolución para compartir en redes')}${li('Insignia Pro en tu perfil')}</div>
+      <div class="center mt2"><div style="font-family:'Cinzel',serif;font-size:34px;color:var(--gold2);line-height:1">${mxn(P.pro)}</div><div class="small mut">MXN al mes</div></div>
+      <button class="btn pri block mt2" id="upgGo">${u ? 'Activar Pro' : 'Inicia sesión para activar Pro'}</button><button class="btn ghost block mt" id="upgNo">Ahora no</button>
+      <div class="small mut2 center mt">Siempre gratis: marcadores en vivo, rankings, vistas públicas y mesa del juez.</div>`;
+  const draw = step => { $('#modal').innerHTML = `<div class="modal"><div class="box"${step === 'pay' ? ' style="animation:none"' : ''}>${body(step)}</div></div>`; wire(step); };
+  const close = () => { $('#modal').innerHTML = ''; };
+  const wire = step => { $('#modal .modal').onclick = e => { if (e.target.classList.contains('modal')) close(); };
+    if (step === 'pay') { $('#upgBack').onclick = () => draw('info'); $('#upgPay').onclick = async () => { try { await DB.backend.activatePro(); await audit('pro', `${State.user.name} activó Pro (pago simulado)`); close(); toast('¡Bienvenido a Pro!', 'ok'); render(); } catch (e) { toast(e.message || 'No se pudo activar', 'err'); } }; }
+    else { $('#upgNo').onclick = close; $('#upgGo').onclick = () => { if (!State.user) { close(); toast('Inicia sesión para activar Pro'); return go('cuenta'); } draw('pay'); }; } };
+  draw('info');
+}
+let h2cP = null;
+const loadH2C = () => h2cP || (h2cP = window.html2canvas ? Promise.resolve() : loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'));
+async function downloadNode(node, file){
+  if (!node) return; await loadH2C(); const t = node.style.transform; node.style.transform = '';
+  try { const c = await window.html2canvas(node, { scale: 3, backgroundColor: null, useCORS: true, logging: false }); const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = file; document.body.appendChild(a); a.click(); a.remove(); }
+  catch (e) { throw new Error('No se pudo generar la imagen. Si la foto es de internet, súbela como archivo e intenta de nuevo.'); }
+  finally { node.style.transform = t; }
+}
+const slug = t => norm(t).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'charreria';
+function deepStats(match){   // historial por suerte y por año (Pro)
+  const evs = new Map(cardEvents().map(e => [e.id, e])), byS = {}, byY = {};
+  DB.all('scores').forEach(s => { const ev = evs.get(s.eventId); if (!ev) return; s.parts.forEach(p => { if (!match(p, s, ev)) return;
+    const a = byS[s.faena] = byS[s.faena] || { n: 0, pts: 0, best: -999, pos: 0 }; a.n++; a.pts += p.pts; a.best = Math.max(a.best, p.pts); if (p.pts > 0) a.pos++;
+    const y = ev.date.slice(0, 4), b = byY[y] = byY[y] || { evs: new Set(), n: 0, pts: 0 }; b.evs.add(ev.id); b.n++; b.pts += p.pts; }); });
+  return { byS, byY };
+}
+function proBlock(kind, key, title, list, D){
+  const pro = isPro(State.user), more = list.length > 3 && !pro ? `<div class="small mut2" style="padding:8px 12px">+${list.length - 3} torneos más en el historial completo (Pro)</div>` : '';
+  const tbl = (head, rows) => `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums"><tr>${head.map((x, i) => `<th style="text-align:${i ? 'right' : 'left'};padding:6px 4px;color:var(--mut);font-weight:700;border-bottom:1px solid var(--line)">${x}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map((x, i) => `<td style="text-align:${i ? 'right' : 'left'};padding:6px 4px;border-bottom:1px solid var(--line)">${x}</td>`).join('')}</tr>`).join('')}</table></div>`;
+  const S = Object.entries(D.byS).sort((a, b) => b[1].pts - a[1].pts), Y = Object.entries(D.byY).sort((a, b) => b[0].localeCompare(a[0]));
+  const stats = `<div class="card">${S.length ? tbl(['Suerte','Faenas','Pts','Prom.','Mejor','Efect.'], S.map(([fk, a]) => [esc(FN(fk)), a.n, a.pts, Math.round(a.pts / a.n), a.best, Math.round(100 * a.pos / a.n) + '%'])) : '<div class="small mut">Sin faenas.</div>'}
+    ${Y.length ? `<div class="mt">${tbl(['Año','Torneos','Faenas','Pts'], Y.map(([y, b]) => [y, b.evs.size, b.n, b.pts]))}</div>` : ''}</div>`;
+  return `${more}<div class="h2">Estadísticas avanzadas ${pro ? '<span class="upg-badge" style="font-size:9px;padding:2px 8px">PRO</span>' : ''}</div>
+    ${pro ? stats : `<div style="position:relative"><div class="lock">${stats}</div><div style="position:absolute;inset:0;display:grid;place-items:center"><button class="btn pri" data-act="upgrade" data-why="Desbloquea las estadísticas por suerte y por año.">${I.trophy} Desbloquear con Pro</button></div></div>`}
+    <div class="btns mt"><button class="btn sm" data-act="cardHD" data-n="${esc(title)}">${I.upload} Tarjeta en alta resolución</button><button class="btn sm" data-act="report" data-k="${kind}" data-id="${esc(key)}">${I.doc} Reporte PDF</button></div>`;
+}
+function openReport(kind, key){
+  let title, sub, R, D, rows, extra = '';
+  if (kind === 'horse') { const h = DB.get('horses', key); if (!h) return; R = horseStats(h); title = h.name; sub = [h.discipline, h.breed, h.sex, horseAge(h) != null ? horseAge(h) + ' años' : '', h.registry ? 'Registro ' + h.registry : ''].filter(Boolean).join(' · ');
+    D = deepStats((p, s, ev) => (ev.charros.find(c => c.id === p.id) || {}).horseId === h.id);
+    extra = `<h2>Ficha</h2><table>${[['Dueño', ownerLabel(h, State.user)], ['Verificación', verifState('horse', h)], ['Microchip', h.chipUid ? fmtUid(h.chipUid) + ' · ' + (h.chipStatus || '') : 'Sin chip'], ['Valuación', canSeePrice(h, State.user) ? mxn(R.val.value) : 'Privada']].map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join('')}</table>`; }
+  else { R = charroStats(key); title = key; sub = [R.team, R.prof && R.prof.state, R.rankLbl].filter(Boolean).join(' · '); D = deepStats(p => norm(p.name) === norm(key)); }
+  const list = [...R.evs.values()].sort((a, b) => b.ev.date.localeCompare(a.ev.date));
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Reporte · ${esc(title)}</title><style>body{font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1c1510;margin:28px}h1{font:800 24px Georgia,serif;margin:0}h2{font:700 14px system-ui;text-transform:uppercase;letter-spacing:.08em;color:#8e1b2c;margin:22px 0 6px;border-bottom:2px solid #d9a84e;padding-bottom:3px}table{width:100%;border-collapse:collapse}td,th{padding:5px 6px;border-bottom:1px solid #e5ddd2;text-align:left}th{color:#6b5a4b;font-size:11px;text-transform:uppercase}.k{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}.k div{border:1px solid #e5ddd2;border-radius:8px;padding:8px}.k b{display:block;font:800 20px Georgia,serif;color:#8e1b2c}.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #8e1b2c;padding-bottom:10px}.mut{color:#76685c}@media print{body{margin:12mm}}</style></head><body>
+    <div class="top"><div><div class="mut" style="letter-spacing:.14em;font-size:11px">${esc(CONFIG.APP_NAME.toUpperCase())} · REPORTE ${kind === 'horse' ? 'DE CABALLO' : 'DE CHARRO'}</div><h1>${esc(title)}</h1><div class="mut">${esc(sub)}</div></div><div class="mut" style="text-align:right">Generado ${fdt(Date.now())}</div></div>
+    <div class="k"><div><b>${R.pts}</b>Puntos</div><div><b>${R.n}</b>Faenas</div><div><b>${R.eff}%</b>Efectividad</div><div><b>${R.evs.size}</b>Torneos</div><div><b>${R.best ?? '—'}</b>Mejor faena</div><div><b>${R.avg}</b>Promedio</div><div><b>${R.wins || 0}</b>Campeonatos</div><div><b>${R.ovr}</b>Media</div></div>
+    ${extra}<h2>Por suerte</h2><table><tr><th>Suerte</th><th>Faenas</th><th>Puntos</th><th>Promedio</th><th>Mejor</th></tr>${Object.entries(D.byS).sort((a, b) => b[1].pts - a[1].pts).map(([fk, a]) => `<tr><td>${esc(FN(fk))}</td><td>${a.n}</td><td>${a.pts}</td><td>${Math.round(a.pts / a.n)}</td><td>${a.best}</td></tr>`).join('')}</table>
+    <h2>Por año</h2><table><tr><th>Año</th><th>Torneos</th><th>Faenas</th><th>Puntos</th></tr>${Object.entries(D.byY).sort((a, b) => b[0].localeCompare(a[0])).map(([y, b]) => `<tr><td>${y}</td><td>${b.evs.size}</td><td>${b.n}</td><td>${b.pts}</td></tr>`).join('')}</table>
+    <h2>Torneos</h2><table><tr><th>Fecha</th><th>Charreada</th><th>Lienzo</th><th>Faenas</th><th>Puntos</th></tr>${list.map(e => `<tr><td>${fdate(e.ev.date)}</td><td>${esc(e.ev.title)}${e.ev.official ? ' (oficial)' : ''}</td><td>${esc(lienzo(e.ev.lienzoId).name)}</td><td>${e.n}</td><td>${e.pts}</td></tr>`).join('')}</table>
+    <p class="mut" style="margin-top:22px;font-size:11px">Datos calculados con las calificaciones registradas por los jueces en ${esc(CONFIG.APP_NAME)}. Puede incluir ajustes administrativos.</p><script>setTimeout(()=>print(),400)<\/script></body></html>`;
+  const w = window.open('', '_blank'); if (!w) return toast('Permite las ventanas emergentes para ver el reporte', 'err'); w.document.write(html); w.document.close();
+}
+/* ---------- MICROCHIP NFC Y CARNET ---------- */
+const normUid = t => String(t || '').replace(/[^0-9a-f]/gi, '').toUpperCase();
+const fmtUid = t => normUid(t).match(/.{1,2}/g)?.join(':') || '';
+const hasCarnet = x => !!x && x.chipStatus === 'validado' && !!x.chipUid;
+const hasNFC = () => 'NDEFReader' in window;
+const NFC_HELP = 'La lectura con el celular funciona en Chrome para Android con NFC encendido. En iPhone o computadora, escribe el UID impreso en la etiqueta del kit.';
+function nfcErr(e){ return new Error(e && e.name === 'NotAllowedError' ? 'No se dio permiso para usar NFC. Actívalo en el aviso del navegador o en Ajustes › Sitios › NFC.' : e && e.name === 'NotSupportedError' ? 'Este celular no tiene NFC o está apagado.' : (e && e.message) || 'No se pudo usar NFC'); }
+async function nfcRead(){
+  if (!hasNFC()) throw new Error(NFC_HELP);
+  const r = new NDEFReader(), ctl = new AbortController();
+  try { await r.scan({ signal: ctl.signal }); } catch (e) { throw nfcErr(e); }   // aquí el navegador pide el permiso de NFC
+  toast('Acerca el celular al chip y no lo muevas…');
+  return new Promise((ok, ko) => { const t = setTimeout(() => { ctl.abort(); ko(new Error('No se detectó ningún chip. Intenta de nuevo, más cerca.')); }, 25000);
+    r.onreading = e => { clearTimeout(t); ctl.abort(); ok(normUid(e.serialNumber)); };
+    r.onreadingerror = () => { clearTimeout(t); ctl.abort(); ko(new Error('No se pudo leer el chip. Acércalo más y no lo muevas.')); }; });
+}
+async function nfcWrite(url){
+  if (!hasNFC()) throw new Error(NFC_HELP);
+  try { const r = new NDEFReader(); toast('Acerca el celular al chip para grabar…'); await r.write({ records: [{ recordType: 'url', data: url }] }, { overwrite: true }); } catch (e) { throw nfcErr(e); }
+}
+const carnetUrl = id => location.origin + location.pathname + '#carnet-' + id;
+const chipTarget = id => DB.get('horses', id) ? ['horse', DB.get('horses', id)] : DB.get('stock', id) ? ['stock', DB.get('stock', id)] : [null, null];
 /* ---------- VERIFICACIÓN: el sello "Oficial" queda ligado a los datos verificados; si cambian, vuelve a revisión ---------- */
 const VK_FIELDS = { charro: ['name','category'], team: ['name','state'], horse: ['name','registry','breed','training','birthYear','discipline','sex'], ranch: ['name','state','whatsapp','phone'], stock: ['name','kind','mode','count','rentPrice','rentUnit'] };
 const VK_TABLE = { charro: 'charros', team: 'teams', horse: 'horses', ranch: 'ranches', stock: 'stock' };
@@ -1032,7 +1150,7 @@ const State = { user: null, route: 'inicio', param: null, param2: null,
 function go(h){ if (location.hash.slice(1) === h) render(); else location.hash = h; }
 function parseRoute(){
   const h = location.hash.slice(1) || 'inicio';
-  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo|ganaderia|res)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
+  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo|ganaderia|res|carnet)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
   if (m) { State.route = m[1]; State.param = m[2]; State.param2 = m[3] || null; } else { State.route = h; State.param = State.param2 = null; }
 }
 window.addEventListener('hashchange', () => { parseRoute(); render(); window.scrollTo(0, 0); });
@@ -1047,7 +1165,7 @@ function render(){
   const tabs = [['inicio','Inicio',I.home],['vivo','En vivo',I.live,liveN],['historial','Historial',I.clock],['ranking','Ranking',I.trophy],['cuenta', u ? (isSuper(u) ? 'Admin' : 'Mi panel') : 'Entrar', isSuper(u) ? I.shield : I.user, 0, pend]];
   const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta', solicitudes:'cuenta', caballos:'ranking', caballo:'cuenta', ganado:'inicio', ganaderia:'inicio', res:'cuenta' }[State.route] || State.route;
   $('#nav').innerHTML = tabs.map(([k, l, ic, dot, badge]) => `<a href="#${k === 'cuenta' && isSuper(u) ? 'admin' : k}" class="${active === k ? 'on' : ''}">${ic}${dot ? '<span class="dot"></span>' : ''}${badge ? `<span class="badge-n" style="position:absolute;top:0;right:calc(50% - 22px)">${badge}</span>` : ''}<span>${l}</span></a>`).join('');
-  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes };
+  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes, carnet: vCarnet };
   $('#view').className = 'wrap' + (State.route === 'hoja' ? ' wide' : '');
   $('#view').innerHTML = State.recovery ? vNewPass() : (views[State.route] || vInicio)();
   fitSheet();
@@ -1319,6 +1437,7 @@ function horseCardHTML(h, R){
   const top = Object.entries(R.suertes).sort((a, b) => b[1] - a[1]).slice(0, 3), mx = Math.max(1, ...top.map(x => Math.abs(x[1])));
   const rk = horseRanking(), idx = rk.findIndex(x => x.h.id === h.id), badges = [];
   if (isOfficial('horse', h)) badges.push('Oficial');
+  if (hasCarnet(h)) badges.push('Carnet ✓');
   if (h.forSale) badges.push('En venta');
   if (idx >= 0 && idx < 3) badges.push('Top ' + (idx + 1) + ' caballos');
   if (R.wins) badges.push('Campeón' + (R.wins > 1 ? ' ×' + R.wins : ''));
@@ -1335,7 +1454,7 @@ function horseCardHTML(h, R){
     <div class="bd">${badges.slice(0, 4).map(b => `<span>${esc(b)}</span>`).join('')}<span>${esc(h.sex || 'Caballo')}</span></div>
     <div class="ft"><span>Dueño: ${esc(ownerLabel(h, u))}</span><span>${esc(h.coat || CONFIG.APP_NAME)}</span></div></div></div></div>`;
 }
-function horseRanking(){ return DB.all('horses').filter(h => isOfficial('horse', h)).map(h => ({ h, R: horseTable().M[h.id] })).filter(x => x.R && x.R.n).sort((a, b) => b.R.pts - a.R.pts); }
+function horseRanking(){ return DB.all('horses').filter(h => isOfficial('horse', h) && hasCarnet(h)).map(h => ({ h, R: horseTable().M[h.id] })).filter(x => x.R && x.R.n).sort((a, b) => b.R.pts - a.R.pts); }
 function valBox(h, R){
   const v = R.val;
   return `<div class="card"><div class="small mut">${v.override ? 'Precio fijado por la administración' : 'Valuación estimada de mercado'}</div><div style="font-family:'Cinzel',serif;font-size:28px;color:var(--gold2);line-height:1.1;margin-top:4px">${mxn(v.value)}</div>
@@ -1356,7 +1475,9 @@ function openHorse(id){
     ${R.live ? `<a class="btn vino block mt" href="#evento-${R.live.id}" data-close="1">${I.live} Verlo en vivo: ${esc(R.live.title)}</a>` : ''}
     <div class="h2">Ficha</div><div class="card small">${[['Disciplina', h.discipline], ['Sexo', h.sex], ['Raza', h.breed], ['Pelaje', h.coat], ['Registro', h.registry || 'Sin registro'], ['Dueño', ownerLabel(h, u)], ['Verificación', { oficial: 'Oficial', rechazado: 'Rechazada', cambios: 'Cambios por verificar', pendiente: 'Pendiente' }[verifState('horse', h)]]].map(([k, v]) => `<div class="row between" style="padding:3px 0"><span class="mut">${k}</span><b>${esc(v || '—')}</b></div>`).join('')}</div>
     ${canSeePrice(h, u) ? `<div class="h2">Valuación</div>${valBox(h, R)}` : ''}
-    <div class="h2">Torneos</div>${list.length ? `<div class="card pad0">${list.slice(0, 12).map(e => `<a class="rank" href="#evento-${e.ev.id}" data-close="1" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:700">${esc(e.ev.title)}</div><div class="small mut ell">${fdate(e.ev.date)} · Montado por ${esc([...e.riders].join(', '))}</div></div><div class="pts">${e.pts}<small>pts</small></div></a>`).join('')}</div>` : '<div class="card small mut">Todavía no tiene faenas calificadas. Se suman cuando un charro lo monta en una charreada.</div>'}
+    <div class="h2">Torneos</div>${list.length ? `<div class="card pad0">${list.slice(0, isPro(State.user) ? 500 : 3).map(e => `<a class="rank" href="#evento-${e.ev.id}" data-close="1" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:700">${esc(e.ev.title)}</div><div class="small mut ell">${fdate(e.ev.date)} · Montado por ${esc([...e.riders].join(', '))}</div></div><div class="pts">${e.pts}<small>pts</small></div></a>`).join('')}</div>` : '<div class="card small mut">Todavía no tiene faenas calificadas. Se suman cuando un charro lo monta en una charreada.</div>'}
+    ${proBlock('horse', h.id, h.name, list, deepStats((p, s, ev) => (ev.charros.find(c => c.id === p.id) || {}).horseId === h.id))}
+    ${hasCarnet(h) ? `<a class="btn block mt" href="#carnet-${h.id}" data-close="1">${I.shield} Ver carnet digital</a>` : ''}
     ${(h.history || []).length ? `<div class="h2">Dueños anteriores</div><div class="card small">${h.history.slice().reverse().map(x => `<div class="row between" style="padding:3px 0"><b>${esc(x.label)}</b><span class="mut">${fdate(localISO(x.from))} – ${fdate(localISO(x.to))}</span></div>`).join('')}</div>` : ''}</div></div>`;
   wireCardModal();
 }
@@ -1408,6 +1529,60 @@ function horsesSection(u){
   return h;
 }
 const claimForm = () => `<form data-form="claimHorse" class="mt"><label class="f">¿Te transfirieron un caballo? Escribe el código</label><div class="row" style="gap:8px"><input class="in" name="code" placeholder="CAB-XXXXXX" style="text-transform:uppercase" required><button class="btn sm" style="min-height:46px">Recibir</button></div></form>`;
+function chipSection(kind, x){
+  const orders = DB.all('requests').filter(r => r.type === 'chip_order' && r.targetId === x.id).sort((a, b) => b.createdAt - a.createdAt), open = orders.find(r => ['pendiente','enviado'].includes(r.status)), st = x.chipStatus;
+  const ordSt = r => ({ pendiente: 'Pagado · preparando envío', enviado: 'Enviado', entregado: 'Entregado', cancelado: 'Cancelado' }[r.status] || r.status);
+  let h = `<div class="h2">Microchip y carnet digital</div><div class="card">`;
+  if (st === 'validado') h += `<div class="row between" style="gap:8px"><div><span class="chip green">${I.check}Carnet validado</span><div class="small mut" style="margin-top:6px">UID ${esc(fmtUid(x.chipUid))}</div></div></div>
+      <div class="btns mt"><a class="btn pri sm" href="#carnet-${x.id}">${I.shield} Ver carnet</a><button class="btn sm" data-act="nfcWrite" data-id="${x.id}">Grabar enlace en el chip (NFC)</button></div><div class="small mut2 mt">Al grabarlo, cualquiera que acerque su celular al chip abre el carnet para verificarlo.</div>`;
+  else { if (st === 'pendiente') h += `<div class="banner warn">${I.clock}<span>Chip ${esc(fmtUid(x.chipUid))} registrado. Falta que el súper usuario lo valide${kind === 'horse' ? '; mientras tanto sus puntos no cuentan en el ranking oficial' : ''}.</span></div>`;
+    if (st === 'rechazado') h += `<div class="banner err">${I.info}<span>El chip ${esc(fmtUid(x.chipUid))} no se pudo validar. Revisa el UID o solicita un kit.</span></div>`;
+    h += `<div class="small mut${st ? ' mt' : ''}">${kind === 'horse' ? 'Con el carnet validado, los puntos de este caballo cuentan en el ranking oficial.' : 'El carnet identifica a este ejemplar ante lienzos y jueces.'}</div>
+      <form data-form="chipReg" data-kind="${kind}" data-id="${x.id}" class="mt"><label class="f">UID del chip</label><div class="row" style="gap:8px"><input class="in" name="uid" id="uid-${x.id}" placeholder="04:A1:C2:E3:F4:05:1A" autocomplete="off" style="font-family:monospace;text-transform:uppercase" required><button class="btn sm" style="min-height:46px">Registrar</button></div></form>
+      <button class="btn block mt" data-act="nfcRead" data-target="uid-${x.id}">Leer chip con el celular (NFC)</button><div class="small mut2 mt">${hasNFC() ? 'Tu navegador pedirá permiso para usar NFC.' : NFC_HELP}</div>`; }
+  if (orders.length) h += `<div class="sep"></div>${orders.map(r => `<div class="row between small" style="padding:4px 0;gap:8px"><span>Kit · ${fdate(localISO(r.createdAt))}${r.tracking ? ' · Guía ' + esc(r.tracking) : ''}</span><span class="chip ${r.status === 'entregado' ? 'green' : 'blue'}">${ordSt(r)}</span></div>`).join('')}`;
+  if (!open && st !== 'validado') h += `<button class="btn pri block mt" data-act="chipOrder" data-k="${kind}" data-id="${x.id}">Solicitar kit de microchip · ${mxn(prices().kit)}</button>`;
+  return h + '</div>';
+}
+function openChipOrder(kind, id){
+  const x = (kind === 'horse' ? DB.get('horses', id) : DB.get('stock', id)), u = State.user, P = prices(); if (!x) return;
+  $('#modal').innerHTML = `<div class="modal"><div class="box"><div class="row between"><div style="font-weight:800;font-size:17px">Kit de microchip</div><button class="btn sm" id="koX">Cerrar</button></div>
+    <div class="small mut" style="margin-top:4px">Para ${esc(x.name)}</div>
+    <div class="card mt">${['Microchip NFC (NTAG) de vidrio biocompatible de 2.12 × 12 mm', 'Jeringa aplicadora estéril de un solo uso', 'Instrucciones impresas', 'Envío a domicilio por paquetería', 'Carnet digital de identificación al registrar el chip'].map(t => `<div class="upg-li">${I.check}<span>${t}</span></div>`).join('')}
+      <div class="banner warn mt">${I.info}<span>La aplicación del microchip debe hacerla un médico veterinario.</span></div>
+      <div class="row between mt"><span class="small mut">Total con envío</span><b style="font-family:'Cinzel',serif;font-size:22px;color:var(--gold2)">${mxn(P.kit)}</b></div></div>
+    <form id="koF" class="mt"><div class="small mut">Datos de envío (solo los ve la administración)</div>
+      <label class="f">Nombre de quien recibe</label><input class="in" name="name" value="${esc(u.name)}" required><label class="f">Teléfono</label><input class="in" name="phone" type="tel" value="${esc(u.phone || '')}" required>
+      <label class="f">Calle y número</label><input class="in" name="street" required><label class="f">Colonia</label><input class="in" name="colonia" required>
+      <div class="row" style="gap:8px"><div class="grow"><label class="f">Municipio</label><input class="in" name="city" required></div><div style="flex:0 0 110px"><label class="f">C.P.</label><input class="in" name="zip" inputmode="numeric" pattern="[0-9]{5}" required></div></div>
+      <label class="f">Estado</label>${selState('')}<label class="f">Referencias (opcional)</label><input class="in" name="notes">
+      <div class="banner warn mt">${I.info}<span>Pago de prueba: no se hace ningún cargo.</span></div><button class="btn pri block mt2">Pagar ${mxn(P.kit)} (simulado)</button></form></div></div>`;
+  const close = () => { $('#modal').innerHTML = ''; }; $('#koX').onclick = close; $('#modal .modal').onclick = e => { if (e.target.classList.contains('modal')) close(); };
+  $('#koF').onsubmit = async e => { e.preventDefault(); const d = Object.fromEntries(new FormData(e.target).entries()); Object.keys(d).forEach(k => d[k] = String(d[k]).trim());
+    try { await DB.put('requests', { id: 'r' + uid(), type: 'chip_order', targetKind: kind, targetId: x.id, targetName: x.name, ship: d, price: P.kit, payStatus: 'pagado_simulado', status: 'pendiente', createdBy: u.id, createdAt: Date.now() });
+      await audit('kit', `${u.name} pidió kit de microchip para ${x.name} (pago simulado)`); close(); toast('Pedido recibido. Te avisaremos cuando se envíe.', 'ok'); render(); } catch (err) { toast(err.message || 'No se pudo enviar el pedido', 'err'); } };
+}
+function carnetHTML(kind, x){
+  const u = State.user, own = u && x.ownerId === u.id, r = kind === 'stock' ? DB.get('ranches', x.ranchId) || {} : null;
+  const owner = kind === 'horse' ? (own ? u.name : x.ownerPublic && x.ownerName ? x.ownerName : 'Dueño registrado (privado)') : (r.name || '');
+  const F = kind === 'horse' ? [['Raza', x.breed], ['Sexo', x.sex], ['Nacimiento', x.birthYear], ['Pelaje', x.coat], ['Disciplina', x.discipline], ['Registro', x.registry || 'Sin registro']]
+    : [['Tipo', x.kind === 'toro' ? 'Toro' : 'Yegua bruta'], ['Número', x.tag], ['Edad', x.age], ['Peso', x.weight], ['Faenas', (x.uses || []).join(', ')]];
+  const photo = safeImg(x.photo), ok = hasCarnet(x);
+  return `<div class="carnet" id="carnet-card"><div class="ch"><span class="logo" style="width:24px;height:24px;border-radius:7px"><span style="width:14px;height:14px;display:block;color:var(--gold2)">${I.horse}</span></span><b>${esc(CONFIG.APP_NAME)}</b><span>Carnet de identificación<br>${kind === 'horse' ? 'equina' : 'de ganado'}</span></div>
+    <div class="cb"><div class="cp">${photo ? `<img src="${esc(photo)}" alt="" crossorigin="anonymous">` : `<span style="width:56px;height:56px;color:var(--gold);opacity:.7">${I.horse}</span>`}</div>
+      <div class="cf"><div class="w nm"><span>Nombre</span><b>${esc(x.name)}</b></div><div class="w"><span>${kind === 'horse' ? 'Dueño' : 'Ganadería'}</span><b>${esc(owner)}</b></div>${F.filter(([, v]) => v).slice(0, 6).map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}
+        <div class="w"><span>Microchip UID</span><b style="font-family:monospace">${esc(fmtUid(x.chipUid) || '—')}</b></div></div></div>
+    <div class="cfoot"><span>Folio CP-${esc(String(x.id).toUpperCase().slice(-8))}</span><span>${ok ? 'Validado ' + fdate(localISO(x.chipAt)) : 'Sin validar'}</span></div>${ok ? `<div class="seal">CARNET<br>VALIDADO</div>` : ''}</div>`;
+}
+function vCarnet(){
+  const [kind, x] = chipTarget(State.param), u = State.user; if (!x) return emptyState(I.shield, 'Carnet no encontrado', 'Revisa el enlace o el chip.');
+  const own = u && x.ownerId === u.id, ok = hasCarnet(x);
+  return `<a class="back" href="#${own ? (kind === 'horse' ? 'caballo-' : 'res-') + x.id : kind === 'horse' ? 'caballos' : 'ganado'}">${I.arrow} ${own ? 'Administrar' : 'Regresar'}</a><div class="h1">Carnet digital</div>
+    <div class="banner ${ok ? 'ok' : 'warn'} mt">${ok ? I.check : I.info}<span>${ok ? `Carnet verificado por ${esc(CONFIG.APP_NAME)}: el microchip ${esc(fmtUid(x.chipUid))} pertenece a este ejemplar.` : 'Este ejemplar todavía no tiene un carnet validado.'}</span></div>
+    <div class="mt">${carnetHTML(kind, x)}</div>
+    ${own && ok ? `<div class="btns mt2"><button class="btn pri" data-act="carnetPng" data-id="${x.id}">${I.upload} Descargar carnet</button><button class="btn" data-act="nfcWrite" data-id="${x.id}">Grabar en el chip (NFC)</button></div>` : ''}
+    ${kind === 'horse' ? `<button class="btn ghost block mt" data-act="hcard" data-id="${x.id}">Ver tarjeta del caballo</button>` : `<button class="btn ghost block mt" data-act="scard" data-id="${x.id}">Ver ficha</button>`}`;
+}
 function vCaballo(){
   const u = State.user, h = DB.get('horses', State.param);
   if (!h) return `<a class="back" href="#caballos">${I.arrow} Caballos</a>` + emptyState(I.horse, 'Caballo no encontrado', '');
@@ -1420,6 +1595,7 @@ function vCaballo(){
   o += `<div class="h2">Privacidad y venta</div><div class="list">${tg('ownerPublic', h.ownerPublic, 'Mostrar mi nombre como dueño', 'Si está apagado, el público ve “Dueño privado”.')}${tg('pricePublic', h.pricePublic, 'Mostrar valuación', 'Si está apagado, solo tú ves el precio estimado.')}${tg('forSale', h.forSale, 'En venta (vitrina)', 'Aparece en la vitrina y los interesados te dejan su contacto.')}</div>`;
   o += `<div class="h2">Valuación</div>${valBox(h, R)}`;
   if (ints.length) o += `<div class="h2">Interesados</div><div class="list">${ints.map(r => reqCard(r, canDecide(u, r))).join('')}</div>`;
+  o += chipSection('horse', h);
   o += `<div class="h2">Cambio de dueño</div><div class="card">` + (tr ? `<div class="small mut">Comparte este código con el nuevo dueño. Él lo escribe en Mi cuenta → Caballos y el caballo pasa a su nombre.</div>
       <div class="row between mt" style="gap:8px"><b style="font-family:monospace;font-size:20px;letter-spacing:.06em">${esc(tr.code)}</b><button class="btn sm" data-act="copy" data-t="${esc(tr.code)}">Copiar</button></div>
       <button class="btn ghost sm block mt" data-act="decideReq" data-id="${tr.id}" data-d="cancelado">Cancelar transferencia</button>`
@@ -1508,6 +1684,7 @@ function vRes(){
     <div class="card mt">${photoBox('stock', x.id, x.photo, x.name)}${verifNote('stock', x, 'Mientras no esté verificado no aparece en la sección pública y su precio de renta no es público. Si cambias el precio, vuelve a revisión.')}
     <form data-form="stockEdit" data-id="${x.id}" class="mt">${stockFields(x)}<button class="btn block mt2">Guardar</button></form></div>
     <div class="list mt"><button class="tog ${x.available !== false ? 'on' : ''}" data-act="stockAvail" data-id="${x.id}" style="text-align:left;width:100%;display:flex;justify-content:space-between"><span><b>Disponible para renta</b><br><span class="small mut">Apágalo si ya está comprometido o en descanso.</span></span><span>${x.available !== false ? 'Sí' : 'No'}</span></button></div>
+    ${x.mode === 'unidad' ? chipSection('stock', x) : ''}
     <button class="btn ghost block mt2" data-act="stockDel" data-id="${x.id}">${I.x} Dar de baja</button>`;
 }
 function openStock(id){
@@ -1595,7 +1772,8 @@ function openCard(name){
   $('#modal').innerHTML = `<div class="modal"><div class="box" role="dialog" aria-label="Tarjeta de ${esc(name)}"><div class="row between"><div style="font-weight:800;font-size:15px">Tarjeta de charro</div><button class="btn sm" data-close="1">Cerrar</button></div>
     ${cardHTML(R)}
     ${R.live ? `<a class="btn vino block mt" href="#evento-${R.live.id}" data-close="1">${I.live} Verlo en vivo: ${esc(R.live.title)}</a>` : ''}
-    <div class="h2">Torneos</div>${list.length ? `<div class="card pad0">${list.slice(0, 12).map(e => `<a class="rank" href="#evento-${e.ev.id}" data-close="1" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:700">${esc(e.ev.title)}</div><div class="small mut ell">${fdate(e.ev.date)} · ${esc(e.team)} · ${e.n} faenas${e.ev.official ? ' · Oficial' : ''}</div></div><div class="pts">${e.pts}<small>pts</small></div></a>`).join('')}</div>` : '<div class="card small mut">Todavía no tiene faenas calificadas.</div>'}
+    <div class="h2">Torneos</div>${list.length ? `<div class="card pad0">${list.slice(0, isPro(State.user) ? 500 : 3).map(e => `<a class="rank" href="#evento-${e.ev.id}" data-close="1" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:700">${esc(e.ev.title)}</div><div class="small mut ell">${fdate(e.ev.date)} · ${esc(e.team)} · ${e.n} faenas${e.ev.official ? ' · Oficial' : ''}</div></div><div class="pts">${e.pts}<small>pts</small></div></a>`).join('')}</div>` : '<div class="card small mut">Todavía no tiene faenas calificadas.</div>'}
+    ${proBlock('charro', name, name, list, deepStats(p => norm(p.name) === norm(name)))}
     <div class="small mut2 mt">La media (40 a 99) compara su promedio por faena con el de todos los charros. Con menos de 3 faenas es provisional.</div></div></div>`;
   const box = $('#modal .modal'), card = $('#tcard'), still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const close = () => { $('#modal').innerHTML = ''; document.removeEventListener('keydown', esc_); };
@@ -1635,9 +1813,9 @@ function vRanking(){
   if (State.rankTab === 'charros') { const r = rankingCharros(opt); h += r.length ? `<div class="card pad0 mt">${r.slice(0, 100).map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.evs.size} charreadas · mejor ${c.best}${unverMark(!c.off && !isOfficial('charro', regCharro(c.name)))}${adjMark(c.adj)}`, c.pts, 'pts', true)).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
   else if (State.rankTab === 'caballos') { const by = State.hRankBy || 'puntos';
     h += `<div class="seg mt">${[['puntos','Por puntos'],['valor','Por valor']].map(([k, l]) => `<button class="${by === k ? 'on' : ''}" data-act="hrankby" data-k="${k}">${l}</button>`).join('')}</div>`;
-    if (by === 'valor') { const r = DB.all('horses').filter(x => x.pricePublic && isOfficial('horse', x)).map(x => ({ h: x, S: horseStats(x) })).sort((a, b) => b.S.val.value - a.S.val.value);
+    if (by === 'valor') { const r = DB.all('horses').filter(x => x.pricePublic && isOfficial('horse', x) && hasCarnet(x)).map(x => ({ h: x, S: horseStats(x) })).sort((a, b) => b.S.val.value - a.S.val.value);
       h += r.length ? `<div class="small mut mt">Valuación de cada caballo con valor público. Sube con su desempeño, sus campeonatos y el interés de compradores verificados.</div><div class="card pad0 mt">${r.map((x, i) => rankRow(i, x.h.name, `${esc(x.h.discipline || '')} · ${x.S.val.k ? x.S.val.k + ' interesados verificados' : 'sin interesados'}${x.S.val.override ? ' · precio fijado' : ''}`, mxnK(x.S.val.value).replace('$', ''), '', 'h:' + x.h.id)).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin caballos con valor público', 'Cada dueño decide si muestra la valuación de su caballo.')}</div>`; }
-    else { const r = horseRanking(); h += r.length ? `<div class="small mut mt">Puntos de las faenas hechas por el charro que lo montó (todas las charreadas). <a href="#caballos" style="color:var(--gold2)">Vitrina</a></div><div class="card pad0 mt">${r.map((x, i) => rankRow(i, x.h.name, `${esc(x.h.discipline || '')} · ${x.R.evs.size} charreadas · ${esc(ownerLabel(x.h, State.user))}`, x.R.pts, 'pts', 'h:' + x.h.id)).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin caballos con faenas', 'Se suman cuando un charro monta un caballo registrado en una charreada.')}</div>`; } }
+    else { const r = horseRanking(); h += r.length ? `<div class="small mut mt">Puntos de las faenas hechas por el charro que lo montó. Solo cuentan caballos oficiales con carnet de microchip validado. <a href="#caballos" style="color:var(--gold2)">Vitrina</a></div><div class="card pad0 mt">${r.map((x, i) => rankRow(i, x.h.name, `${esc(x.h.discipline || '')} · ${x.R.evs.size} charreadas · ${esc(ownerLabel(x.h, State.user))}`, x.R.pts, 'pts', 'h:' + x.h.id)).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin caballos con faenas', 'Se suman cuando un charro monta un caballo registrado en una charreada.')}</div>`; } }
   else { const r = rankingEquipos(opt, State.rankTab === 'completo' ? 'completo' : 'equipos'); h += r.length ? `<div class="card pad0 mt">${r.map((t, i) => rankRow(i, t.name, `${esc(t.state || '')} · ${t.evs} charreadas${t.wins ? ` · ${t.wins} 🏆` : ''}${unverMark(!t.off)}${adjMark(t.adj)}`, t.pts, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
   return h;
 }
@@ -1648,7 +1826,7 @@ function vCuenta(){
   const L = myLienzo(u) || (u.lienzoId ? lienzo(u.lienzoId) : null);
   let h = `<div class="card"><div class="row">${av(u.role === 'charro' && myCharro(u) ? myCharro(u).photo : u.photo, u.name, 52)}
     <div class="grow"><div style="font-weight:800;font-size:17px" class="ell">${esc(u.name)}</div><div class="small mut ell">${esc(u.email)}</div>
-    <div class="row wrapf" style="gap:6px;margin-top:6px"><span class="chip gold">${roleName(u.role)}</span>${u.status === 'aprobado' ? `<span class="chip green">${I.check}Verificada</span>` : u.status === 'pendiente' ? '<span class="chip blue">En revisión</span>' : `<span class="chip red">${esc(u.status)}</span>`}</div></div></div>
+    <div class="row wrapf" style="gap:6px;margin-top:6px"><span class="chip gold">${roleName(u.role)}</span>${isPro(u) && !isSuper(u) ? '<span class="upg-badge" style="font-size:9px;padding:2px 8px">PRO</span>' : ''}${u.status === 'aprobado' ? `<span class="chip green">${I.check}Verificada</span>` : u.status === 'pendiente' ? '<span class="chip blue">En revisión</span>' : `<span class="chip red">${esc(u.status)}</span>`}</div></div></div>
     ${L && u.role !== 'superadmin' ? `<div class="sep"></div><div class="small mut">Lienzo</div><div style="font-weight:700">${esc(L.name)} ${verifiedMark(L)}</div><div class="small mut">${esc(L.city || '')}${L.city ? ', ' : ''}${esc(L.state || '')}</div>` : ''}</div>`;
   if (u.status === 'pendiente') h += `<div class="banner warn mt">${I.info}<span>Tu cuenta está en revisión. El administrador la verificará para que puedas ${u.role === 'juez' ? 'calificar' : 'publicar charreadas'}.</span></div>`;
   if (u.status === 'rechazado' || u.status === 'suspendido') h += `<div class="banner err mt">${I.info}<span>Tu cuenta está ${esc(u.status)}. Contacta al administrador.</span></div>`;
@@ -1666,6 +1844,7 @@ function vCuenta(){
     if (u.role !== 'juez' && u.role !== 'ganadero') h += ranchSection(u);
     if (u.role === 'lienzo' && L) h += `<div class="h2">Foto del lienzo</div><div class="card">${photoBox('lienzo', L.id, L.photo, L.name)}</div>`;
   }
+  h += `<div class="h2">Mi plan</div><div class="card"><div class="row between" style="gap:8px"><div><div style="font-weight:800">${isPro(u) ? 'Pro' : 'Gratis'}</div><div class="small mut">${isSuper(u) ? 'El súper usuario tiene todas las funciones.' : isPro(u) ? `Activo hasta el ${fdate(localISO(+u.proUntil))}` : 'Marcadores, rankings y mesa del juez sin costo.'}</div></div>${isPro(u) ? '<span class="upg-badge">PRO</span>' : `<button class="btn pri sm" data-act="upgrade">Conocer Pro</button>`}</div>${isPro(u) && !isSuper(u) ? `<button class="btn ghost sm mt" data-act="upgrade">Renovar 30 días</button>` : ''}</div>`;
   if (u.role !== 'charro') h += `<div class="h2">Foto de perfil</div><div class="card">${photoBox('profile', u.id, u.photo, u.name)}</div>`;
   h += `<div class="h2">Seguridad</div>` + (State.changePass ? passForm(true) : `<button class="btn block" data-act="changepass">${I.key} Cambiar contraseña</button>`);
   h += `<button class="btn block mt2" data-act="logout">${I.logout} Cerrar sesión</button>`;
@@ -2131,7 +2310,7 @@ function vAdmin(){
   const P = DB.all('profiles'), Ls = DB.all('lienzos'), Es = DB.all('events'), pend = P.filter(p => p.status === 'pendiente'), offReq = Es.filter(e => e.requestOfficial && !e.official && e.status !== 'borrador'), t = State.adminTab;
   let h = `<div class="row between"><div><div class="h1">Súper usuario</div><div class="sub" style="margin-top:3px">Control y credibilidad de la plataforma</div></div><a class="btn sm" href="#cuenta">${I.key} Mi cuenta</a></div>
     <div class="kpis mt"><div class="kpi"><b>${Ls.filter(l => l.status === 'aprobado').length}</b><span>Lienzos verificados</span></div><div class="kpi"><b>${P.filter(p => p.role === 'juez' && p.status === 'aprobado').length}</b><span>Jueces activos</span></div><div class="kpi"><b>${DB.all('sheets').filter(s => s.entregada).length}</b><span>Hojas entregadas</span></div></div>
-    <div class="scroller mt">${[['solicitudes','Solicitudes',pend.length + offReq.length + DB.all('requests').filter(r => r.status === 'pendiente' && r.type !== 'transfer' && r.type !== 'interes').length + verifQueue(u).length],['lienzos','Lienzos'],['usuarios','Usuarios'],['eventos','Charreadas'],['invitaciones','Invitaciones'],['valuacion','Valuación'],['ajustes','Ajustes'],['bitacora','Bitácora']].map(([k, l, n]) => `<button class="tog ${t === k ? 'on' : ''}" data-act="admintab" data-k="${k}">${l}${n ? ` <span class="badge-n">${n}</span>` : ''}</button>`).join('')}</div>`;
+    <div class="scroller mt">${[['solicitudes','Solicitudes',pend.length + offReq.length + DB.all('requests').filter(r => r.status === 'pendiente' && r.type !== 'transfer' && r.type !== 'interes').length + verifQueue(u).length],['lienzos','Lienzos'],['usuarios','Usuarios'],['eventos','Charreadas'],['invitaciones','Invitaciones'],['valuacion','Valuación'],['ajustes','Ajustes'],['microchips','Pro y kits'],['bitacora','Bitácora']].map(([k, l, n]) => `<button class="tog ${t === k ? 'on' : ''}" data-act="admintab" data-k="${k}">${l}${n ? ` <span class="badge-n">${n}</span>` : ''}</button>`).join('')}</div>`;
   if (t === 'solicitudes') { const nr = DB.all('requests').filter(r => r.status === 'pendiente' && r.type !== 'transfer' && r.type !== 'interes').length, nv = verifQueue(u).length;
     h += `<div class="h2">Verificaciones y equipos</div><div class="list">${menuItem('#solicitudes', I.check, 'Verificar charros, equipos y caballos', nv ? `${nv} por verificar` : 'Sin pendientes')}${menuItem('#solicitudes', I.user, 'Rosters y afiliaciones', nr ? `${nr} pendientes` : 'Sin pendientes')}</div>`;
     h += `<div class="h2">Cuentas por autorizar</div>` + (pend.length ? `<div class="list">${pend.map(p => { const L = p.role === 'lienzo' ? DB.get('lienzos', p.lienzoId) : lienzo(p.lienzoId); return `<div class="card"><div class="row"><div class="avatar">${esc(initials(p.name))}</div><div class="grow"><div style="font-weight:800">${esc(p.name)}</div><div class="small mut">${roleName(p.role)} · ${esc(p.email)}${p.phone ? ' · ' + esc(p.phone) : ''}</div></div></div>
@@ -2152,6 +2331,18 @@ function vAdmin(){
       <label class="f">Tipo</label><select class="in" name="role"><option value="juez">Juez</option><option value="lienzo">Lienzo</option></select>
       <label class="f">Lienzo (solo para jueces)</label><select class="in" name="lienzoId"><option value="">—</option>${Ls.filter(l => l.status === 'aprobado').map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select><button class="btn pri block mt2">${I.key} Generar código</button></form>
       <div class="h2">Códigos</div>` + (inv.length ? `<div class="card pad0">${inv.map(i => `<div class="rank"><div class="grow"><div style="font-weight:800;font-family:monospace;font-size:15px">${esc(i.code)}</div><div class="small mut">${roleName(i.role)}${i.lienzoId ? ' · ' + esc(lienzo(i.lienzoId).name) : ''} · ${fdt(i.createdAt)}</div></div>${i.used ? '<span class="chip">Usado</span>' : `<button class="btn sm" data-act="copy" data-t="${esc(i.code)}">Copiar</button>`}</div>`).join('')}</div>` : `<div class="card small mut">Sin códigos.</div>`); }
+  if (t === 'microchips') { const P = prices(), O = DB.all('requests').filter(r => r.type === 'chip_order').sort((a, b) => b.createdAt - a.createdAt);
+    const pend = [...DB.all('horses').map(x => ['horse', x]), ...DB.all('stock').map(x => ['stock', x])].filter(([, x]) => x.chipStatus === 'pendiente'), pros = DB.all('profiles').filter(p => p.subscriptionStatus === 'pro');
+    const ordSt = { pendiente: 'Pagado · por enviar', enviado: 'Enviado', entregado: 'Entregado', cancelado: 'Cancelado' };
+    h += `<form class="card mt" data-form="prices"><div style="font-weight:800">Precios</div><div class="grid2"><div><label class="f">Pro al mes (MXN)</label><input class="in" name="pro" type="number" min="0" step="1" value="${P.pro}" required></div><div><label class="f">Kit de microchip (MXN)</label><input class="in" name="kit" type="number" min="0" step="1" value="${P.kit}" required></div></div><button class="btn block mt2">Guardar precios</button>
+      <div class="small mut2 mt">Los pagos son simulados. Para cobrar de verdad hay que conectar un procesador (Stripe, Mercado Pago o Conekta) y reemplazar activate_pro() en la base de datos.</div></form>
+      <div class="h2">Chips por validar</div>${pend.length ? `<div class="list">${pend.map(([k, x]) => `<div class="card"><div class="row" style="gap:10px">${av(x.photo, x.name, 40)}<div class="grow"><div style="font-weight:800">${esc(x.name)} <span class="small mut">· ${k === 'horse' ? 'Caballo' : 'Ganado'}</span></div><div class="small mut" style="font-family:monospace">${esc(fmtUid(x.chipUid))}</div></div></div>
+        <div class="btns mt"><button class="btn pri sm" data-act="chipVal" data-k="${k}" data-id="${x.id}" data-ok="1">${I.check} Validar carnet</button><button class="btn sm" data-act="chipVal" data-k="${k}" data-id="${x.id}" data-ok="">${I.x} Rechazar</button></div></div>`).join('')}</div>` : '<div class="card small mut">No hay chips por validar. ✓</div>'}
+      <div class="h2">Pedidos de kit</div>${O.length ? `<div class="list">${O.map(r => { const sh = r.ship || {}; return `<div class="card"><div class="row between" style="gap:8px"><div class="grow"><div style="font-weight:800">${esc(r.targetName || 'Ejemplar')}</div><div class="small mut">${fdt(r.createdAt)} · ${mxn(r.price || 0)} · ${r.payStatus === 'pagado_simulado' ? 'pago simulado' : esc(r.payStatus || '')}</div></div><span class="chip ${r.status === 'entregado' ? 'green' : 'blue'}">${ordSt[r.status] || esc(r.status)}</span></div>
+        <div class="small" style="margin-top:8px;line-height:1.5">${esc(sh.name || '')} · ${esc(sh.phone || '')}<br>${esc([sh.street, sh.colonia, sh.city, sh.state, sh.zip].filter(Boolean).join(', '))}${sh.notes ? '<br>' + esc(sh.notes) : ''}</div>
+        ${r.kitUid ? `<div class="small mut" style="margin-top:4px">Chip enviado: <b style="font-family:monospace">${esc(fmtUid(r.kitUid))}</b>${r.tracking ? ' · Guía ' + esc(r.tracking) : ''}</div>` : ''}
+        <div class="btns mt">${r.status === 'pendiente' ? `<button class="btn pri sm" data-act="kitShip" data-id="${r.id}">Marcar enviado</button><button class="btn ghost sm" data-act="kitSt" data-id="${r.id}" data-s="cancelado">Cancelar</button>` : r.status === 'enviado' ? `<button class="btn sm" data-act="kitSt" data-id="${r.id}" data-s="entregado">Marcar entregado</button>` : ''}</div></div>`; }).join('')}</div>` : '<div class="card small mut">Aún no hay pedidos.</div>'}
+      <div class="h2">Cuentas Pro</div>${pros.length ? `<div class="card pad0">${pros.map(p => `<div class="rank"><div class="grow"><div style="font-weight:700">${esc(p.name)}</div><div class="small mut">${roleName(p.role)} · hasta ${fdate(localISO(+p.proUntil || Date.now()))}</div></div><button class="btn ghost sm" data-act="proOff" data-id="${p.id}">Quitar Pro</button></div>`).join('')}</div>` : '<div class="card small mut">Aún no hay cuentas Pro.</div>'}`; }
   if (t === 'ajustes') { const kind = State.adjKind || 'charro';
     const opts = kind === 'charro' ? [...new Set([...rankingCharros({}).map(x => x.name), ...DB.all('charros').map(c => c.name)])].sort().map(n => [norm(n), n])
       : kind === 'team' ? [...new Set([...rankingEquipos({}, 'equipos').map(x => x.name), ...rankingEquipos({}, 'completo').map(x => x.name), ...DB.all('teams').map(x => x.name)])].sort().map(n => [norm(n), n])
@@ -2226,6 +2417,22 @@ const ACT = {
   authmode(el){ State.authMode = el.dataset.k; render(); },
   card(el){ openCard(el.dataset.n); },
   hcard(el){ openHorse(el.dataset.id); },
+  upgrade(el){ openUpgrade(el.dataset.why || ''); },
+  async cardHD(el){ if (needPro('La tarjeta en alta resolución es una función Pro.')) return; await safe(() => downloadNode($('#tcard'), `tarjeta-${slug(el.dataset.n)}.png`), 'Tarjeta descargada'); },
+  report(el){ if (needPro('Los reportes en PDF son una función Pro.')) return; openReport(el.dataset.k, el.dataset.id); },
+  chipOrder(el){ openChipOrder(el.dataset.k, el.dataset.id); },
+  async nfcRead(el){ const inp = document.getElementById(el.dataset.target); try { const id = await nfcRead(); if (inp) inp.value = fmtUid(id); toast('Chip leído: ' + fmtUid(id), 'ok'); } catch (e) { toast(e.message, 'err'); } },
+  async nfcWrite(el){ try { await nfcWrite(carnetUrl(el.dataset.id)); toast('Enlace del carnet grabado en el chip', 'ok'); } catch (e) { toast(e.message, 'err'); } },
+  async carnetPng(el){ const [, x] = chipTarget(el.dataset.id); await safe(() => downloadNode($('#carnet-card'), `carnet-${slug(x ? x.name : 'ejemplar')}.png`), 'Carnet descargado'); },
+  async chipVal(el){ const kind = el.dataset.k, x = DB.get(kind === 'horse' ? 'horses' : 'stock', el.dataset.id), ok = !!el.dataset.ok; if (!x) return;
+    await safe(async () => { await DB.backend.validateChip(kind, x, ok); await audit('microchip', `${ok ? 'Validó' : 'Rechazó'} el chip ${fmtUid(x.chipUid)} de ${x.name}`); }, ok ? 'Carnet validado' : 'Chip rechazado'); },
+  async kitShip(el){ const r = DB.get('requests', el.dataset.id); if (!r) return; const uidv = await ask('Marcar enviado', 'UID del chip que va en el kit (está en la etiqueta). Cuando el dueño lo registre, su carnet se validará solo.', 'Siguiente', false, '04:A1:B2:C3:D4:E5:F6'); if (!uidv) return;
+    if (normUid(uidv).length < 8) return toast('El UID debe tener al menos 8 caracteres hexadecimales', 'err');
+    const tr = await ask('Guía de paquetería', 'Número de guía (opcional).', 'Marcar enviado', false, 'Ej. ESTAFETA 7012 3344 55'); if (tr === false) return;
+    await safe(async () => { await DB.put('requests', { ...r, status: 'enviado', kitUid: normUid(uidv), tracking: tr || '', shippedAt: Date.now() }); await audit('kit', `Envió kit de microchip ${fmtUid(uidv)} para ${r.targetName}`); }, 'Pedido marcado como enviado'); },
+  async kitSt(el){ const r = DB.get('requests', el.dataset.id); if (!r) return; await safe(() => DB.put('requests', { ...r, status: el.dataset.s }), el.dataset.s === 'entregado' ? 'Marcado como entregado' : 'Pedido cancelado'); },
+  async proOff(el){ const p = DB.get('profiles', el.dataset.id); if (!p || !(await ask('Quitar Pro', `${p.name} regresará al plan gratis.`, 'Quitar', true))) return;
+    await safe(async () => { await DB.put('profiles', { ...p, subscriptionStatus: 'free', proUntil: null }); await audit('pro', `Quitó Pro a ${p.name}`); }, 'Plan Pro retirado'); },
   async adjDel(el){ const a = DB.get('adjust', el.dataset.id); if (!a || !(await ask('Quitar ajuste', `${a.label} vuelve a su valor real.`, 'Quitar'))) return;
     await safe(async () => { await DB.del('adjust', a.id); await audit('ajuste', `Quitó el ajuste de ${VK_LABEL[a.kind].toLowerCase()} ${a.label}`); }, 'Ajuste quitado'); },
   scard(el){ openStock(el.dataset.id); }, rateStock(el){ openRateStock(el.dataset.id); },
@@ -2368,6 +2575,10 @@ document.addEventListener('submit', async e => {
   const f = e.target; if (!f.dataset.form) return; e.preventDefault();
   const d = Object.fromEntries(new FormData(f).entries()), k = f.dataset.form;
   if (k === 'login') return safe(async () => { State.user = await DB.backend.login(d.email.trim(), d.pass); State.j = null; go(isSuper(State.user) ? 'admin' : 'cuenta'); }, 'Bienvenido');
+  if (k === 'chipReg') { const kind = f.dataset.kind, x = DB.get(kind === 'horse' ? 'horses' : 'stock', f.dataset.id); if (!x) return;
+    return safe(async () => { const st = await DB.backend.registerChip(kind, x, d.uid); await audit('microchip', `Registró el chip ${fmtUid(d.uid)} en ${x.name}`); toast(st === 'validado' ? '¡Carnet validado! El chip coincide con tu kit.' : 'Chip registrado. Queda pendiente de validación.', 'ok'); if (st === 'validado') go('carnet-' + x.id); }); }
+  if (k === 'prices') { const pro = Math.max(0, Math.round(+d.pro)), kit = Math.max(0, Math.round(+d.kit));
+    return safe(async () => { await DB.put('settings', { id: 'precios', pro, kit, updatedAt: Date.now() }); await audit('precios', `Cambió precios: Pro ${mxn(pro)}/mes, kit ${mxn(kit)}`); }, 'Precios guardados'); }
   if (k === 'adjust') { if (!isSuper(State.user)) return; const kind = State.adjKind || 'charro', key = d.key, sel = f.querySelector('[name=key]');
     const label = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.replace(' · con ajuste', '') : key;
     const row = { id: `${kind}:${key}`, kind, key, label, pts: Math.round(+d.pts || 0), amt: Math.round(+d.amt || 0), pct: Math.max(-90, Math.min(500, +d.pct || 0)), rent: Math.max(0, Math.round(+d.rent || 0)), featured: !!d.featured, updatedAt: Date.now(), updatedByName: State.user.name };
