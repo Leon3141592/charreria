@@ -576,7 +576,7 @@ if (typeof module !== 'undefined') module.exports = RULES;
 const CONFIG = { MODE: 'auto', SUPABASE_URL: '', SUPABASE_ANON_KEY: '', APP_NAME: 'Charrería Pro' };
 const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
 const CATEGORIAS = ['Libre','Juvenil'];
-const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings'];
+const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand'];
 const FN = k => RULES.F[k].name;
 
 /* ------------------------- ICONOS ------------------------- */
@@ -643,7 +643,7 @@ const DB = {
     try { await this.backend.del(t, id); } catch (e) { arr.splice(i, 0, prev); throw e; }
   }
 };
-const LS_KEY = 'charreriapro_demo_v6', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v7', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -889,7 +889,7 @@ function seed(){
   const yr = new Date().getFullYear(), ago = d => Date.now() - d * 864e5;
   const HS = [];
   const horse = (id, name, discipline, sex, age, breed, coat, registry, ownerId, ownerName, ownerPublic, pricePublic, forSale, extra = {}) =>
-    HS.push({ id, name, discipline, sex, birthYear: yr - age, breed, coat, registry, photo: '', ownerId, ownerName: ownerPublic ? ownerName : '', ownerPublic, pricePublic, forSale, history: [], ownerSince: ago(400), createdAt: ago(400), ...extra });
+    HS.push({ id, name, discipline, sex, training: age < 4 ? 'En doma' : age > 6 && registry ? 'Alto nivel / competencia' : 'Rienda terminada', birthYear: yr - age, breed, coat, registry, photo: '', ownerId, ownerName: ownerPublic ? ownerName : '', ownerPublic, pricePublic, forSale, history: [], ownerSince: ago(400), createdAt: ago(400), ...extra });
   horse('cb1','Lucero','Cala de caballo','Castrado',9,'Cuarto de milla','Alazán','AMCC-10432','ucap','Ernesto Villaseñor',true,true,false);
   horse('cb2','Relámpago','Piales en el lienzo','Macho',7,'Azteca','Tordillo','FMCH-22817','udueno','Gabriel Montaño',true,true,true,{ history: [{ label: 'Hacienda La Gloria', from: ago(1500), to: ago(400) }] });
   horse('cb3','Canelo','Coleadero','Castrado',11,'Cuarto de milla','Alazán tostado','','udueno','Gabriel Montaño',false,true,true);
@@ -897,6 +897,9 @@ function seed(){
   horse('cb5','El Moro','Cala de caballo','Macho',14,'Criollo','Moro','','uext1','Rancho Los Arcos',true,true,false);
   horse('cb6','Centella','Manganas','Hembra',5,'Azteca','Palomino','FMCH-33901','uext2','',false,false,false,{ history: [{ label: 'Rancho San Rafael', from: ago(900), to: ago(200) }] });
   horse('cb7','Diamante','Piales en el lienzo','Macho',3,'Cuarto de milla','Bayo','','udueno','Gabriel Montaño',true,true,true);
+  P.forEach(x => { if (x.id === 'ucharro' || x.id === 'ucap') x.verified = true; });
+  RQ.push({ id:'rq4', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Administración Lienzo de la Villa', contact:'55 9876 5432', message:'Lo queremos para la escuela de charrería.', status:'pendiente', createdBy:'uvilla', createdAt: ago(3) });
+  RQ.push({ id:'rq5', type:'interes', horseId:'cb3', ownerId:'udueno', buyerName:'Ernesto Villaseñor', contact:'capitan@demo.mx', message:'', status:'pendiente', createdBy:'ucap', createdAt: ago(5) });
   RQ.push({ id:'rq3', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Fausto Herrera', contact:'55 1234 5678', message:'Me interesa para la temporada; ¿se puede ver en Texcoco?', status:'pendiente', createdBy:'ucharro', createdAt: ago(1) });
   RQ.push({ id:'rq2', type:'afiliacion', teamId:'q5', lienzoId:'lvilla', status:'pendiente', createdBy:'ucap2', createdAt: Date.now()-2*864e5 });
   return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, settings:[{ id:'valuacion', min:60000, max:800000 }] };
@@ -1199,7 +1202,6 @@ const SEXOS = ['Macho','Hembra','Castrado'];
 const mxn = v => '$' + Math.round(v).toLocaleString('es-MX');
 const mxnK = v => v >= 1e6 ? '$' + (v / 1e6).toFixed(1).replace('.0', '') + ' M' : '$' + Math.round(v / 1000) + ' mil';
 const horseAge = h => h.birthYear ? new Date().getFullYear() - h.birthYear : null;
-const valCfg = () => { const c = DB.get('settings', 'valuacion') || {}; return { min: +c.min || 60000, max: +c.max || 800000 }; };
 const isHorseOwner = (u, h) => !!(u && h && h.ownerId === u.id);
 const ownerLabel = (h, u) => isHorseOwner(u, h) ? 'Tú' + (h.ownerPublic ? '' : ' (privado)') : h.ownerPublic && h.ownerName ? h.ownerName : 'Dueño privado';
 const canSeePrice = (h, u) => h.pricePublic || isHorseOwner(u, h) || isSuper(u);
@@ -1227,12 +1229,35 @@ function horseStats(h){
   R.val = horseValue(h, R);
   return R;
 }
-function ageFactor(a){ if (a == null) return .85; if (a < 3) return .55; if (a <= 4) return .75; if (a <= 6) return .9; if (a <= 12) return 1; if (a <= 15) return .8; if (a <= 18) return .6; return .4; }
-function horseValue(h, R){   // valuación estimada dentro del rango que fija el súper usuario
-  const { min, max } = valCfg(), age = horseAge(h);
-  const f = { perf: R.n ? R.pct : .2, eff: R.n ? R.eff / 100 : .3, exp: Math.min(1, R.evs.size / 8), reg: h.registry ? 1 : 0 };
-  const q = .40 * f.perf + .20 * f.eff + .25 * f.exp + .15 * f.reg, A = ageFactor(age), v = (min + (max - min) * q) * A, r5 = x => Math.round(x / 5000) * 5000;
-  return { value: r5(v), low: r5(v * .88), high: r5(v * 1.12), q, A, f, age };
+/* Valuación calibrada con precios de mercado en México (anuncios 2025–2026):
+   criollo o de rancho domado sin registro $20–40 mil · cuarto de milla sin registro $18–75 mil ·
+   con registro o doma avanzada $130–200 mil · rienda charra terminada $70–135 mil · potros sin registro $18–45 mil.
+   Encima de eso, el desempeño probado en charreadas, los campeonatos y la demanda de compradores verificados no tienen techo. */
+const VAL_MIN = 20000;
+const TRAINING = [['Potro / sin domar', .5], ['En doma', .75], ['Rienda terminada', 1], ['Alto nivel / competencia', 1.35]];
+const BREED_F = [[/pura raza espa|\bpre\b|andaluz|español/i, 1.4], [/árabe|arabe/i, 1.1], [/cuarto de milla|quarter/i, 1], [/azteca/i, .95], [/appaloosa|paint|pinto/i, .9], [/criollo|cruza|rancho|mestizo/i, .75]];
+const DISC_F = { 'Cala de caballo': 1.3, 'Piales en el lienzo': 1.1, 'Coleadero': 1.05, 'Jineteo': .7, 'Terna en el ruedo': 1.1, 'Manganas': 1.1, 'Paso de la muerte': .95, 'Multidisciplina': 1.2 };
+const SEX_F = { Macho: 1.1, Hembra: 1, Castrado: .95 };
+function ageFactor(a){ if (a == null) return .9; if (a < 2) return .6; if (a <= 3) return .8; if (a <= 5) return .95; if (a <= 12) return 1; if (a <= 15) return .8; if (a <= 18) return .55; return .35; }
+const isVerifiedBuyer = p => !!p && p.status === 'aprobado' && (p.role === 'lienzo' || (['charro','equipo'].includes(p.role) && !!p.verified));
+function horseDemand(h){   // compradores verificados distintos con interés activo en los últimos 180 días
+  if (DB.backend.mode !== 'demo') return +((DB.get('horse_demand', h.id) || {}).demand) || 0;
+  const cut = Date.now() - 180 * 864e5, ok = new Set();
+  DB.all('requests').forEach(r => { if (r.type === 'interes' && r.horseId === h.id && ['pendiente','aprobado'].includes(r.status) && r.createdAt > cut && isVerifiedBuyer(DB.get('profiles', r.createdBy))) ok.add(r.createdBy); });
+  return ok.size;
+}
+const rndPrice = x => x < 100000 ? Math.round(x / 1000) * 1000 : Math.round(x / 5000) * 5000;
+function horseValue(h, R){
+  const age = horseAge(h), reg = !!(h.registry || '').trim(), base = reg ? 130000 : 35000;
+  const bf = (BREED_F.find(([re]) => re.test(h.breed || '')) || [0, .85])[1], tf = (TRAINING.find(t => t[0] === h.training) || TRAINING[2])[1];
+  const df = DISC_F[h.discipline] || 1, af = ageFactor(age), sf = SEX_F[h.sex] || 1;
+  const conf = Math.min(1, R.n / 12), pf = 1 + 4 * Math.pow(R.n ? R.pct : 0, 3) * conf, wf = 1 + .08 * (R.wins || 0);
+  const k = horseDemand(h), dmf = 1 + .1 * Math.log2(1 + k);
+  const raw = base * bf * tf * df * af * sf * pf * wf * dmf, model = rndPrice(Math.max(VAL_MIN, raw));
+  const ov = h.priceOverride && +h.priceOverride.value ? Math.max(VAL_MIN, +h.priceOverride.value) : 0, value = ov || model;
+  const steps = [[reg ? 'Base con registro' : 'Base sin registro', base, true], ['Raza' + (h.breed ? ` (${h.breed})` : ''), bf], ['Nivel de doma' + (h.training ? ` (${h.training})` : ''), tf], ['Disciplina', df],
+    ['Edad' + (age != null ? ` (${age} años)` : ''), af], ['Sexo', sf], [`Desempeño (${R.n} faenas)`, pf], [`Campeonatos (${R.wins || 0})`, wf], [`Demanda (${k} ${k === 1 ? 'comprador verificado' : 'compradores verificados'})`, dmf]];
+  return { value, model, low: ov ? value : Math.max(VAL_MIN, rndPrice(model * .9)), high: ov ? value : rndPrice(model * 1.1), override: ov ? h.priceOverride : null, floor: raw < VAL_MIN, steps, k, age };
 }
 function horseCardHTML(h, R){
   const u = State.user, photo = safeImg(h.photo), age = horseAge(h), seeP = canSeePrice(h, u);
@@ -1257,11 +1282,13 @@ function horseCardHTML(h, R){
 }
 function horseRanking(){ return DB.all('horses').map(h => ({ h, R: horseTable().M[h.id] })).filter(x => x.R && x.R.n).sort((a, b) => b.R.pts - a.R.pts); }
 function valBox(h, R){
-  const v = R.val, F = [['Desempeño en torneos', v.f.perf, '40%'], ['Efectividad', v.f.eff, '20%'], ['Experiencia (torneos)', v.f.exp, '25%'], ['Registro de raza', v.f.reg, '15%']];
-  return `<div class="card"><div class="small mut">Valuación estimada de mercado</div><div style="font-family:'Cinzel',serif;font-size:28px;color:var(--gold2);line-height:1.1;margin-top:4px">${mxn(v.value)}</div><div class="small mut">Rango: ${mxn(v.low)} a ${mxn(v.high)} MXN</div>
-    <div class="mt">${F.map(([l, x, w]) => `<div class="row between small" style="margin-top:6px"><span>${l} <span class="mut2">(${w})</span></span><b>${Math.round(x * 100)}%</b></div><div class="bar"><i style="width:${Math.round(x * 100)}%"></i></div>`).join('')}
-    <div class="row between small" style="margin-top:8px"><span>Ajuste por edad${v.age != null ? ` (${v.age} años)` : ''}</span><b>×${v.A.toFixed(2)}</b></div></div>
-    <div class="small mut2 mt">Es un estimado automático con los resultados registrados en la app, no un avalúo ni una oferta. La app no interviene en pagos.</div></div>`;
+  const v = R.val;
+  return `<div class="card"><div class="small mut">${v.override ? 'Precio fijado por la administración' : 'Valuación estimada de mercado'}</div><div style="font-family:'Cinzel',serif;font-size:28px;color:var(--gold2);line-height:1.1;margin-top:4px">${mxn(v.value)}</div>
+    <div class="small mut">${v.override ? `Fijado por ${esc(v.override.by || 'el súper usuario')} el ${fdate(localISO(v.override.at))}. El modelo calcula ${mxn(v.model)}.` : `Rango: ${mxn(v.low)} a ${mxn(v.high)} MXN`}</div>
+    ${v.k ? `<div class="banner ok mt">${I.trophy}<span>${v.k} ${v.k === 1 ? 'comprador verificado se ha interesado' : 'compradores verificados se han interesado'} en los últimos 6 meses.</span></div>` : ''}
+    <div class="mt">${v.steps.map(([l, x, money]) => `<div class="row between small" style="padding:4px 0;border-bottom:1px solid var(--line)"><span>${esc(l)}</span><b style="font-variant-numeric:tabular-nums">${money ? mxn(x) : '×' + x.toFixed(2)}</b></div>`).join('')}
+    <div class="row between small" style="padding:6px 0"><span>Resultado del modelo${v.floor ? ' (se aplica el mínimo)' : ''}</span><b style="color:var(--gold2)">${mxn(v.model)}</b></div></div>
+    <div class="small mut2 mt">Base y factores calibrados con precios de mercado en México. El desempeño en charreadas, los campeonatos y el interés de compradores verificados (lienzos, y charros y equipos verificados) suben el valor sin límite. Mínimo ${mxn(VAL_MIN)}. Es un estimado, no un avalúo; la app no interviene en pagos.</div></div>`;
 }
 function openHorse(id){
   const h = DB.get('horses', id); if (!h) return toast('Caballo no encontrado', 'err');
@@ -1292,7 +1319,7 @@ function horseRow(h){ const u = State.user, age = horseAge(h), R = horseStats(h)
   return `<div class="rank tap" data-act="hcard" data-id="${h.id}" role="button" tabindex="0">${av(h.photo, h.name, 44)}<div class="grow"><div class="ell" style="font-weight:700">${esc(h.name)} ${h.forSale ? '<span class="chip gold" style="padding:1px 7px;font-size:10px">En venta</span>' : ''}</div><div class="small mut ell">${esc([h.discipline, age != null ? age + ' años' : '', ownerLabel(h, u)].filter(Boolean).join(' · '))}</div></div><div class="pts" style="font-size:15px">${canSeePrice(h, u) ? mxnK(R.val.value) : '<small>Privado</small>'}</div></div>`; }
 function vCaballos(){
   const f = State.hFilter || 'todos', d = State.hDisc || '';
-  const list = DB.all('horses').filter(h => (f !== 'venta' || h.forSale) && (!d || h.discipline === d)).map(h => ({ h, o: horseStats(h).ovr })).sort((a, b) => (b.h.forSale - a.h.forSale) || b.o - a.o).map(x => x.h);
+  const list = DB.all('horses').filter(h => (f !== 'venta' || h.forSale) && (!d || h.discipline === d)).map(h => ({ h, v: canSeePrice(h, State.user) ? horseStats(h).val.value : 0 })).sort((a, b) => (b.h.forSale - a.h.forSale) || b.v - a.v).map(x => x.h);
   let h = `<div class="h1">Caballos</div><div class="sub" style="margin-top:4px">Ejemplares registrados, su desempeño en charreadas y la vitrina de venta. La app no interviene en pagos.</div>
     <div class="seg mt">${[['todos','Todos'],['venta','En venta']].map(([k, l]) => `<button class="${f === k ? 'on' : ''}" data-act="hfilter" data-k="${k}">${l}</button>`).join('')}</div>
     <select class="in mt" data-model="hDisc"><option value="">Todas las disciplinas</option>${DISCIPLINAS.map(x => `<option ${x === d ? 'selected' : ''}>${x}</option>`).join('')}</select>`;
@@ -1306,10 +1333,11 @@ function horseFields(h = {}){
     <div><label class="f">Sexo</label><select class="in" name="sex">${SEXOS.map(x => `<option ${x === h.sex ? 'selected' : ''}>${x}</option>`).join('')}</select></div></div>
     <div class="grid2"><div><label class="f">Año de nacimiento</label><input class="in" name="birthYear" type="number" min="${yr - 35}" max="${yr}" value="${esc(h.birthYear || '')}" required></div>
     <div><label class="f">Raza</label><input class="in" name="breed" value="${esc(h.breed || '')}" placeholder="Cuarto de milla, Azteca…"></div></div>
+    <label class="f">Nivel de doma</label><select class="in" name="training">${TRAINING.map(([t]) => `<option ${t === (h.training || 'Rienda terminada') ? 'selected' : ''}>${t}</option>`).join('')}</select>
     <div class="grid2"><div><label class="f">Pelaje</label><input class="in" name="coat" value="${esc(h.coat || '')}" placeholder="Alazán, Tordillo…"></div>
     <div><label class="f">No. de registro (opcional)</label><input class="in" name="registry" value="${esc(h.registry || '')}"></div></div>`;
 }
-const horseData = d => ({ name: d.name.trim(), discipline: d.discipline, sex: d.sex, birthYear: +d.birthYear || null, breed: (d.breed || '').trim(), coat: (d.coat || '').trim(), registry: (d.registry || '').trim() });
+const horseData = d => ({ name: d.name.trim(), discipline: d.discipline, sex: d.sex, training: d.training, birthYear: +d.birthYear || null, breed: (d.breed || '').trim(), coat: (d.coat || '').trim(), registry: (d.registry || '').trim() });
 function horsesSection(u){
   const mine = DB.all('horses').filter(h => h.ownerId === u.id).sort((a, b) => a.name.localeCompare(b.name));
   const nInt = DB.all('requests').filter(r => r.type === 'interes' && r.status === 'pendiente' && mine.some(h => h.id === r.horseId)).length;
@@ -1408,7 +1436,11 @@ function vRanking(){
     <div class="row mt" style="gap:8px"><select class="in" data-model="rankEstado"><option value="">Todo México</option>${estados.map(s => `<option ${s === State.rankEstado ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
     <button class="tog ${State.rankOficial ? 'on' : ''}" data-act="rankOficial" style="white-space:nowrap">Solo oficiales</button></div>`;
   if (State.rankTab === 'charros') { const r = rankingCharros(opt); h += r.length ? `<div class="card pad0 mt">${r.slice(0, 100).map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.evs.size} charreadas · mejor ${c.best}`, c.pts, 'pts', true)).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
-  else if (State.rankTab === 'caballos') { const r = horseRanking(); h += r.length ? `<div class="small mut mt">Puntos de las faenas hechas por el charro que lo montó (todas las charreadas). <a href="#caballos" style="color:var(--gold2)">Vitrina</a></div><div class="card pad0 mt">${r.map((x, i) => rankRow(i, x.h.name, `${esc(x.h.discipline || '')} · ${x.R.evs.size} charreadas · ${esc(ownerLabel(x.h, State.user))}`, x.R.pts, 'pts', 'h:' + x.h.id)).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin caballos con faenas', 'Se suman cuando un charro monta un caballo registrado en una charreada.')}</div>`; }
+  else if (State.rankTab === 'caballos') { const by = State.hRankBy || 'puntos';
+    h += `<div class="seg mt">${[['puntos','Por puntos'],['valor','Por valor']].map(([k, l]) => `<button class="${by === k ? 'on' : ''}" data-act="hrankby" data-k="${k}">${l}</button>`).join('')}</div>`;
+    if (by === 'valor') { const r = DB.all('horses').filter(x => x.pricePublic).map(x => ({ h: x, S: horseStats(x) })).sort((a, b) => b.S.val.value - a.S.val.value);
+      h += r.length ? `<div class="small mut mt">Valuación de cada caballo con valor público. Sube con su desempeño, sus campeonatos y el interés de compradores verificados.</div><div class="card pad0 mt">${r.map((x, i) => rankRow(i, x.h.name, `${esc(x.h.discipline || '')} · ${x.S.val.k ? x.S.val.k + ' interesados verificados' : 'sin interesados'}${x.S.val.override ? ' · precio fijado' : ''}`, mxnK(x.S.val.value).replace('$', ''), '', 'h:' + x.h.id)).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin caballos con valor público', 'Cada dueño decide si muestra la valuación de su caballo.')}</div>`; }
+    else { const r = horseRanking(); h += r.length ? `<div class="small mut mt">Puntos de las faenas hechas por el charro que lo montó (todas las charreadas). <a href="#caballos" style="color:var(--gold2)">Vitrina</a></div><div class="card pad0 mt">${r.map((x, i) => rankRow(i, x.h.name, `${esc(x.h.discipline || '')} · ${x.R.evs.size} charreadas · ${esc(ownerLabel(x.h, State.user))}`, x.R.pts, 'pts', 'h:' + x.h.id)).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin caballos con faenas', 'Se suman cuando un charro monta un caballo registrado en una charreada.')}</div>`; } }
   else { const r = rankingEquipos(opt, State.rankTab === 'completo' ? 'completo' : 'equipos'); h += r.length ? `<div class="card pad0 mt">${r.map((t, i) => rankRow(i, t.name, `${esc(t.state || '')} · ${t.evs} charreadas${t.wins ? ` · ${t.wins} 🏆` : ''}`, t.pts, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
   return h;
 }
@@ -1895,6 +1927,7 @@ function vAdmin(){
   if (t === 'lienzos') h += `<div class="list mt">${Ls.slice().sort((a, b) => a.name.localeCompare(b.name)).map(l => { const o = DB.get('profiles', l.ownerId); return `<div class="card"><div class="row"><div class="grow"><div style="font-weight:800">${esc(l.name)} ${verifiedMark(l)}</div><div class="small mut">${esc(l.city)}, ${esc(l.state)} · ${esc(o ? o.email : '')}</div><div class="small mut2">${Es.filter(e => e.lienzoId === l.id).length} charreadas</div></div>${stChip(l.status)}</div>
     <div class="btns mt">${l.status !== 'aprobado' ? `<button class="btn pri sm" data-act="lienzoSt" data-id="${l.id}" data-s="aprobado">Verificar</button>` : `<button class="btn sm" data-act="lienzoSt" data-id="${l.id}" data-s="suspendido">Suspender</button>`}</div></div>`; }).join('')}</div>`;
   if (t === 'usuarios') h += `<div class="card pad0 mt">${P.slice().sort((a, b) => a.role.localeCompare(b.role)).map(p => `<div class="rank"><div class="avatar">${esc(initials(p.name))}</div><div class="grow"><div style="font-weight:700" class="ell">${esc(p.name)}</div><div class="small mut ell">${roleName(p.role)} · ${esc(p.email)}${p.lienzoId ? ' · ' + esc(lienzo(p.lienzoId).name) : ''}</div></div>
+    ${['charro','equipo'].includes(p.role) && p.status === 'aprobado' ? `<button class="btn sm ${p.verified ? '' : 'pri'}" data-act="userVerify" data-id="${p.id}" title="Su interés de compra cuenta para la valuación">${p.verified ? I.check + ' Comprador' : 'Verificar comprador'}</button>` : ''}
     ${p.role === 'superadmin' ? '<span class="chip gold">Admin</span>' : p.status === 'aprobado' ? `<button class="btn ghost sm" data-act="userSt" data-id="${p.id}" data-s="suspendido">Suspender</button>` : `<button class="btn sm" data-act="approve" data-id="${p.id}">Autorizar</button>`}</div>`).join('')}</div>`;
   if (t === 'eventos') h += `<div class="list mt">${Es.slice().sort((a, b) => b.date.localeCompare(a.date)).map(e => `<div class="card"><div class="row wrapf" style="gap:6px">${statusChip(e)}${officialChip(e)}${modeChip(e)}</div><div style="font-weight:800;margin-top:6px">${esc(e.title)}</div><div class="small mut">${esc(lienzo(e.lienzoId).name)} · ${fdate(e.date)} · ${evScores(e.id).length} faenas · ${DB.all('sheets').filter(s => s.eventId === e.id && s.entregada).length}/${e.teams.length} hojas</div>
     <div class="btns mt"><button class="btn sm ${e.official ? '' : 'pri'}" data-act="toggleOfficial" data-id="${e.id}">${e.official ? 'Quitar oficial' : 'Hacer oficial'}</button><a class="btn sm" href="#panel-evento-${e.id}">Administrar</a></div></div>`).join('')}</div>`;
@@ -1903,11 +1936,15 @@ function vAdmin(){
       <label class="f">Tipo</label><select class="in" name="role"><option value="juez">Juez</option><option value="lienzo">Lienzo</option></select>
       <label class="f">Lienzo (solo para jueces)</label><select class="in" name="lienzoId"><option value="">—</option>${Ls.filter(l => l.status === 'aprobado').map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select><button class="btn pri block mt2">${I.key} Generar código</button></form>
       <div class="h2">Códigos</div>` + (inv.length ? `<div class="card pad0">${inv.map(i => `<div class="rank"><div class="grow"><div style="font-weight:800;font-family:monospace;font-size:15px">${esc(i.code)}</div><div class="small mut">${roleName(i.role)}${i.lienzoId ? ' · ' + esc(lienzo(i.lienzoId).name) : ''} · ${fdt(i.createdAt)}</div></div>${i.used ? '<span class="chip">Usado</span>' : `<button class="btn sm" data-act="copy" data-t="${esc(i.code)}">Copiar</button>`}</div>`).join('')}</div>` : `<div class="card small mut">Sin códigos.</div>`); }
-  if (t === 'valuacion') { const c = valCfg();
-    h += `<form class="card mt" data-form="valCfg"><div style="font-weight:800">Rango de valuación de caballos</div><div class="small mut" style="margin-top:3px">Cada caballo se ubica en este rango según desempeño (40%), efectividad (20%), experiencia (25%) y registro (15%), y luego se ajusta por edad.</div>
-      <div class="grid2"><div><label class="f">Mínimo (MXN)</label><input class="in" name="min" type="number" min="0" step="5000" value="${c.min}" required></div><div><label class="f">Máximo (MXN)</label><input class="in" name="max" type="number" min="0" step="5000" value="${c.max}" required></div></div>
-      <button class="btn pri block mt2">Guardar rango</button></form>
-      <div class="h2">Caballos registrados</div>${DB.all('horses').length ? `<div class="card pad0">${DB.all('horses').map(horseRow).join('')}</div>` : '<div class="card small mut">Aún no hay caballos.</div>'}`; }
+  if (t === 'valuacion') { const HZ = DB.all('horses').map(x => ({ h: x, S: horseStats(x) })).sort((a, b) => b.S.val.value - a.S.val.value);
+    h += `<div class="card mt"><div style="font-weight:800">Cómo se valúa un caballo</div><div class="small mut" style="margin-top:4px;line-height:1.55">
+      Base de mercado: <b>${mxn(35000)}</b> sin registro o <b>${mxn(130000)}</b> con registro. Se multiplica por raza, nivel de doma (potro ×0.5 a competencia ×1.35), disciplina (cala ×1.3, jineteo ×0.7), edad (rinde más de 6 a 12 años) y sexo.
+      Luego sube sin límite con el desempeño en charreadas (hasta ×5 para los mejores con 12+ faenas), +8% por campeonato y la demanda de compradores verificados. El mínimo es <b>${mxn(VAL_MIN)}</b>.
+      Puedes fijar el precio de cualquier caballo a mano; mientras esté fijado, se usa ese precio en la vitrina y el ranking.</div></div>
+      <div class="small mut mt">Para que el interés de un charro o equipo cuente como demanda, verifícalo en la pestaña Usuarios. Los lienzos autorizados cuentan siempre.</div>
+      <div class="h2">Caballos</div>${HZ.length ? `<div class="list">${HZ.map(({ h: x, S }) => `<div class="card"><div class="row" style="gap:10px">${av(x.photo, x.name, 44)}<div class="grow"><div style="font-weight:800">${esc(x.name)}</div><div class="small mut">${esc([x.discipline, x.training, x.registry ? 'Registrado' : 'Sin registro'].filter(Boolean).join(' · '))}</div></div><div class="pts" style="font-size:16px">${mxnK(S.val.value)}</div></div>
+        <div class="small mut" style="margin-top:6px">Modelo: ${mxn(S.val.model)} · ${S.n} faenas · ${S.val.k} compradores verificados${S.val.override ? ` · <b style="color:var(--gold2)">Precio fijado: ${mxn(S.val.value)}</b>` : ''}</div>
+        <div class="btns mt"><button class="btn sm" data-act="priceSet" data-id="${x.id}">${I.edit} Fijar precio</button>${S.val.override ? `<button class="btn ghost sm" data-act="priceClear" data-id="${x.id}">Volver al modelo</button>` : ''}<button class="btn ghost sm" data-act="hcard" data-id="${x.id}">Ver tarjeta</button></div></div>`).join('')}</div>` : '<div class="card small mut">Aún no hay caballos.</div>'}`; }
   if (t === 'bitacora') { const A = DB.all('audit').slice().sort((a, b) => b.ts - a.ts).slice(0, 200);
     h += `<div class="small mut mt">Registro de todo lo que pasa en la plataforma. No se puede editar.</div><div class="card pad0 mt">${A.map(a => `<div class="rank" style="align-items:flex-start"><span class="chip" style="min-width:76px;justify-content:center">${esc(a.action)}</span><div class="grow"><div class="small" style="color:var(--text)">${esc(a.detail)}</div><div class="small mut2">${esc(a.actorName)} · ${fdt(a.ts)}</div></div></div>`).join('') || '<div class="empty">Sin registros</div>'}</div>`; }
   return h;
@@ -1956,7 +1993,15 @@ const ACT = {
   rankOficial(){ State.rankOficial = !State.rankOficial; render(); }, histOficial(){ State.histOficial = !State.histOficial; render(); },
   authmode(el){ State.authMode = el.dataset.k; render(); },
   card(el){ openCard(el.dataset.n); },
-  hcard(el){ openHorse(el.dataset.id); }, hmanage(el){ go('caballo-' + el.dataset.id); },
+  hcard(el){ openHorse(el.dataset.id); }, hrankby(el){ State.hRankBy = el.dataset.k; render(); },
+  async userVerify(el){ const p = DB.get('profiles', el.dataset.id); if (!p) return;
+    await safe(async () => { await DB.put('profiles', { ...p, verified: !p.verified }); await audit('verificacion', `${p.verified ? 'Quitó la verificación de comprador a' : 'Verificó como comprador a'} ${p.name}`); }, p.verified ? 'Verificación quitada' : 'Comprador verificado'); },
+  async priceSet(el){ const h = DB.get('horses', el.dataset.id); if (!h) return;
+    const v = await ask(`Fijar precio de ${h.name}`, `Escribe el precio en pesos. Mínimo ${mxn(VAL_MIN)}. El modelo calcula ${mxn(horseStats(h).val.model)}.`, 'Fijar precio', false, 'Ej. 250000'); if (!v) return;
+    const n = Math.round(+String(v).replace(/[^\d.]/g, '')); if (!(n >= VAL_MIN)) return toast(`El precio mínimo es ${mxn(VAL_MIN)}`, 'err');
+    await safe(async () => { await DB.put('horses', { ...h, priceOverride: { value: n, by: State.user.name, at: Date.now() } }); await audit('precio', `Fijó el precio de ${h.name} en ${mxn(n)}`); }, 'Precio fijado'); },
+  async priceClear(el){ const h = DB.get('horses', el.dataset.id); if (!h) return;
+    await safe(async () => { await DB.put('horses', { ...h, priceOverride: null }); await audit('precio', `Regresó ${h.name} al precio del modelo`); }, 'Se usa el precio del modelo'); }, hmanage(el){ go('caballo-' + el.dataset.id); },
   hfilter(el){ State.hFilter = el.dataset.k; render(); }, newHorse(){ State.newHorse = !State.newHorse; render(); },
   interes(el){ const h = DB.get('horses', el.dataset.id); if (!h) return; $('#modal').innerHTML = ''; if (!State.user) { toast('Inicia sesión para dejar tu contacto'); return go('cuenta'); } openInterest(h); },
   async horseFlag(el){ const h = DB.get('horses', el.dataset.id), k = el.dataset.k, v = !h[k], patch = { [k]: v };
@@ -2081,8 +2126,6 @@ document.addEventListener('submit', async e => {
     return safe(async () => { await DB.put('horses', { id, ...horseData(d), photo: '', ownerId: u.id, ownerName: '', ownerPublic: false, pricePublic: false, forSale: false, history: [], ownerSince: Date.now(), createdAt: Date.now() }); await audit('caballo', `Registró al caballo ${d.name.trim()}`); State.newHorse = false; go('caballo-' + id); }, 'Caballo registrado'); }
   if (k === 'horseEdit') { const h = DB.get('horses', f.dataset.id); if (!h) return; return safe(() => DB.put('horses', { ...h, ...horseData(d) }), 'Ficha guardada'); }
   if (k === 'claimHorse') return safe(async () => { const id = await DB.backend.claimHorse(d.code); const h = DB.get('horses', id); await audit('transferencia', `Recibió al caballo ${h ? h.name : ''}`); go('caballo-' + id); }, '¡El caballo ya es tuyo!');
-  if (k === 'valCfg') { const min = Math.max(0, +d.min), max = +d.max; if (!(max > min)) return toast('El máximo debe ser mayor que el mínimo', 'err');
-    return safe(async () => { await DB.put('settings', { id: 'valuacion', min, max, updatedAt: Date.now() }); await audit('valuacion', `Cambió el rango de valuación a ${mxn(min)} – ${mxn(max)}`); }, 'Rango guardado'); }
   if (k === 'charroEdit') { const C = myCharro(State.user); if (!C) return; return safe(() => DB.put('charros', { ...C, name: d.name.trim(), alias: (d.alias || '').trim(), state: d.state, category: d.category }), 'Perfil guardado'); }
   if (k === 'teamEdit') { const T = myTeam(State.user); if (!T) return; return safe(() => DB.put('teams', { ...T, name: d.name.trim(), assoc: (d.assoc || '').trim(), state: d.state }), 'Equipo guardado'); }
   if (k === 'joinTeam') { const C = myCharro(State.user), t = DB.get('teams', d.teamId); if (!C || !t) return toast('Elige un equipo', 'err');
