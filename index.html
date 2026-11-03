@@ -640,6 +640,12 @@ const Local = {
     this.sessionSet(id); return { profile: prof };
   },
   async logout(){ this.sessionSet(null); },
+  async requestReset(email){   // en la demo no hay correos: se abre directo la pantalla del enlace
+    const p = DB.all('profiles').find(x => norm(x.email) === norm(email));
+    if (!p) throw new Error('No hay ninguna cuenta con ese correo'); return { demoUserId: p.id };
+  },
+  async verifyPassword(email, pass){ const p = DB.all('profiles').find(x => norm(x.email) === norm(email)); if (!p || p.passHash !== demoHash(pass)) throw new Error('La contraseña actual no es correcta'); },
+  async changePassword(pass, userId){ const p = DB.get('profiles', userId || this.sessionGet()); if (!p) throw new Error('Sesión no encontrada'); await DB.put('profiles', { ...p, passHash: demoHash(pass) }); this.sessionSet(p.id); return p; },
   async uploadVideo(file){ return URL.createObjectURL(file); },
   async reset(){ try { localStorage.removeItem(LS_KEY); localStorage.removeItem(SS_KEY); } catch(e){} DB.data = seed(); this.persist(); }
 };
@@ -648,6 +654,7 @@ const Remote = {
   async init(){
     await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
     this.sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    this.sb.auth.onAuthStateChange(ev => { if (ev === 'PASSWORD_RECOVERY') { State.recovery = true; if (DB.backend === this) render(); } });
     const errs = await this.refetch();
     if (errs.length === TABLES.length) throw new Error(errs[0].message || 'Sin respuesta del servidor');
     this.sb.channel('charreriapro-all').on('postgres_changes', { event: '*', schema: 'public' }, p => {
@@ -679,6 +686,17 @@ const Remote = {
     await this.refetch(); return { profile: await this.ensureProfile(data.user) };
   },
   async logout(){ await this.sb.auth.signOut(); await this.refetch(); },
+  async requestReset(email){
+    const { error } = await this.sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (error) throw new Error(/rate limit/i.test(error.message) ? 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' : error.message);
+    return {};
+  },
+  async verifyPassword(email, pass){ const { error } = await this.sb.auth.signInWithPassword({ email, password: pass }); if (error) throw new Error('La contraseña actual no es correcta'); },
+  async changePassword(pass){
+    const { data, error } = await this.sb.auth.updateUser({ password: pass });
+    if (error) throw new Error(/session missing/i.test(error.message) ? 'El enlace ya no es válido. Pide uno nuevo en “¿Olvidaste tu contraseña?”' : /different from the old/i.test(error.message) ? 'La nueva contraseña debe ser distinta a la anterior' : /weak|at least/i.test(error.message) ? 'La contraseña es muy débil; usa al menos 8 caracteres' : error.message);
+    await this.refetch(); return this.ensureProfile(data.user);
+  },
   async uploadVideo(file, eventId){
     const path = `${eventId}/${Date.now()}-${file.name.replace(/[^\w.-]/g,'_')}`;
     const { error } = await this.sb.storage.from('videos').upload(path, file, { upsert: false });
@@ -827,7 +845,7 @@ async function audit(action, detail, actorId, actorName){
 /* ------------------------- ESTADO ------------------------- */
 const State = { user: null, route: 'inicio', param: null, param2: null,
   homeTab: 'marcador', rankTab: 'charros', rankSuerte: '', rankYear: String(new Date().getFullYear()), rankOficial: true, rankEstado: '',
-  histQ: '', histEstado: '', histOficial: false, authMode: 'login', regRole: 'lienzo', adminTab: 'solicitudes',
+  histQ: '', histEstado: '', histOficial: false, authMode: 'login', regRole: 'lienzo', recovery: false, recoveryUser: null, changePass: false, adminTab: 'solicitudes',
   j: null, seen: new Set(), seenInit: false, pendingRender: false, fit: true };
 
 /* ------------------------- RUTAS ------------------------- */
@@ -851,7 +869,7 @@ function render(){
   $('#nav').innerHTML = tabs.map(([k, l, ic, dot, badge]) => `<a href="#${k === 'cuenta' && isSuper(u) ? 'admin' : k}" class="${active === k ? 'on' : ''}">${ic}${dot ? '<span class="dot"></span>' : ''}${badge ? `<span class="badge-n" style="position:absolute;top:0;right:calc(50% - 22px)">${badge}</span>` : ''}<span>${l}</span></a>`).join('');
   const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja };
   $('#view').className = 'wrap' + (State.route === 'hoja' ? ' wide' : '');
-  $('#view').innerHTML = (views[State.route] || vInicio)();
+  $('#view').innerHTML = State.recovery ? vNewPass() : (views[State.route] || vInicio)();
   fitSheet();
   DB.all('scores').forEach(s => State.seen.add(s.id + ':' + s.updatedAt)); State.seenInit = true;
 }
@@ -1053,6 +1071,7 @@ function vCuenta(){
     if (u.role === 'lienzo' || u.role === 'superadmin') h += menuItem('#panel', I.horse, u.role === 'superadmin' ? 'Charreadas (todas)' : 'Mis charreadas', 'Crear, transmitir, subir video');
     h += menuItem('#juez', I.gavel, 'Mesa del juez', 'Calificar por faena y entregar la hoja oficial') + `</div>`;
   }
+  h += `<div class="h2">Seguridad</div>` + (State.changePass ? passForm(true) : `<button class="btn block" data-act="changepass">${I.key} Cambiar contraseña</button>`);
   h += `<button class="btn block mt2" data-act="logout">${I.logout} Cerrar sesión</button>`;
   return h + (DB.backend.mode === 'demo' ? demoBox() : '');
 }
@@ -1062,13 +1081,24 @@ function demoBox(){
     <div class="btns mt"><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez</button></div>
     <button class="btn ghost sm block mt" data-act="reset">Restablecer datos de ejemplo</button></div>`;
 }
+const passForm = withCurrent => `<form class="card" data-form="newpass">${withCurrent ? '<label class="f" style="margin-top:0">Contraseña actual</label><input class="in" name="current" type="password" autocomplete="current-password" required>' : ''}
+  <label class="f"${withCurrent ? '' : ' style="margin-top:0"'}>Contraseña nueva</label><input class="in" name="pass" type="password" minlength="8" autocomplete="new-password" required>
+  <label class="f">Repite la contraseña nueva</label><input class="in" name="pass2" type="password" minlength="8" autocomplete="new-password" required>
+  <div class="small mut" style="margin-top:6px">Mínimo 8 caracteres. Te llegará un correo avisando del cambio.</div>
+  <button class="btn pri block mt2">Guardar contraseña</button><button type="button" class="btn ghost sm block mt" data-act="${withCurrent ? 'changepass' : 'cancelrecovery'}">Cancelar</button></form>`;
+function vNewPass(){
+  return `<div class="center" style="margin:10px 0 18px"><span class="logo" style="width:56px;height:56px;margin:0 auto;border-radius:16px"><span style="width:30px;height:30px;display:block;color:var(--gold2)">${I.key}</span></span>
+    <div class="h1" style="margin-top:12px">Nueva contraseña</div><div class="sub" style="margin-top:4px">Escribe la contraseña que usarás de ahora en adelante.</div></div>` + passForm(false);
+}
 function vAuth(){
   const m = State.authMode, lienzosOk = DB.all('lienzos').filter(l => l.status === 'aprobado');
   let h = `<div class="center" style="margin:10px 0 18px"><span class="logo" style="width:56px;height:56px;margin:0 auto;border-radius:16px"><span style="width:30px;height:30px;display:block;color:var(--gold2)">${I.horse}</span></span>
-    <div class="h1" style="margin-top:12px">${m === 'login' ? 'Bienvenido' : 'Crear cuenta'}</div><div class="sub" style="margin-top:4px">${m === 'login' ? 'Entra para administrar tu lienzo o calificar.' : 'Cada cuenta es revisada y autorizada por el administrador.'}</div></div>
+    <div class="h1" style="margin-top:12px">${m === 'register' ? 'Crear cuenta' : 'Bienvenido'}</div><div class="sub" style="margin-top:4px">${m !== 'register' ? 'Entra para administrar tu lienzo o calificar.' : 'Cada cuenta es revisada y autorizada por el administrador.'}</div></div>
     <div class="seg"><button class="${m === 'login' ? 'on' : ''}" data-act="authmode" data-k="login">Entrar</button><button class="${m === 'register' ? 'on' : ''}" data-act="authmode" data-k="register">Registrarme</button></div>`;
-  if (m === 'login') h += `<form class="card mt" data-form="login"><label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required><label class="f">Contraseña</label><input class="in" name="pass" type="password" autocomplete="current-password" required><button class="btn pri block mt2">Entrar</button></form>
+  if (m === 'login') h += `<form class="card mt" data-form="login"><label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required><label class="f">Contraseña</label><input class="in" name="pass" type="password" autocomplete="current-password" required><button class="btn pri block mt2">Entrar</button><button type="button" class="btn ghost sm block mt" data-act="authmode" data-k="forgot">¿Olvidaste tu contraseña?</button></form>
     <div class="small mut center mt">¿Solo quieres ver calificaciones? No necesitas cuenta.</div>`;
+  else if (m === 'forgot') h += `<form class="card mt" data-form="forgot"><div style="font-weight:800">Recuperar contraseña</div><div class="small mut" style="margin-top:4px">Escribe el correo de tu cuenta. Te enviaremos un enlace para crear una contraseña nueva.</div>
+    <label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required><button class="btn pri block mt2">Enviarme el enlace</button><button type="button" class="btn ghost sm block mt" data-act="authmode" data-k="login">Volver a entrar</button></form>`;
   else { const r = State.regRole;
     h += `<form class="card mt" data-form="register"><label class="f">Tipo de cuenta</label><div class="seg"><button type="button" class="${r === 'lienzo' ? 'on' : ''}" data-act="regrole" data-k="lienzo">Lienzo charro</button><button type="button" class="${r === 'juez' ? 'on' : ''}" data-act="regrole" data-k="juez">Juez</button></div>
       <label class="f">${r === 'lienzo' ? 'Nombre del responsable' : 'Nombre completo'}</label><input class="in" name="name" required><label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required>
@@ -1382,7 +1412,7 @@ function vAdmin(){
   const u = State.user;
   if (!isSuper(u)) return emptyState(I.shield, 'Solo súper usuario', 'Esta sección es exclusiva del administrador.', `<a class="btn" href="#cuenta">Ir a mi cuenta</a>`);
   const P = DB.all('profiles'), Ls = DB.all('lienzos'), Es = DB.all('events'), pend = P.filter(p => p.status === 'pendiente'), offReq = Es.filter(e => e.requestOfficial && !e.official && e.status !== 'borrador'), t = State.adminTab;
-  let h = `<div class="row between"><div><div class="h1">Súper usuario</div><div class="sub" style="margin-top:3px">Control y credibilidad de la plataforma</div></div></div>
+  let h = `<div class="row between"><div><div class="h1">Súper usuario</div><div class="sub" style="margin-top:3px">Control y credibilidad de la plataforma</div></div><a class="btn sm" href="#cuenta">${I.key} Mi cuenta</a></div>
     <div class="kpis mt"><div class="kpi"><b>${Ls.filter(l => l.status === 'aprobado').length}</b><span>Lienzos verificados</span></div><div class="kpi"><b>${P.filter(p => p.role === 'juez' && p.status === 'aprobado').length}</b><span>Jueces activos</span></div><div class="kpi"><b>${DB.all('sheets').filter(s => s.entregada).length}</b><span>Hojas entregadas</span></div></div>
     <div class="scroller mt">${[['solicitudes','Solicitudes',pend.length + offReq.length],['lienzos','Lienzos'],['usuarios','Usuarios'],['eventos','Charreadas'],['invitaciones','Invitaciones'],['bitacora','Bitácora']].map(([k, l, n]) => `<button class="tog ${t === k ? 'on' : ''}" data-act="admintab" data-k="${k}">${l}${n ? ` <span class="badge-n">${n}</span>` : ''}</button>`).join('')}</div>`;
   if (t === 'solicitudes') {
@@ -1449,7 +1479,7 @@ const ACT = {
   reg(){ State.authMode = 'register'; State.regRole = 'lienzo'; },
   evtab(el){ State.homeTab = el.dataset.k; render(); }, ranktab(el){ State.rankTab = el.dataset.k; render(); },
   rankOficial(){ State.rankOficial = !State.rankOficial; render(); }, histOficial(){ State.histOficial = !State.histOficial; render(); },
-  authmode(el){ State.authMode = el.dataset.k; render(); }, regrole(el){ State.regRole = el.dataset.k; render(); }, admintab(el){ State.adminTab = el.dataset.k; render(); },
+  authmode(el){ State.authMode = el.dataset.k; render(); }, changepass(){ State.changePass = !State.changePass; render(); }, cancelrecovery(){ State.recovery = false; State.recoveryUser = null; go('cuenta'); }, regrole(el){ State.regRole = el.dataset.k; render(); }, admintab(el){ State.adminTab = el.dataset.k; render(); },
   fit(){ State.fit = !State.fit; render(); },
   print(){ try { window.print(); } catch (e) { toast('Tu navegador no permite imprimir desde aquí. Ábrela en el sitio publicado.', 'err'); } },
   async demo(el){ await safe(async () => { State.user = await DB.backend.login(el.dataset.e, el.dataset.p); State.j = null; go(isSuper(State.user) ? 'admin' : 'cuenta'); }, 'Sesión iniciada'); },
@@ -1546,6 +1576,15 @@ document.addEventListener('submit', async e => {
   const f = e.target; if (!f.dataset.form) return; e.preventDefault();
   const d = Object.fromEntries(new FormData(f).entries()), k = f.dataset.form;
   if (k === 'login') return safe(async () => { State.user = await DB.backend.login(d.email.trim(), d.pass); State.j = null; go(isSuper(State.user) ? 'admin' : 'cuenta'); }, 'Bienvenido');
+  if (k === 'forgot') return safe(async () => { const r = await DB.backend.requestReset(d.email.trim());
+    if (r.demoUserId) { State.recovery = true; State.recoveryUser = r.demoUserId; toast('Demo: así se ve la pantalla del enlace del correo', 'ok'); return; }
+    State.authMode = 'login'; toast('Si el correo está registrado, te llegará un enlace en unos minutos. Revisa también tu correo no deseado.', 'ok'); });
+  if (k === 'newpass') { if (d.pass !== d.pass2) return toast('Las contraseñas no coinciden', 'err');
+    return safe(async () => { if (d.current !== undefined) await DB.backend.verifyPassword(State.user.email, d.current);
+      const p = await DB.backend.changePassword(d.pass, State.recoveryUser); const wasRecovery = State.recovery;
+      State.recovery = false; State.recoveryUser = null; State.changePass = false; State.authMode = 'login';
+      if (p) { State.user = p; await audit('contrasena', `${p.name} cambió su contraseña`); }
+      if (wasRecovery) go(p && isSuper(p) ? 'admin' : 'cuenta'); }, 'Contraseña actualizada'); }
   if (k === 'register') { const payload = { role: State.regRole, name: d.name.trim(), email: d.email.trim().toLowerCase(), phone: d.phone || '', invite: (d.invite || '').trim().toUpperCase() || null, lienzoName: d.lienzoName, city: d.city, state: d.state, lienzoId: d.lienzoId };
     return safe(async () => { const r = await DB.backend.register(payload, d.pass); if (r.needsConfirm) { toast('Revisa tu correo para confirmar la cuenta y luego entra.', 'ok'); State.authMode = 'login'; return; } State.user = r.profile; go('cuenta'); }); }
   if (k === 'evData') { const ev = curEv(); const patch = { title: d.title.trim(), date: d.date, category: d.category }; if (d.mode && d.mode !== (ev.mode || 'equipos')) { patch.mode = d.mode; patch.suertes = (d.mode === 'completo' ? RULES.ORDER_CC : RULES.ORDER_EQ).slice(); } return safe(() => updEv(patch), 'Datos guardados'); }
@@ -1567,6 +1606,8 @@ document.addEventListener('submit', async e => {
 /* ------------------------- ARRANQUE ------------------------- */
 (async function boot(){
   $('#view').innerHTML = '<div class="empty">Cargando…</div>';
+  const authHash = new URLSearchParams(location.hash.slice(1));   // enlace del correo: #access_token=…&type=recovery o #error=…
+  if (authHash.get('type') === 'recovery') State.recovery = true;
   const hasKeys = !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
   const mode = CONFIG.MODE === 'demo' || CONFIG.MODE === 'real' ? CONFIG.MODE : (hasKeys ? 'real' : 'demo');
   DB.backend = mode === 'real' ? Remote : Local;
@@ -1576,6 +1617,8 @@ document.addEventListener('submit', async e => {
     throw e;
   }
   try { State.user = await DB.backend.restore(); } catch (e) { State.user = null; }
+  if (authHash.has('access_token') || authHash.has('error')) history.replaceState(null, '', location.pathname + location.search + '#cuenta');
+  if (authHash.has('error')) setTimeout(() => toast(authHash.get('error_code') === 'otp_expired' ? 'El enlace ya expiró o ya se usó. Pide uno nuevo.' : (authHash.get('error_description') || 'Enlace inválido'), 'err'), 300);
   parseRoute(); render();
 })();
 </script>
