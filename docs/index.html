@@ -69,9 +69,13 @@ a{color:var(--gold2)}button,input,select,textarea{font:inherit;color:inherit}
 .carnet .cf .w{grid-column:1/-1}.carnet .cf .nm b{font-family:'Cinzel',serif;font-size:16px;color:var(--gold2)}
 .carnet .cfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 12px;border-top:1px solid var(--line);font-size:8.5px;color:var(--mut2);letter-spacing:.04em}
 .carnet .seal{position:absolute;left:calc(12px + 30% - 50px);bottom:32px;width:54px;height:54px;border-radius:50%;border:2px solid var(--gold);display:grid;place-items:center;text-align:center;font-size:7px;font-weight:800;letter-spacing:.08em;color:var(--gold2);background:rgba(10,7,5,.6);transform:rotate(-12deg)}
-.esc-c{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}.esc-c:last-child{border-bottom:0}
-.esc-c .n{display:flex;align-items:center;gap:6px;flex:none}.esc-c .n b{min-width:22px;text-align:center;font-variant-numeric:tabular-nums}.esc-c .n button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line2);background:var(--bg2);color:var(--text);font-size:18px;cursor:pointer}
-.esc-c.on{color:var(--gold2)}.esc-ej{display:grid;grid-template-columns:26px 1fr 64px 64px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.esc-ej select{min-height:38px;padding:4px 6px;font-size:12.5px}
+.esc-c{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:15px}.esc-c:last-child{border-bottom:0}
+.esc-c .n{display:flex;align-items:center;gap:6px;flex:none}.esc-c .n b{min-width:22px;text-align:center;font-variant-numeric:tabular-nums}.esc-c .n button{width:46px;height:46px;border-radius:10px;border:1px solid var(--line2);background:var(--bg2);color:var(--text);font-size:18px;cursor:pointer}
+.esc-c.on{color:var(--gold2)}.stepbar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px}.stepbar button{min-height:52px;border-radius:12px;border:1px solid var(--line2);background:var(--card);color:var(--mut);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;padding:4px}.stepbar button.on{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#1c1510;border-color:transparent}
+.bigchoice{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:18px 16px;border-radius:16px;border:1px solid var(--line2);background:var(--card);color:var(--text);font:inherit;cursor:pointer;margin-top:12px}.bigchoice svg{width:34px;height:34px;flex:none;color:var(--gold2)}.bigchoice b{display:block;font-size:17px}.bigchoice span span{color:var(--mut);font-size:13.5px}
+.bignav{display:flex;gap:8px;margin-top:16px}.bignav .btn{min-height:58px;font-size:17px}.bignav .pri{flex:1}
+.thumb{width:64px;height:64px;flex:none;background:#fff;border-radius:10px;border:1px solid var(--line2);display:block}
+.esc-ej{display:grid;grid-template-columns:26px 1fr 64px 64px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.esc-ej select{min-height:38px;padding:4px 6px;font-size:12.5px}
 .ph{object-fit:cover;border-radius:50%;flex:none;border:1px solid var(--line2);background:var(--card2);display:block}
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--card2);border:1px solid var(--line2);display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--gold2);text-decoration:none;flex:none}
 .wrap{max-width:560px;margin:0 auto;padding:14px 16px 24px}
@@ -598,7 +602,7 @@ const CONFIG = {"APP_NAME":"Charrería Pro","SUPABASE_URL":"https://bezwxvslwhrj
 const TCG = CONFIG.SITE === 'tcg';   // el mismo código sirve Charrería Pro y su sitio satélite CharreríaTCG
 const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
 const CATEGORIAS = ['Libre','Juvenil'];
-const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust','tcg_cards'];
+const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust','tcg_cards','croquis'];
 RULES.F.escaramuza = { name: 'Rutina de escaramuza', short: 'Escaramuza', inf: [], eq: [] };
 const FN = k => RULES.F[k].name;
 
@@ -666,7 +670,8 @@ const DB = {
     try { await this.backend.del(t, id); } catch (e) { arr.splice(i, 0, prev); throw e; }
   }
 };
-const LS_KEY = 'charreriapro_demo_v14', SS_KEY = 'charreriapro_session';
+const fotoMem = {};
+const LS_KEY = 'charreriapro_demo_v15', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -721,6 +726,8 @@ const Local = {
     await DB.put(kind === 'horse' ? 'horses' : 'stock', { ...x, chipUid: id, chipStatus: st, chipAt: Date.now(), chipValidatedBy: st === 'validado' ? 'kit' : null }); return st; },
   async validateChip(kind, x, ok){ if (!isSuper(State.user)) throw new Error('Solo el súper usuario valida chips');
     await DB.put(kind === 'horse' ? 'horses' : 'stock', { ...x, chipStatus: ok ? 'validado' : 'rechazado', chipValidatedBy: State.user.name, chipAt: Date.now() }); },
+  async putFoto(id, eventId, img){ fotoMem[id] = img; try { localStorage.setItem('cp_foto_' + id, img); } catch (e) {} },
+  async getFoto(id){ if (fotoMem[id]) return fotoMem[id]; try { return localStorage.getItem('cp_foto_' + id); } catch (e) { return null; } },
   async claimHorse(code){
     const u = State.user, r = DB.all('requests').find(x => x.type === 'transfer' && x.status === 'pendiente' && x.code === code.trim().toUpperCase());
     if (!r) throw new Error('Código inválido o ya usado'); const h = DB.get('horses', r.horseId); if (!h) throw new Error('El caballo ya no existe');
@@ -785,6 +792,8 @@ const Remote = {
   decide(r, d){ return this.rpc('decide_request', { rid: r.id, decision: d }); },
   rosterRemove(c){ return this.rpc('roster_remove', { cid: c.id }); },
   setVerified(kind, d, decision, note){ return this.rpc('set_verified', { kind, rid: d.id, decision, note: note || '' }); },
+  async putFoto(id, eventId, img){ const { error } = await this.sb.from('croquis_foto').upsert({ id, data: { id, eventId, img } }); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
+  async getFoto(id){ const { data, error } = await this.sb.from('croquis_foto').select('data').eq('id', id).maybeSingle(); if (error) throw new Error(error.message); return data ? data.data.img : null; },
   claimHorse(code){ return this.rpc('claim_horse', { code: code.trim().toUpperCase() }); },
   async activatePro(){ await this.rpc('activate_pro', {}); State.user = DB.get('profiles', State.user.id) || State.user; },
   registerChip(kind, x, uid){ return this.rpc('register_chip', { kind, rid: x.id, uid: normUid(uid) }); },
@@ -921,6 +930,8 @@ function seed(){
   mkEsc('eesc1', 'Campeonato Estatal de Escaramuzas · Etapa 1', 'lstm', day(-55), 'finalizado', true, [0, 1, 2, 3], () => JZ);
   mkEsc('eesc2', 'Copa de Escaramuzas de la Villa', 'lvilla', day(-18), 'finalizado', true, [0, 1, 2, 3], () => JZ);
   mkEsc('eescv', 'Torneo de Escaramuzas Bicentenario', 'lvilla', day(0), 'en_vivo', true, [0, 1, 2], ti => ti === 0 ? JZ.slice(0, 3) : ti === 1 ? JZ.slice(0, 1) : [], { startedAt: Date.now() - 40 * 60000 });
+  const CR = [], ring = (n, r) => Array.from({ length: n }, (_, k) => { const a = k / n * 6.283 + r, x = Math.round(500 + 300 * Math.cos(a)), y = Math.round(500 + 300 * Math.sin(a)); return { c: 'k', p: [x, y, Math.round(x + 70 * Math.cos(a + 1.6)), Math.round(y + 70 * Math.sin(a + 1.6))] }; });
+  E.filter(e => e.mode === 'escaramuza').forEach(e => e.teams.forEach(t => { const c = croBlank(e, t); c.via = 'dibujo'; c.instructor = 'Rosa Medina'; c.lugar = t.state; c.musica = 'Mariachi'; c.ej.forEach((x, i) => { x.draw = ring(8, i * .4); x.ad = (escAdicOpts(x.c, x.v).slice(-1)[0] || 0); }); c.puntas = [{ name: 'Valeria Pérez', caballo: 'Lucero' }, { name: 'Ximena Ortiz', caballo: 'Canela' }]; c.integrantes = c.integrantes.map((m, i) => ({ name: ['Valeria Pérez','Ximena Ortiz','Regina Luna','Camila Soto','Paola García','Andrea Ruiz','Sofía Díaz','Lucía Mora'][i], cred: 'FM' + (2100 + i) })); CR.push(c); }));
   const live = mkEvent('elive','Torneo Nacional Charro Bicentenario','lvilla',day(0),[0,1,2],'en_vivo',true,{ startedAt: Date.now() - 70*60000 });
   scoreAll(live, 3, false);
   S.filter(x => x.eventId === 'elive').forEach((x, i) => { x.createdAt = x.updatedAt = Date.now() - (60 - i * 6) * 60000; });
@@ -980,7 +991,7 @@ function seed(){
   RQ.push({ id:'rq5', type:'interes', horseId:'cb3', ownerId:'udueno', buyerName:'Ernesto Villaseñor', contact:'capitan@demo.mx', message:'', status:'pendiente', createdBy:'ucap', createdAt: ago(5) });
   RQ.push({ id:'rq3', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Fausto Herrera', contact:'55 1234 5678', message:'Me interesa para la temporada; ¿se puede ver en Texcoco?', status:'pendiente', createdBy:'ucharro', createdAt: ago(1) });
   RQ.push({ id:'rq2', type:'afiliacion', teamId:'q5', lienzoId:'lvilla', status:'pendiente', createdBy:'ucap2', createdAt: Date.now()-2*864e5 });
-  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }] };
+  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, croquis:CR, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }] };
 }
 
 /* ------------------------- LÓGICA ------------------------- */
@@ -1218,7 +1229,7 @@ const State = { user: null, route: 'inicio', param: null, param2: null,
 function go(h){ if (location.hash.slice(1) === h) render(); else location.hash = h; }
 function parseRoute(){
   const h = location.hash.slice(1) || (TCG ? 'tienda' : 'inicio');
-  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo|ganaderia|res|carnet|carta)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
+  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo|ganaderia|res|carnet|carta|croquis)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
   if (m) { State.route = m[1]; State.param = m[2]; State.param2 = m[3] || null; } else { State.route = h; State.param = State.param2 = null; }
 }
 window.addEventListener('hashchange', () => { parseRoute(); render(); window.scrollTo(0, 0); });
@@ -1234,7 +1245,7 @@ function render(){
   const tabs = [['inicio','Inicio',I.home],['vivo','En vivo',I.live,liveN],['historial','Historial',I.clock],['ranking','Ranking',I.trophy],['cuenta', u ? (isSuper(u) ? 'Admin' : 'Mi panel') : 'Entrar', isSuper(u) ? I.shield : I.user, 0, pend]];
   const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta', solicitudes:'cuenta', caballos:'ranking', caballo:'cuenta', ganado:'inicio', ganaderia:'inicio', res:'cuenta' }[State.route] || State.route;
   $('#nav').innerHTML = tabs.map(([k, l, ic, dot, badge]) => `<a href="#${k === 'cuenta' && isSuper(u) ? 'admin' : k}" class="${active === k ? 'on' : ''}">${ic}${dot ? '<span class="dot"></span>' : ''}${badge ? `<span class="badge-n" style="position:absolute;top:0;right:calc(50% - 22px)">${badge}</span>` : ''}<span>${l}</span></a>`).join('');
-  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes, carnet: vCarnet };
+  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes, carnet: vCarnet, croquis: vCroquis };
   $('#view').className = 'wrap' + (State.route === 'hoja' ? ' wide' : '');
   $('#view').innerHTML = State.recovery ? vNewPass() : (views[State.route] || vInicio)();
   fitSheet();
@@ -2167,7 +2178,7 @@ function vPanelEvento(){
       <select class="in" data-horse="${c.id}" ${locked ? 'disabled' : ''} aria-label="Caballo de ${esc(c.name)}" style="min-height:40px;padding:6px 10px;font-size:13px;margin-top:6px">${horseOpts(c.horseId)}</select></div>`;
   h += charroDL() + ev.teams.map(t => { const inEv = ev.charros.filter(c => c.teamId === t.id), avail = t.refId ? rosterOf(t.refId).filter(c => !ev.charros.some(x => x.refId === c.id)) : [];
     return `<div class="team"><div class="row between"><div><div style="font-weight:800">${esc(t.name)}${t.refId ? chip('oficial', 'green') : ''}</div><div class="small mut">${esc(cc ? (t.assoc || '') + (t.state ? ' · ' + t.state : '') : (t.state || '') + (t.capitan ? ' · Capitán: ' + t.capitan : ''))}</div></div>${locked ? '' : `<button class="btn ghost sm" data-act="delTeam" data-id="${t.id}" aria-label="Quitar ${esc(t.name)}">${I.x}</button>`}</div>
-    ${esz ? `<div class="small mut mt">${(t.members || []).length ? 'Integrantes: ' + t.members.map(esc).join(', ') : 'Sin integrantes capturadas'}</div>` : cc ? inEv.map(c => chRow(c, false)).join('') : `${inEv.length ? `<div class="small mut mt">Charro · caballo que monta</div>${inEv.map(c => chRow(c, true)).join('')}` : '<div class="small mut mt">Sin charros todavía</div>'}
+    ${esz ? `<div class="small mut mt">${(t.members || []).length ? 'Integrantes: ' + t.members.map(esc).join(', ') : 'Sin integrantes capturadas'}</div><div class="btns mt"><a class="btn sm ${croDone(croOf(ev.id, t.id)) ? '' : 'pri'}" href="#croquis-${ev.id}-${t.id}">${I.edit} ${croDone(croOf(ev.id, t.id)) ? 'Croquis listo ✓' : 'Capturar croquis'}</a><button class="btn sm" data-act="escPdfBtn" data-e="${ev.id}" data-t="${t.id}">${I.doc} Hojas en PDF</button></div>` : cc ? inEv.map(c => chRow(c, false)).join('') : `${inEv.length ? `<div class="small mut mt">Charro · caballo que monta</div>${inEv.map(c => chRow(c, true)).join('')}` : '<div class="small mut mt">Sin charros todavía</div>'}
     ${locked ? '' : `${avail.length ? `<form class="row mt" data-form="addRoster" data-team="${t.id}" style="gap:8px"><select class="in" name="charroId" required><option value="">＋ Del roster oficial (${avail.length})</option>${avail.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select><button class="btn sm" style="min-height:46px" aria-label="Agregar del roster">${I.plus}</button></form>` : ''}
       <form class="row mt" data-form="addCharro" data-team="${t.id}" style="gap:8px"><input class="in" name="name" list="dl-charros" placeholder="Nombre del charro (registrado u otro)" autocomplete="off" required><button class="btn sm" style="min-height:46px" aria-label="Agregar charro">${I.plus}</button></form>`}`}</div>`; }).join('');
   const offTeams = DB.all('teams').filter(t => !ev.teams.some(x => x.refId === t.id)).sort((a, b) => ((b.lienzoId === ev.lienzoId && b.lienzoStatus === 'aprobado') - (a.lienzoId === ev.lienzoId && a.lienzoStatus === 'aprobado')) || byName(a, b));
@@ -2321,45 +2332,191 @@ function faenaForm(ev, team, fk){
   return { html: h, r };
 }
 
+/* ---------- FORMATOS OFICIALES EN PDF: coordenadas en píxeles a 110 ppp sobre cada formato ---------- */
+const FORM_K = 72 / 110;
+const FORM_ROWS = ['galope','saludo','dist','defg','def','tpvr','camg','rehuse','circ','choque','cd','caidac','noent','horc','castigo','arreo','estribo','paro','salidai','asne','caidasc','ase','prep','seng'];
+const FORM_ROW_Y = [386,401,417,432,448,463,479,494,510,525,541,556,572,587,603,618,634,649,665,680,696,711,727,742];
+const ESC_DQ_Y = m => /atuendo/i.test(m) ? 509 : /respeto/i.test(m) ? 529 : 548;
+const pdfSafe = t => String(t ?? '').replace(/[^\x20-\x7E -ÿ“”‘’–—…•]/g, '');
+async function fillOfficialForms(PDFLib, calBytes, croBytes, F){
+  const { PDFDocument, StandardFonts, rgb } = PDFLib, out = await PDFDocument.create();
+  const reg = await out.embedFont(StandardFonts.Helvetica), bold = await out.embedFont(StandardFonts.HelveticaBold), ink = rgb(0, 0, 0);
+  const pen = page => { const H = page.getHeight(), put = (x, y, t, o = {}) => { let s = pdfSafe(t); if (s === '') return; const f = o.bold ? bold : reg; let z = o.size || 8.5; const max = (o.max || 9999) * FORM_K; while (z > 4.5 && f.widthOfTextAtSize(s, z) > max) z -= .25;
+      const w = f.widthOfTextAtSize(s, z), px = x * FORM_K - (o.center ? w / 2 : 0); page.drawText(s, { x: px, y: H - y * FORM_K, size: z, font: f, color: ink }); };
+    const wrap = (x, y, t, maxW, lh = 11, lines = 6, size = 8) => { const words = pdfSafe(t).split(/\s+/); let l = '', n = 0; words.forEach(w => { const c = l ? l + ' ' + w : w; if (reg.widthOfTextAtSize(c, size) > maxW * FORM_K && l) { if (n < lines) put(x, y + n * lh * 1.5, l, { size }); n++; l = w; } else l = c; }); if (n < lines) put(x, y + n * lh * 1.5, l, { size }); };
+    return { H, put, wrap }; };
+  const strokes = (page, list, x, y, w, h) => { const s = Math.min(w, h) * FORM_K / 1000, ox = (x + (w - Math.min(w, h)) / 2) * FORM_K, oy = page.getHeight() - (y + (h - Math.min(w, h)) / 2) * FORM_K;
+    (list || []).forEach(st => { if (!st.p || st.p.length < 4) return; let d = `M ${st.p[0]} ${st.p[1]}`; for (let i = 2; i < st.p.length; i += 2) d += ` L ${st.p[i]} ${st.p[i + 1]}`;
+      page.drawSvgPath(d, { x: ox, y: oy, scale: s, borderColor: st.c === 'r' ? rgb(.85, .1, .1) : st.c === 'g' ? rgb(.05, .55, .2) : ink, borderWidth: .9 / s }); }); };
+  const C = F.croquis || {}, E = C.ej || [];
+  // Croquis: la foto de la hoja si existe; si no, el formato oficial relleno
+  if (F.photo) { const img = await out.embedJpg(F.photo), page = out.addPage([612, 1008]); page.drawImage(img, { x: 0, y: 0, width: 612, height: 1008 }); }
+  else { const src = await PDFDocument.load(croBytes), [page] = await out.copyPages(src, [0]); out.addPage(page); const { put } = pen(page);
+    put(270, 189, F.evento, { max: 350 }); put(270, 214, F.estado, { max: 350 }); put(770, 138, C.noPart, { max: 80 }); put(715, 163, C.horario, { max: 135 }); put(715, 189, C.musica, { max: 135 }); put(710, 214, F.fecha, { max: 140 });
+    put(165, 259, F.escaramuza, { max: 325, bold: true }); put(146, 285, F.capitana, { max: 345 }); put(156, 311, F.asociacion, { max: 335 }); put(604, 259, F.instructor, { max: 250 }); put(640, 285, F.lugar, { max: 215 }); put(610, 311, F.sede, { max: 245 });
+    E.forEach((e, i) => { const L = 85 + 197 * (i % 4), T = 340 + 228 * Math.floor(i / 4); strokes(page, e.draw, L + 4, T + 16, 170, 136); put(L + 37, T + 176, e.nombre, { max: 140, size: 7.5 }); put(L + 44, T + 193, e.c, { max: 132, size: 7.5 }); put(L + 32, T + 209, e.v, { size: 8, bold: true }); if (+e.ad) put(L + 96, T + 209, e.ad, { size: 8, bold: true }); });
+    (C.integrantes || []).slice(0, 8).forEach((m, i) => { const y = 1075 + i * 20.3; put(105, y, m.name, { max: 355 }); put(498, y, m.cred, { max: 50, center: true, size: 7 }); });
+    if (C.suplente) { put(150, 1237, C.suplente.name, { max: 310 }); put(498, 1237, C.suplente.cred, { max: 50, center: true, size: 7 }); } put(190, 1257, F.instructor, { max: 270 });
+    put(760, 1046, F.base, { bold: true }); put(760, 1065, F.adic, { bold: true }); put(760, 1085, F.base + F.adic, { bold: true });
+    (C.puntas || []).slice(0, 2).forEach((p, i) => { put(585, 1143 + i * 38, p.name, { max: 270 }); put(620, 1162 + i * 38, p.caballo, { max: 235 }); }); }
+  // Una hoja de calificación por jueza
+  for (let j = 0; j < F.jueces.length; j++) { const J = F.jueces[j], c = J.c, d = J.d, src = await PDFDocument.load(calBytes), [p1, p2] = await out.copyPages(src, [0, 1]); out.addPage(p1); out.addPage(p2);
+    const A = pen(p1), B = pen(p2), put = A.put, num = (x, y, v, o = {}) => { if (+v) put(x, y, v, { center: true, ...o }); };
+    put(330, 99, d.times && d.times.puntas, { max: 110 }); put(330, 122, d.times && d.times.rutina, { max: 110 }); put(1140, 90, C.noPart, { max: 85 }); put(1090, 111, C.horario, { max: 135 }); put(1075, 132, F.fecha, { max: 150 }); put(1358, 124, F.final, { center: true, size: 15, bold: true });
+    put(150, 192, F.evento, { max: 525 }); put(790, 192, F.sede, { max: 355 }); put(1210, 192, F.estado, { max: 235 }); put(180, 223, F.escaramuza, { max: 425, bold: true }); put(690, 223, F.asociacion, { max: 330 }); put(1160, 223, F.lugar, { max: 285 }); put(160, 254, F.capitana, { max: 585 }); put(190, 285, F.instructor, { max: 420 });
+    ['arreos','atuendo','crin','otros'].forEach((k, i) => num(441, [353, 373, 393, 414][i], (+d.pres[k] || 0) * (k === 'otros' ? 1 : 2))); put(441, 433, c.infPres, { center: true, bold: true });
+    const V = [['horario',6],['minuto',2],['tiempo',5],['arreos',6],['musica',6],['medica',6],['desfile',6],['papeleria',6],['convoc',6],['otros',1]], VY = [347, 367, 388, 408, 428, 448, 468, 489, 509, 529];
+    V.forEach(([k, v], i) => { num(886, VY[i], (+d.var[k] || 0) * v); if (k === 'tiempo') num(824, VY[i], d.var[k]); }); put(855, 549, c.infVar, { center: true, bold: true });
+    if (d.disq) put(285, ESC_DQ_Y(d.disq), 'Descalificada', { bold: true });
+    F.vaciado.forEach((v, i) => { const x = [1218, 1311, 1404][i], cc = v.c; put(x, 382, v.name, { center: true, max: 90, size: 6 }); [cc.ejVal, cc.adic, cc.puntas, cc.infRut, cc.infPres, cc.infVar, cc.noRut].forEach((n, r) => put(x, [402, 422, 442, 462, 483, 503, 523][r], n, { center: true })); put(x, 547, v.total, { center: true, bold: true, size: 10 }); });
+    d.puntas.forEach((p, i) => { const y = 655 + i * 20, r = c.P[i], X = (x, on) => { if (on) put(x, y, 'X', { center: true, bold: true }); }; put(100, y, p.name, { max: 250 }); ['mano','recta','vel','rect','una','saludo'].forEach((k, n) => X([450, 512, 573, 635, 696, 757][n], p.adic[k]));
+      if (+p.metros >= 6) X({ 4: 802, 3: 832, 2: 862, 1: 891 }[+p.tiempos], true); put(937, y, p.metros, { center: true }); if (r.mt === 1) X(990, true); if (r.mt === 2) X(1035, true); num(1088, y, r.inf); put(1150, y, r.total, { center: true, bold: true });
+      if (p.desc) put(145, 750 + i * 52, p.motivo || 'Descalificada', { max: 410 }); });
+    A.wrap(590, 745, d.notes, 450, 10, 5); put(1118, 750, c.puntas, { center: true, bold: true, size: 11 }); put(1323, 620, F.final, { center: true, bold: true, size: 13 }); put(1323, 674, J.name, { center: true, max: 240, size: 7.5 }); put(1385, 740, J.total, { center: true, bold: true, size: 11 });
+    // Rutina
+    B.put(690, 127, F.escaramuza, { max: 370, bold: true, size: 10 });
+    for (let i = 0; i < d.ej.length; i++) { const e = d.ej[i], x = 318 + 87.3 * i; B.put(x, 209, e.c, { center: true, max: 83, size: 6 }); B.put(x, 225, e.v, { center: true, bold: true }); if (+e.ad && !e.lost) B.put(x, 240, e.ad, { center: true, bold: true }); const dr = E[i] && E[i].draw; if (dr) strokes(p2, dr, x - 41, 258, 82, 130); if (F.cells && F.cells[i]) { const img = await out.embedJpg(F.cells[i]); p2.drawImage(img, { x: (x - 41) * FORM_K, y: B.H - 356 * FORM_K, width: 82 * FORM_K, height: 66 * FORM_K }); } }
+    const cols = [[266, d.es.e.inf], ...d.ej.map((e, i) => [318 + 87.3 * i, e.inf]), [1331, d.es.s.inf]], badge = new Set(['defg','def','tpvr','cd']);
+    FORM_ROWS.forEach((k, r) => { const y = FORM_ROW_Y[r], v = ESC_RINF.find(x => x[0] === k)[2]; let sum = 0; cols.forEach(([x, inf]) => { const n = +(inf || {})[k] || 0; if (!n) return; sum += n * v;
+        if (badge.has(k)) { p2.drawRectangle({ x: x * FORM_K - 6, y: B.H - y * FORM_K - 2, width: 12, height: 9, color: ink }); p2.drawText(String(n * v), { x: x * FORM_K - reg.widthOfTextAtSize(String(n * v), 7) / 2, y: B.H - y * FORM_K, size: 7, font: bold, color: rgb(1, 1, 1) }); } else B.put(x, y, n * v, { center: true, size: 7.5, bold: true }); });
+      if (sum) B.put(1378, y, sum, { center: true, size: 7.5 }); });
+    d.ej.forEach((e, i) => { const x = 318 + 87.3 * i; if (e.lost) B.put(x, 758, 'X', { center: true, bold: true }); if (e.desc) B.put(x, 774, 'X', { center: true, bold: true }); });
+    B.put(1407, 200, c.base, { center: true, bold: true, size: 12 }); B.put(1407, 256, c.adic, { center: true, bold: true, size: 12 }); B.put(1407, 313, c.ejVal + c.adic, { center: true, bold: true, size: 12 });
+    const sub = c.infRut + c.infPres + c.infVar; [c.infRut, c.infPres, c.infVar, sub].forEach((n, i) => B.put(1088, [797, 813, 828, 843][i], n, { center: true })); if (c.noRut) B.put(1088, 859, c.noRut, { center: true }); B.put(1088, 875, c.infTot, { center: true, bold: true });
+    [c.infRut, c.ejVal + c.adic, c.puntas, c.ejVal + c.adic + c.puntas, c.infTot].forEach((n, i) => B.put(1378, [797, 813, 828, 843, 859][i], n, { center: true })); B.put(1378, 875, J.total, { center: true, bold: true, size: 10 }); }
+  return out.save();
+}
+
+/* ---------- CROQUIS: se captura una vez y alimenta la hoja de cada jueza y el PDF ---------- */
+const croId = (eid, tid) => `${eid}-${tid}`;
+const croOf = (eid, tid) => DB.get('croquis', croId(eid, tid));
+const canCro = (u, ev) => !!ev && (isSuper(u) || ownsLienzo(u, ev.lienzoId) || isJudgeOf(u, ev.lienzoId));
+const croBlank = (ev, team) => ({ id: croId(ev.id, team.id), eventId: ev.id, teamId: team.id, via: '', hasPhoto: false, noPart: '', horario: '', musica: '', instructor: '', lugar: '',
+  ej: escBlank().ej.map(e => ({ nombre: '', c: e.c, v: e.v, ad: 0, draw: null })), integrantes: Array.from({ length: 8 }, (_, i) => ({ name: (team.members || [])[i] || '', cred: '' })), suplente: { name: (team.members || [])[8] || '', cred: '' }, puntas: [{ name: '', caballo: '' }, { name: '', caballo: '' }] });
+const croDone = c => !!c && (c.hasPhoto || c.ej.some(e => (e.draw || []).length));
+const strokePath = st => { let d = `M${st.p[0]} ${st.p[1]}`; for (let i = 2; i < st.p.length; i += 2) d += `L${st.p[i]} ${st.p[i + 1]}`; return d; };
+const drawThumb = (list, cls = 'thumb') => `<svg class="${cls}" viewBox="0 0 1000 1000" aria-hidden="true"><circle cx="500" cy="500" r="440" fill="none" stroke="#ddd" stroke-width="10"/>${(list || []).map(st => `<path d="${strokePath(st)}" fill="none" stroke="${st.c === 'r' ? '#d91a1a' : st.c === 'g' ? '#0d8c33' : '#111'}" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>`).join('')}</svg>`;
+function vCroquis(){
+  const u = State.user, ev = DB.get('events', State.param), team = ev && ev.teams.find(t => t.id === State.param2);
+  if (!ev || !team) return emptyState(I.doc, 'Croquis no encontrado', ''); if (!u) return needLogin();
+  if (!canCro(u, ev)) return emptyState(I.shield, 'Sin acceso', 'Solo el lienzo de la charreada, sus jueces y el súper usuario ven el croquis.');
+  let Q = State.cq; if (!Q || Q.key !== croId(ev.id, team.id)) Q = State.cq = { key: croId(ev.id, team.id), step: 0, d: clone(croOf(ev.id, team.id) || croBlank(ev, team)) };
+  const d = Q.d, back = canManage(u, ev) ? `#panel-evento-${ev.id}` : `#juez-${ev.id}`;
+  let h = `<a class="back" href="${back}">${I.arrow} Regresar</a><div class="h1">Croquis</div><div class="sub" style="margin-top:4px">${esc(team.name)}. Se captura una sola vez: las juezas ya no tienen que escribir los ejercicios.</div>`;
+  if (Q.step === 0) { h += `<div class="h2">Paso 1 de 3 · El dibujo</div>
+      <label class="bigchoice" style="cursor:pointer">${I.upload}<span><b>Tomar foto de la hoja</b><span>Si ya la tienen en papel. Toda la hoja, bien derecha y con buena luz.</span></span><input type="file" accept="image/*" capture="environment" data-cqphoto="1" hidden></label>
+      <button class="bigchoice" data-act="cqVia" data-k="dibujo">${I.edit}<span><b>Dibujar con el dedo</b><span>Dibuja cada ejercicio aquí en el teléfono.</span></span></button>
+      ${d.hasPhoto ? `<div class="banner ok mt">${I.check}<span>Ya hay una foto guardada de la hoja.</span></div>` : ''}
+      <button class="btn ghost block mt2" data-act="cqGo" data-k="1">Seguir sin dibujo</button>`; }
+  if (Q.step === 1) { h += `<div class="h2">Paso 2 de 3 · Los 12 ejercicios</div><div class="small mut" style="margin-bottom:6px">Ya vienen llenos con una rutina común; cambia solo lo que sea distinto.</div>` + d.ej.map((e, i) => `<div class="card mt"><div class="row" style="gap:10px;align-items:center">${d.via === 'dibujo' ? `<button data-act="cqDraw" data-i="${i}" style="background:none;border:0;padding:0;cursor:pointer" aria-label="Dibujar ejercicio ${i + 1}">${drawThumb(e.draw)}</button>` : ''}<div class="grow"><b style="font-size:16px">Ejercicio ${i + 1}</b>${d.via === 'dibujo' ? `<div><button class="btn sm mt" data-act="cqDraw" data-i="${i}">${I.edit} ${(e.draw || []).length ? 'Cambiar dibujo' : 'Dibujar'}</button></div>` : ''}</div></div>
+      <label class="f">Concepto</label><select class="in" data-cq="ej.${i}.c">${ESC_CONC.map(x => `<option ${x === e.c ? 'selected' : ''}>${x}</option>`).join('')}</select>
+      <div class="grid2"><div><label class="f">Valor</label><select class="in" data-cq="ej.${i}.v" data-num="1">${[16, 20, 26, 28].map(x => `<option ${x === +e.v ? 'selected' : ''}>${x}</option>`).join('')}</select></div><div><label class="f">Adicionales</label><select class="in" data-cq="ej.${i}.ad" data-num="1">${escAdicOpts(e.c, e.v).map(x => `<option value="${x}" ${x === +e.ad ? 'selected' : ''}>+${x}</option>`).join('')}</select></div></div></div>`).join('');
+    h += `<div class="bignav"><button class="btn" data-act="cqGo" data-k="0">Atrás</button><button class="btn pri" data-act="cqGo" data-k="2">Siguiente</button></div>`; }
+  if (Q.step === 2) { const inp = (path, label, v, ph = '') => `<label class="f">${label}</label><input class="in" data-cq="${path}" value="${esc(v || '')}" placeholder="${esc(ph)}">`;
+    h += `<div class="h2">Paso 3 de 3 · Datos de la hoja</div><div class="small mut" style="margin-bottom:6px">Todo es opcional y se puede llenar después.</div>
+      <div class="card">${inp('instructor', 'Instructor(a)', d.instructor)}${inp('lugar', 'Lugar de procedencia', d.lugar)}<div class="grid2"><div>${inp('noPart', 'No. de participación', d.noPart)}</div><div>${inp('horario', 'Horario', d.horario)}</div></div>${inp('musica', 'Música', d.musica)}</div>
+      <div class="card mt"><b>Orden de puntas</b>${d.puntas.map((p, i) => inp(`puntas.${i}.name`, `Punta ${i + 1}: competidora`, p.name) + inp(`puntas.${i}.caballo`, 'Caballo', p.caballo)).join('')}</div>
+      <div class="card mt"><b>Integrantes</b>${d.integrantes.map((m, i) => `<div class="row" style="gap:8px"><div class="grow">${inp(`integrantes.${i}.name`, `Integrante ${i + 1}`, m.name)}</div><div style="flex:0 0 96px">${inp(`integrantes.${i}.cred`, 'Credencial', m.cred)}</div></div>`).join('')}
+      <div class="row" style="gap:8px"><div class="grow">${inp('suplente.name', 'Suplente', d.suplente.name)}</div><div style="flex:0 0 96px">${inp('suplente.cred', 'Credencial', d.suplente.cred)}</div></div></div>
+      <div class="bignav"><button class="btn" data-act="cqGo" data-k="1">Atrás</button><button class="btn pri" data-act="cqSave">${I.check} Guardar croquis</button></div>`; }
+  return h;
+}
+async function cqPersist(){ const Q = State.cq; Q.d.updatedAt = Date.now(); Q.d.updatedBy = State.user.name; await DB.put('croquis', clone(Q.d)); }
+function openDraw(i){
+  const Q = State.cq, e = Q.d.ej[i]; let list = clone(e.draw || []), col = 'k', cur = null;
+  $('#modal').innerHTML = `<div class="modal" style="align-items:center"><div class="box" style="max-height:97vh;padding:12px"><div class="row between"><b style="font-size:17px">Ejercicio ${i + 1} · ${esc(e.c)}</b><button class="btn sm" id="dpX">Cerrar</button></div>
+    <canvas id="dp" width="900" height="900" style="width:100%;max-width:58vh;display:block;margin:10px auto;background:#fff;border-radius:12px;touch-action:none"></canvas>
+    <div class="btns">${[['k','Negro'],['r','Rojo'],['g','Verde']].map(([k, l]) => `<button class="tog ${k === 'k' ? 'on' : ''}" data-col="${k}">${l}</button>`).join('')}<button class="btn sm" id="dpU">Deshacer</button><button class="btn sm" id="dpC">Borrar todo</button></div>
+    <div class="small mut" style="margin-top:6px">Dibuja el momento del cuaje, en negro. Rojo y verde solo para lo que pide la hoja.</div>
+    <div class="bignav"><button class="btn pri" id="dpS">${i < 11 ? 'Guardar y siguiente' : 'Guardar'}</button></div></div></div>`;
+  const cv = $('#dp'), g = cv.getContext('2d'), C = { k: '#111', r: '#d91a1a', g: '#0d8c33' };
+  const paint = () => { g.clearRect(0, 0, 900, 900); g.strokeStyle = '#ccc'; g.lineWidth = 3; g.beginPath(); g.arc(450, 450, 400, 0, 7); g.stroke(); g.fillStyle = '#999'; g.font = '30px sans-serif'; g.textAlign = 'center'; g.fillText('Manga', 450, 36); g.fillText('Ruedo', 450, 888);
+    g.lineCap = g.lineJoin = 'round'; g.lineWidth = 8; [...list, ...(cur ? [cur] : [])].forEach(st => { g.strokeStyle = C[st.c]; g.beginPath(); st.p.forEach((v, n) => { if (n % 2) (n === 1 ? g.moveTo : g.lineTo).call(g, st.p[n - 1] * .9, v * .9); }); g.stroke(); }); };
+  const at = ev => { const r = cv.getBoundingClientRect(); return [Math.round((ev.clientX - r.left) / r.width * 1000), Math.round((ev.clientY - r.top) / r.height * 1000)]; };
+  cv.onpointerdown = ev => { cv.setPointerCapture(ev.pointerId); cur = { c: col, p: at(ev) }; }; cv.onpointermove = ev => { if (!cur) return; const [x, y] = at(ev), n = cur.p.length; if (Math.abs(x - cur.p[n - 2]) + Math.abs(y - cur.p[n - 1]) > 7) { cur.p.push(x, y); paint(); } };
+  cv.onpointerup = () => { if (cur) { if (cur.p.length === 2) cur.p.push(cur.p[0] + 1, cur.p[1] + 1); list.push(cur); cur = null; paint(); } };
+  const close = () => { $('#modal').innerHTML = ''; render(); }; $('#dpX').onclick = close; $('#dpU').onclick = () => { list.pop(); paint(); }; $('#dpC').onclick = () => { list = []; paint(); };
+  document.querySelectorAll('[data-col]').forEach(b => b.onclick = () => { col = b.dataset.col; document.querySelectorAll('[data-col]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#dpS').onclick = async () => { e.draw = list; try { await cqPersist(); } catch (err) { toast(err.message, 'err'); } if (i < 11) openDraw(i + 1); else close(); }; paint();
+}
+function warpQuad(src, q, W, H){   // endereza la hoja: cada píxel de salida se toma del cuadrilátero marcado en la foto
+  const [p0, p1, p2, p3] = q, dx1 = p1[0] - p2[0], dx2 = p3[0] - p2[0], sx = p0[0] - p1[0] + p2[0] - p3[0], dy1 = p1[1] - p2[1], dy2 = p3[1] - p2[1], sy = p0[1] - p1[1] + p2[1] - p3[1], den = dx1 * dy2 - dx2 * dy1;
+  const G = (sx * dy2 - dx2 * sy) / den, Hh = (dx1 * sy - sx * dy1) / den, a = p1[0] - p0[0] + G * p1[0], b = p3[0] - p0[0] + Hh * p3[0], c = p0[0], d = p1[1] - p0[1] + G * p1[1], e = p3[1] - p0[1] + Hh * p3[1], f = p0[1];
+  const sw = src.width, sh = src.height, S = src.getContext('2d').getImageData(0, 0, sw, sh).data, out = document.createElement('canvas'); out.width = W; out.height = H; const og = out.getContext('2d'), O = og.createImageData(W, H), D = O.data;
+  for (let y = 0; y < H; y++) { const v = y / H; for (let x = 0; x < W; x++) { const u = x / W, w = G * u + Hh * v + 1, px = Math.min(sw - 1, Math.max(0, ((a * u + b * v + c) / w) | 0)), py = Math.min(sh - 1, Math.max(0, ((d * u + e * v + f) / w) | 0)), i = (y * W + x) * 4, k = (py * sw + px) * 4; D[i] = S[k]; D[i + 1] = S[k + 1]; D[i + 2] = S[k + 2]; D[i + 3] = 255; } }
+  og.putImageData(O, 0, 0); return out;
+}
+function openCorners(file){
+  const url = URL.createObjectURL(file), img = new Image();
+  img.onerror = () => toast('No se pudo leer la foto', 'err');
+  img.onload = () => { const k = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight)), src = document.createElement('canvas'); src.width = Math.round(img.naturalWidth * k); src.height = Math.round(img.naturalHeight * k); src.getContext('2d').drawImage(img, 0, 0, src.width, src.height); URL.revokeObjectURL(url);
+    const W = src.width, H = src.height, q = [[.05, .04], [.95, .04], [.95, .96], [.05, .96]].map(([x, y]) => [x * W, y * H]); let grab = -1;
+    $('#modal').innerHTML = `<div class="modal" style="align-items:center"><div class="box" style="max-height:97vh;padding:12px"><b style="font-size:17px">Mueve los 4 círculos a las esquinas de la hoja</b><canvas id="qc" width="${W}" height="${H}" style="width:100%;max-height:68vh;object-fit:contain;display:block;margin:10px auto;touch-action:none;border-radius:10px"></canvas><div class="bignav"><button class="btn" id="qN">Otra foto</button><button class="btn pri" id="qS">Listo</button></div></div></div>`;
+    const cv = $('#qc'), g = cv.getContext('2d'), R = W / 26, paint = () => { g.drawImage(src, 0, 0); g.strokeStyle = '#f2cd7e'; g.lineWidth = W / 250; g.beginPath(); q.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.stroke(); q.forEach(p => { g.fillStyle = 'rgba(217,168,78,.55)'; g.beginPath(); g.arc(p[0], p[1], R, 0, 7); g.fill(); g.stroke(); }); };
+    const at = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) / r.width * W, (ev.clientY - r.top) / r.height * H]; };
+    cv.onpointerdown = ev => { cv.setPointerCapture(ev.pointerId); const [x, y] = at(ev); let best = 1e12; q.forEach((p, i) => { const dd = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (dd < best) { best = dd; grab = i; } }); }; cv.onpointermove = ev => { if (grab < 0) return; q[grab] = at(ev); paint(); }; cv.onpointerup = () => { grab = -1; };
+    $('#qN').onclick = () => { $('#modal').innerHTML = ''; }; $('#qS').onclick = async () => { const Q = State.cq, jpg = warpQuad(src, q, 1000, 1647).toDataURL('image/jpeg', .72);
+      await safe(async () => { await DB.backend.putFoto(Q.d.id, Q.d.eventId, jpg); Q.d.via = 'foto'; Q.d.hasPhoto = true; await cqPersist(); $('#modal').innerHTML = ''; Q.step = 1; }, 'Foto guardada'); }; paint(); };
+  img.src = url;
+}
+const dataUrlBytes = u => Uint8Array.from(atob(u.split(',')[1]), c => c.charCodeAt(0));
+async function photoCells(jpg){   // recorta de la foto enderezada los 12 dibujos para la hoja de calificación
+  const img = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = jpg; }), k = img.naturalWidth / 935.5, out = [];
+  for (let i = 0; i < 12; i++) { const c = document.createElement('canvas'), L = 89 + 197 * (i % 4), T = 356 + 228 * Math.floor(i / 4); c.width = 340; c.height = 272; c.getContext('2d').drawImage(img, L * k, T * k, 170 * k, 136 * k, 0, 0, 340, 272); out.push(dataUrlBytes(c.toDataURL('image/jpeg', .8))); }
+  return out;
+}
+let pdfLibP = null;
+const loadPdfLib = () => pdfLibP || (pdfLibP = window.PDFLib ? Promise.resolve() : loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'));
+const FORM_BASE = CONFIG.MODE === 'demo' ? '../formatos/' : 'formatos/';
+async function escPdf(ev, team){
+  toast('Preparando el PDF, espera un momento…'); await loadPdfLib();
+  const [cal, cro] = await Promise.all(['hoja-calificacion-libre.pdf', 'hoja-croquis-libre.pdf'].map(f => fetch(FORM_BASE + f).then(r => { if (!r.ok) throw new Error('No se encontró el formato oficial'); return r.arrayBuffer(); })));
+  const f = escFinal(ev, team.id), C = croOf(ev.id, team.id) || croBlank(ev, team), L = lienzo(ev.lienzoId), rows = f.rows.slice().sort((a, b) => a.createdAt - b.createdAt), used = rows.filter(s => f.used.includes(s));
+  const first = rows[0] ? calcEsc(rows[0].input) : null, foto = C.hasPhoto ? await DB.backend.getFoto(C.id) : null;
+  const F = { evento: ev.title, estado: L.state, sede: L.name, fecha: fdate(ev.date), escaramuza: team.name, capitana: team.capitan, asociacion: team.assoc, instructor: C.instructor, lugar: C.lugar || team.state, base: first ? first.base : C.ej.reduce((a, e) => a + +e.v, 0), adic: first ? first.adic : C.ej.reduce((a, e) => a + (+e.ad || 0), 0), final: f.n ? f.score : '', croquis: C,
+    photo: foto ? dataUrlBytes(foto) : null, cells: foto ? await photoCells(foto) : null, vaciado: used.slice(0, 3).map(s => ({ name: s.judgeName, c: calcEsc(s.input), total: s.total })), jueces: rows.map(s => ({ name: s.judgeName, d: s.input, c: calcEsc(s.input), total: s.total })) };
+  const bytes = await fillOfficialForms(window.PDFLib, cal, cro, F), a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); a.download = `hojas-${slug(team.name)}.pdf`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+const escDraftKey = id => 'cp_hoja_' + id;
+function escDraftGet(id){ try { const r = localStorage.getItem(escDraftKey(id)); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
+function escDraftSet(){ const J = State.ej, u = State.user; if (!J || !J.d || !u) return; try { localStorage.setItem(escDraftKey(`${J.eid}-${J.tid}-${u.id}`), JSON.stringify(J.d)); } catch (e) {} }
+function escDraftDel(id){ try { localStorage.removeItem(escDraftKey(id)); } catch (e) {} }
+function escFromCroquis(ev, team){ const d = escBlank(), c = croOf(ev.id, team.id); if (c) { d.ej = c.ej.map(e => ({ v: +e.v, c: e.c, ad: +e.ad || 0, inf: {}, lost: false, desc: false })); c.puntas.forEach((p, i) => { if (d.puntas[i]) d.puntas[i].name = p.name || ''; }); } return d; }
+const ESC_COMMON = ['dist','def','defg','tpvr','camg','rehuse','noent','arreo'];
 function vJuezEsc(ev){
-  const u = State.user; let J = State.ej; if (!J || J.eid !== ev.id) J = State.ej = { eid: ev.id, tid: ev.teams[0].id, d: null, dirty: false, col: 'e' };
+  const u = State.user; let J = State.ej; if (!J || J.eid !== ev.id) J = State.ej = { eid: ev.id, tid: ev.teams[0].id, d: null, dirty: false, col: 'e', step: 0, more: false };
   if (!ev.teams.some(t => t.id === J.tid)) { J.tid = ev.teams[0].id; J.d = null; }
-  const team = ev.teams.find(t => t.id === J.tid), sid = `${ev.id}-${team.id}-esc-${u.id}`, mine = DB.get('scores', sid), locked = (isLocked(ev, team.id) && !isSuper(u)) || ev.status !== 'en_vivo';
-  if (!J.d) J.d = mine ? clone(mine.input) : escBlank();
+  const team = ev.teams.find(t => t.id === J.tid), sid = `${ev.id}-${team.id}-esc-${u.id}`, mine = DB.get('scores', sid), locked = (isLocked(ev, team.id) && !isSuper(u)) || ev.status !== 'en_vivo', cro = croOf(ev.id, team.id);
+  if (!J.d) { const dr = escDraftGet(`${ev.id}-${team.id}-${u.id}`); J.d = dr || (mine ? clone(mine.input) : escFromCroquis(ev, team)); J.dirty = !!dr; }
   const d = J.d, r = calcEsc(d), dis = locked ? 'disabled' : '';
-  const cnt = (path, label, val, extra = '') => { const n = +getP(d, path) || 0; return `<div class="esc-c ${n ? 'on' : ''}"><span>${esc(label)} <b>${val === 1 && /puntos/.test(label) ? '' : '−' + val}</b>${extra}</span><span class="n"><button type="button" data-ec="${path}" data-d="-1" ${dis} aria-label="Quitar">−</button><b>${n}</b><button type="button" data-ec="${path}" data-d="1" ${dis} aria-label="Sumar">+</button></span></div>`; };
+  const cnt = (path, label, val) => { const n = +getP(d, path) || 0; return `<div class="esc-c ${n ? 'on' : ''}"><span>${esc(label)} <b>${/puntos/.test(label) ? '' : '−' + val}</b></span><span class="n"><button type="button" data-ec="${path}" data-d="-1" ${dis} aria-label="Quitar">−</button><b>${n}</b><button type="button" data-ec="${path}" data-d="1" ${dis} aria-label="Sumar">+</button></span></div>`; };
   const sel = (path, opts, cur, num) => `<select class="in" data-ep="${path}" ${num ? 'data-num="1"' : ''} ${dis}>${opts.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(cur) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`;
-  const chk = (path, label, on) => `<label class="tog ${on ? 'on' : ''}" style="cursor:pointer"><input type="checkbox" data-ep="${path}" ${on ? 'checked' : ''} ${dis} style="margin-right:6px">${esc(label)}</label>`;
-  const cols = [['e', 'Entrada'], ...d.ej.map((e, i) => [String(i), String(i + 1)]), ['s', 'Salida']], col = J.col || 'e';
-  const colInf = c => c === 'e' ? d.es.e.inf : c === 's' ? d.es.s.inf : d.ej[+c].inf, colPath = c => c === 'e' ? 'es.e.inf' : c === 's' ? 'es.s.inf' : `ej.${c}.inf`;
-  let h = `<a class="back" href="#evento-${ev.id}">${I.arrow} Ver pública</a><div class="row" style="gap:6px">${statusChip(ev)}<span class="chip">Escaramuzas · Libre</span></div><div style="font-weight:800;font-size:17px;margin-top:6px" class="ell">${esc(ev.title)}</div>
-    <label class="f">Escaramuza</label><div class="scroller">${ev.teams.map(t => { const m = DB.get('scores', `${ev.id}-${t.id}-esc-${u.id}`); return `<button class="tog ${t.id === J.tid ? 'on' : ''}" data-ejteam="${t.id}">${esc(t.name)}${m ? ` · <b>${m.total}</b>` : ''}${isLocked(ev, t.id) ? ' 🔒' : ''}</button>`; }).join('')}</div>`;
-  if (locked) h += `<div class="banner warn mt">${I.info}<span>${ev.status !== 'en_vivo' ? 'La competencia no está en vivo: la hoja es de solo lectura.' : 'La hoja de esta escaramuza ya se entregó.'}</span></div>`;
-  h += `<div class="h2">Puntas</div>` + d.puntas.map((p, i) => { const c = r.P[i]; return `<div class="card mt"><div class="row between"><b>Punta ${i + 1}</b><span class="chip gold">${c.total} pts</span></div>
-      <label class="f">Competidora</label><input class="in" data-ep="puntas.${i}.name" value="${esc(p.name)}" placeholder="Nombre de la competidora" ${dis}>
-      <div class="chips mt">${PUNTA_ADIC.map(([k, l]) => chk(`puntas.${i}.adic.${k}`, l + ' +1', !!p.adic[k])).join('')}</div>
-      <div class="grid2"><div><label class="f">Tiempos (con 6 m o más)</label>${sel(`puntas.${i}.tiempos`, PUNTA_TIEMPOS.map(t => [t[0], t[1]]), p.tiempos, true)}</div><div><label class="f">Total metros</label><input class="in" type="number" min="0" step="0.01" data-ep="puntas.${i}.metros" data-num="1" value="${esc(p.metros)}" placeholder="Ej. 12.40" ${dis}></div></div>
-      <div class="small mut" style="margin-top:4px">Adicionales: ${c.ad} (tiempos +${c.tp}, metros +${c.mt}) · Infracciones −${c.inf}</div>
-      <details class="mt"><summary class="small" style="cursor:pointer">Infracciones de la punta</summary>${PUNTA_INF.map(([k, l, v]) => cnt(`puntas.${i}.inf.${k}`, l, v)).join('')}</details>
-      <div class="chips mt">${chk(`puntas.${i}.desc`, 'Punta descalificada', !!p.desc)}</div>${p.desc ? `<input class="in mt" data-ep="puntas.${i}.motivo" value="${esc(p.motivo)}" placeholder="Motivo de descalificación" ${dis}>` : ''}</div>`; }).join('');
-  h += `<div class="h2">Rutina obligatoria</div><div class="card"><div class="esc-ej small mut" style="border:0"><span>#</span><span>Concepto</span><span>Valor</span><span>Adic.</span></div>
-    ${d.ej.map((e, i) => `<div class="esc-ej"><b>${i + 1}</b>${sel(`ej.${i}.c`, ESC_CONC, e.c)}${sel(`ej.${i}.v`, [16, 20, 26, 28], e.v, true)}${sel(`ej.${i}.ad`, escAdicOpts(e.c, e.v).map(x => [x, '+' + x]), e.ad, true)}</div>
-      ${e.desc || e.lost ? `<div class="small" style="color:#ff9a9a;padding:2px 0 4px 32px">${e.desc ? 'Descalificado (100%)' : 'Pierde adicionales'}</div>` : ''}`).join('')}
-    <div class="small mut mt">Suma base <b style="color:var(--text)">${r.base}</b> / ${ESC_MAX} · Adicionales <b style="color:var(--text)">${r.adic}</b> / ${ESC_ADIC_MAX}</div></div>`;
-  h += `<div class="h2">Infracciones en rutina</div><div class="scroller">${cols.map(([k, l]) => { const n = Object.values(colInf(k)).reduce((a, x) => a + (+x || 0), 0); return `<button class="tog ${k === col ? 'on' : ''}" data-ecol="${k}">${l}${n ? ` · ${n}` : ''}</button>`; }).join('')}</div>
-    <div class="card mt"><div style="font-weight:800">${col === 'e' ? 'Entrada' : col === 's' ? 'Salida' : `Ejercicio ${+col + 1} · ${esc(d.ej[+col].c)} ${d.ej[+col].v}`}</div>
-    ${ESC_RINF.filter(x => !x[3] || (x[3].includes(col))).map(([k, l, v]) => cnt(`${colPath(col)}.${k}`, l, v)).join('')}
-    ${col !== 'e' && col !== 's' ? `<div class="chips mt">${chk(`ej.${col}.lost`, 'Pérdida de adicionales', !!d.ej[+col].lost)}${chk(`ej.${col}.desc`, 'Descalificación 100%', !!d.ej[+col].desc)}</div>` : ''}</div>`;
-  h += `<div class="h2">Presentación y varias</div><div class="card"><div class="small mut">Infracciones en presentación</div>${ESC_PRES.map(([k, l, v]) => cnt(`pres.${k}`, l, v)).join('')}</div>
-    <div class="card mt"><div class="small mut">Infracciones varias</div>${ESC_VAR.map(([k, l, v]) => cnt(`var.${k}`, l, v)).join('')}</div>
-    <div class="card mt">${cnt('noRut', 'No rutina obligatoria (falta valor o concepto)', 25)}<label class="f">Descalificación del equipo</label>${sel('disq', ESC_DQ.map(x => [x, x || '— Ninguna —']), d.disq)}
-      <div class="grid2"><div><label class="f">Tiempo puntas</label><input class="in" data-ep="times.puntas" value="${esc(d.times.puntas)}" placeholder="mm:ss" ${dis}></div><div><label class="f">Tiempo rutina</label><input class="in" data-ep="times.rutina" value="${esc(d.times.rutina)}" placeholder="mm:ss" ${dis}></div></div>
-      <label class="f">Comentarios</label><input class="in" data-ep="notes" value="${esc(d.notes)}" ${dis}></div>`;
-  if (r.warn.length) h += `<div class="banner warn mt">${I.info}<span>${r.warn.map(esc).join('<br>')}</span></div>`;
-  h += `<div class="sum-bar"><div class="grow"><div class="small mut">${esc(team.name)} · ${mine ? (J.dirty ? 'cambios sin publicar' : 'publicada ' + ftime(mine.updatedAt)) : 'sin publicar'}</div><div class="small">Rutina ${r.ejVal} + adic. ${r.adic} + puntas ${r.puntas} − infr. ${r.infTot}${d.disq ? ' · DESCALIFICADA' : ''}</div></div><div class="pts" style="font-size:26px">${r.total}</div></div>
-    ${locked ? '' : `<button class="btn pri block mt" data-act="escSave">${I.check} ${mine ? 'Publicar corrección' : 'Publicar calificación'}</button>`}
-    <div class="btns mt2"><a class="btn" href="#hoja-${ev.id}-${team.id}">${I.doc} Vaciado y hoja de ${esc(team.name)}</a></div>
-    <div class="small mut2 center mt">Cada jueza califica por separado. Con 5 juezas se descartan la calificación más alta y la más baja y se promedian 3.</div>`;
+  const chk = (path, label, on) => `<label class="tog ${on ? 'on' : ''}" style="cursor:pointer;min-height:46px;display:inline-flex;align-items:center"><input type="checkbox" data-ep="${path}" ${on ? 'checked' : ''} ${dis} style="margin-right:8px;width:20px;height:20px">${esc(label)}</label>`;
+  const cols = ['e', ...d.ej.map((e, i) => String(i)), 's'], col = J.col || 'e', ci = cols.indexOf(col), colInf = c => c === 'e' ? d.es.e.inf : c === 's' ? d.es.s.inf : d.ej[+c].inf, colPath = c => c === 'e' ? 'es.e.inf' : c === 's' ? 'es.s.inf' : `ej.${c}.inf`;
+  let h = `<a class="back" href="#evento-${ev.id}">${I.arrow} Ver pública</a><div style="font-weight:800;font-size:17px" class="ell">${esc(ev.title)}</div>
+    <label class="f">Escaramuza</label><div class="scroller">${ev.teams.map(t => { const m = DB.get('scores', `${ev.id}-${t.id}-esc-${u.id}`); return `<button class="tog ${t.id === J.tid ? 'on' : ''}" data-ejteam="${t.id}">${esc(t.name)}${m ? ' ✓' : ''}${isLocked(ev, t.id) ? ' 🔒' : ''}</button>`; }).join('')}</div>
+    <div class="stepbar">${['1. Puntas', '2. Rutina', '3. Presentación', '4. Revisar'].map((l, i) => `<button class="${J.step === i ? 'on' : ''}" data-act="escStep" data-k="${i}">${l}</button>`).join('')}</div>`;
+  if (locked) h += `<div class="banner warn mt">${I.info}<span>${ev.status !== 'en_vivo' ? 'La competencia no está en vivo: solo se puede ver.' : 'La hoja de esta escaramuza ya se entregó.'}</span></div>`;
+  if (!cro && canCro(u, ev) && J.step < 2) h += `<a class="banner warn mt" href="#croquis-${ev.id}-${team.id}" style="text-decoration:none">${I.info}<span>Falta el croquis de esta escaramuza. Toca aquí para capturarlo y no escribir los ejercicios.</span></a>`;
+  if (J.step === 0) h += d.puntas.map((p, i) => { const c = r.P[i]; return `<div class="card mt"><div class="row between"><b style="font-size:17px">Punta ${i + 1}</b><span class="chip gold">${c.total} pts</span></div>
+      <label class="f">Competidora</label><input class="in" data-ep="puntas.${i}.name" value="${esc(p.name)}" ${dis}>
+      <div class="chips mt">${PUNTA_ADIC.map(([k, l]) => chk(`puntas.${i}.adic.${k}`, l, !!p.adic[k])).join('')}</div>
+      <div class="grid2"><div><label class="f">Metros</label><input class="in" type="number" inputmode="decimal" min="0" step="0.01" data-ep="puntas.${i}.metros" data-num="1" value="${esc(p.metros)}" placeholder="12.40" ${dis}></div><div><label class="f">Tiempos</label>${sel(`puntas.${i}.tiempos`, PUNTA_TIEMPOS.map(t => [t[0], t[1]]), p.tiempos, true)}</div></div>
+      <details class="mt"><summary style="cursor:pointer;padding:8px 0">Infracciones de la punta ${c.inf ? `(−${c.inf})` : ''}</summary>${PUNTA_INF.map(([k, l, v]) => cnt(`puntas.${i}.inf.${k}`, l, v)).join('')}</details>
+      <div class="chips mt">${chk(`puntas.${i}.desc`, 'Punta descalificada', !!p.desc)}</div>${p.desc ? `<input class="in mt" data-ep="puntas.${i}.motivo" value="${esc(p.motivo)}" placeholder="Motivo" ${dis}>` : ''}</div>`; }).join('');
+  if (J.step === 1) { const isE = col !== 'e' && col !== 's', e = isE ? d.ej[+col] : null, ce = isE && cro ? cro.ej[+col] : null, list = ESC_RINF.filter(x => !x[3] || x[3].includes(col)), common = list.filter(x => ESC_COMMON.includes(x[0]) || x[3]), rest = list.filter(x => !common.includes(x)), used = rest.filter(x => +(colInf(col)[x[0]]) > 0);
+    h += `<div class="card mt"><div class="row" style="gap:12px;align-items:center">${ce && (ce.draw || []).length ? drawThumb(ce.draw) : ''}<div class="grow"><div class="small mut">${ci + 1} de ${cols.length}</div><div style="font-weight:800;font-size:19px">${col === 'e' ? 'Entrada' : col === 's' ? 'Salida' : `Ejercicio ${+col + 1}`}</div>${isE ? `<div style="color:var(--gold2);font-weight:700">${esc(e.c)} · ${e.v} pts${+e.ad ? ` · +${e.ad}` : ''}</div>` : ''}</div></div></div>
+      <div class="card mt">${common.map(([k, l, v]) => cnt(`${colPath(col)}.${k}`, l, v)).join('')}${(J.more ? rest : used).map(([k, l, v]) => cnt(`${colPath(col)}.${k}`, l, v)).join('')}
+      <button class="btn ghost block mt" data-act="escMore">${J.more ? 'Ver menos' : 'Ver todas las infracciones'}</button></div>
+      ${isE ? `<div class="chips mt">${chk(`ej.${col}.lost`, 'Pierde adicionales', !!e.lost)}${chk(`ej.${col}.desc`, 'Descalificado', !!e.desc)}</div><details class="mt"><summary style="cursor:pointer;padding:8px 0">Corregir concepto, valor o adicionales</summary><div class="card"><label class="f" style="margin-top:0">Concepto</label>${sel(`ej.${col}.c`, ESC_CONC, e.c)}<div class="grid2"><div><label class="f">Valor</label>${sel(`ej.${col}.v`, [16, 20, 26, 28], e.v, true)}</div><div><label class="f">Adicionales</label>${sel(`ej.${col}.ad`, escAdicOpts(e.c, e.v).map(x => [x, '+' + x]), e.ad, true)}</div></div></div></details>` : ''}`; }
+  if (J.step === 2) h += `<div class="card mt"><b>Presentación</b>${ESC_PRES.map(([k, l, v]) => cnt(`pres.${k}`, l, v)).join('')}</div><div class="card mt"><b>Varias</b>${ESC_VAR.map(([k, l, v]) => cnt(`var.${k}`, l, v)).join('')}</div>
+    <div class="card mt">${cnt('noRut', 'No rutina obligatoria', 25)}<label class="f">Descalificación del equipo</label>${sel('disq', ESC_DQ.map(x => [x, x || 'Ninguna']), d.disq)}<div class="grid2"><div><label class="f">Tiempo puntas</label><input class="in" data-ep="times.puntas" value="${esc(d.times.puntas)}" placeholder="min:seg" ${dis}></div><div><label class="f">Tiempo rutina</label><input class="in" data-ep="times.rutina" value="${esc(d.times.rutina)}" placeholder="min:seg" ${dis}></div></div></div>`;
+  if (J.step === 3) { h += `<div class="card mt" style="text-align:center"><div class="small mut">${esc(team.name)}</div><div style="font-family:'Cinzel',serif;font-size:44px;color:var(--gold2);line-height:1.1">${r.total}</div><div class="small mut">puntos de esta hoja</div></div>
+      <div class="card mt small">${[['Rutina', r.ejVal], ['Adicionales', '+' + r.adic], ['Puntas', r.puntas], ['Infracciones', '−' + r.infTot]].map(([k, v]) => `<div class="row between" style="padding:4px 0;font-size:15px"><span>${k}</span><b>${v}</b></div>`).join('')}${d.disq ? '<div style="color:#ff9a9a;font-weight:700;margin-top:6px">Equipo descalificado</div>' : ''}</div>
+      ${r.warn.length ? `<div class="banner warn mt">${I.info}<span>${r.warn.map(esc).join('<br>')}</span></div>` : ''}<label class="f">Comentarios</label><input class="in" data-ep="notes" value="${esc(d.notes)}" ${dis}>
+      ${locked ? '' : `<button class="btn pri block mt2" data-act="escSave" style="min-height:60px;font-size:18px">${I.check} ${mine ? 'Publicar corrección' : 'Publicar calificación'}</button>`}
+      <div class="small mut center mt">${mine ? (J.dirty ? 'Tienes cambios sin publicar.' : 'Publicada a las ' + ftime(mine.updatedAt)) : 'Tu avance se guarda solo en este teléfono hasta publicar.'}</div><a class="btn block mt" href="#hoja-${ev.id}-${team.id}">${I.doc} Ver vaciado y descargar PDF</a>`; }
+  if (J.step < 3) h += `<div class="bignav">${J.step > 0 || ci > 0 ? '<button class="btn" data-act="escNav" data-d="-1">Atrás</button>' : ''}<button class="btn pri" data-act="escNav" data-d="1">${J.step === 1 && col !== 's' ? 'Siguiente ejercicio' : 'Siguiente'}</button></div>`;
   return h;
 }
 function escSheetHTML(ev, team){
@@ -2511,7 +2668,7 @@ function vHoja(){
     <button class="btn pri block mt">${I.check} Firmar y entregar hoja</button></form></div>`;
   if (can && sh && sh.entregada && !sh.jueces.some(x => x.id === u.id) && sh.jueces.length < 3 && u.role !== 'lienzo') h += `<button class="btn block mt" data-act="cosign" data-id="${sh.id}">${I.gavel} Firmar también como juez</button>`;
   if (isSuper(u) && sh && sh.entregada) h += `<button class="btn ghost block mt" data-act="reopenSheet" data-id="${sh.id}">Reabrir hoja (súper usuario)</button>`;
-  h += ev.mode === 'escaramuza' ? `</div><div class="mt">${escSheetHTML(ev, team)}</div>` : `</div><div class="sheet-wrap mt">${sheetHTML(ev, team)}</div>`;
+  h += ev.mode === 'escaramuza' ? `${canCro(u, ev) ? `<button class="btn pri block mt" style="min-height:58px;font-size:17px" data-act="escPdfBtn" data-e="${ev.id}" data-t="${team.id}">${I.doc} Descargar hojas oficiales (PDF)</button><a class="btn block mt" href="#croquis-${ev.id}-${team.id}">${I.edit} ${croDone(croOf(ev.id, team.id)) ? 'Ver o cambiar croquis' : 'Capturar croquis'}</a>` : ''}</div><div class="mt">${escSheetHTML(ev, team)}</div>` : `</div><div class="sheet-wrap mt">${sheetHTML(ev, team)}</div>`;
   return h;
 }
 
@@ -2631,10 +2788,16 @@ const ACT = {
   rankOficial(){ State.rankOficial = !State.rankOficial; render(); }, histOficial(){ State.histOficial = !State.histOficial; render(); },
   authmode(el){ State.authMode = el.dataset.k; render(); },
   card(el){ openCard(el.dataset.n); },
-  hcard(el){ openHorse(el.dataset.id); }, grank(el){ State.gRank = el.dataset.k; render(); },
+  hcard(el){ openHorse(el.dataset.id); },
+  cqGo(el){ State.cq.step = +el.dataset.k; render(); window.scrollTo(0, 0); }, cqVia(el){ State.cq.d.via = el.dataset.k; State.cq.step = 1; render(); window.scrollTo(0, 0); }, cqDraw(el){ openDraw(+el.dataset.i); },
+  async cqSave(){ const Q = State.cq, ev = DB.get('events', Q.d.eventId); await safe(async () => { await cqPersist(); await audit('croquis', `Guardó el croquis de ${(ev.teams.find(t => t.id === Q.d.teamId) || {}).name} en “${ev.title}”`); go(canManage(State.user, ev) ? 'panel-evento-' + ev.id : 'juez-' + ev.id); }, 'Croquis guardado'); },
+  async escPdfBtn(el){ const ev = DB.get('events', el.dataset.e), t = ev && ev.teams.find(x => x.id === el.dataset.t); if (!t) return; try { await escPdf(ev, t); toast('PDF descargado', 'ok'); } catch (e) { toast(e.message || 'No se pudo generar el PDF', 'err'); } },
+  escStep(el){ State.ej.step = +el.dataset.k; render(); window.scrollTo(0, 0); }, escMore(){ State.ej.more = !State.ej.more; render(); },
+  escNav(el){ const J = State.ej, dir = +el.dataset.d, cols = ['e', ...J.d.ej.map((e, i) => String(i)), 's'], ci = cols.indexOf(J.col || 'e'); J.more = false;
+    if (J.step === 1 && cols[ci + dir]) J.col = cols[ci + dir]; else { J.step = Math.max(0, Math.min(3, J.step + dir)); if (J.step === 1) J.col = dir > 0 ? 'e' : 's'; } render(); window.scrollTo(0, 0); }, grank(el){ State.gRank = el.dataset.k; render(); },
   async escSave(){ const ev = curEv(), J = State.ej, u = State.user; if (!ev || !J) return; const team = ev.teams.find(t => t.id === J.tid), r = calcEsc(J.d), id = `${ev.id}-${team.id}-esc-${u.id}`, prev = DB.get('scores', id);
     await safe(async () => { await DB.put('scores', { id, eventId: ev.id, teamId: team.id, teamName: team.name, faena: 'escaramuza', input: clone(J.d), buenos: r.ejVal + r.adic + r.puntas + r.infTot - r.infTot, malos: r.infTot, total: r.total, eq: 0, net: r.total, parts: [], judgeId: u.id, judgeName: u.name, createdAt: prev ? prev.createdAt : Date.now(), updatedAt: Date.now(), history: prev ? [...(prev.history || []), { total: prev.total, ts: prev.updatedAt }] : [] });
-      await audit(prev ? 'corrige' : 'califica', `${prev ? 'Corrigió' : 'Calificó'} a ${team.name} en “${ev.title}”: ${r.total} pts`); J.dirty = false; }, prev ? 'Corrección publicada' : 'Calificación publicada'); },
+      await audit(prev ? 'corrige' : 'califica', `${prev ? 'Corrigió' : 'Calificó'} a ${team.name} en “${ev.title}”: ${r.total} pts`); J.dirty = false; }, prev ? 'Corrección publicada' : 'Calificación publicada'); escDraftDel(`${ev.id}-${team.id}-${u.id}`); },
   upgrade(el){ openUpgrade(el.dataset.why || ''); },
   async cardHD(el){ if (needPro('La tarjeta en alta resolución es una función Pro.')) return; await safe(() => downloadNode($('#tcard'), `tarjeta-${slug(el.dataset.n)}.png`), 'Tarjeta descargada'); },
   report(el){ if (needPro('Los reportes en PDF son una función Pro.')) return; openReport(el.dataset.k, el.dataset.id); },
@@ -2755,7 +2918,7 @@ const ACT = {
 function jMark(){ State.j.dirty = true; render(); }
 document.addEventListener('click', async e => {
   const t = e.target;
-  const ec = t.closest('[data-ec]'); if (ec && State.ej && State.ej.d) { e.preventDefault(); const v = Math.max(0, (+getP(State.ej.d, ec.dataset.ec) || 0) + (+ec.dataset.d)); setP(State.ej.d, ec.dataset.ec, v); State.ej.dirty = true; return render(); }
+  const ec = t.closest('[data-ec]'); if (ec && State.ej && State.ej.d) { e.preventDefault(); const v = Math.max(0, (+getP(State.ej.d, ec.dataset.ec) || 0) + (+ec.dataset.d)); setP(State.ej.d, ec.dataset.ec, v); State.ej.dirty = true; escDraftSet(); return render(); }
   const eco = t.closest('[data-ecol]'); if (eco && State.ej) { e.preventDefault(); State.ej.col = eco.dataset.ecol; return render(); }
   const ejt = t.closest('[data-ejteam]'); if (ejt && State.ej) { e.preventDefault(); if (State.ej.dirty && !(await ask('Cambios sin publicar', 'Tienes cambios sin publicar en esta hoja. ¿Descartarlos?', 'Descartar', true))) return; State.ej.tid = ejt.dataset.ejteam; State.ej.d = null; State.ej.dirty = false; return render(); }
   const jt = t.closest('[data-jt]'); if (jt) { e.preventDefault(); setP(State.j.d, jt.dataset.jt, !getP(State.j.d, jt.dataset.jt)); return jMark(); }
@@ -2778,7 +2941,9 @@ document.addEventListener('change', async e => {
   if (el.dataset.skind || el.dataset.smode) { if (el.dataset.skind) State.sKind = el.value; else State.sMode = el.value; const f = el.closest('form'); if (f && f.dataset.form === 'stockNew') { render(); } return; }
   if (el.dataset.ep && State.ej && State.ej.d) { let v = el.type === 'checkbox' ? el.checked : el.value; if (el.dataset.num) v = el.value === '' ? '' : +el.value;
     setP(State.ej.d, el.dataset.ep, v); const m = el.dataset.ep.match(/^ej\.(\d+)\.(c|v)$/); if (m) { const e = State.ej.d.ej[+m[1]]; if (!escAdicOpts(e.c, e.v).includes(+e.ad)) e.ad = 0; }
-    State.ej.dirty = true; return render(); }
+    State.ej.dirty = true; escDraftSet(); return render(); }
+  if (el.dataset.cqphoto) { const f = el.files[0]; el.value = ''; if (f) openCorners(f); return; }
+  if (el.dataset.cq && State.cq) { setP(State.cq.d, el.dataset.cq, el.dataset.num ? +el.value : el.value); const m = el.dataset.cq.match(/^ej\.(\d+)\.(c|v)$/); if (m) { const e = State.cq.d.ej[+m[1]]; if (!escAdicOpts(e.c, e.v).includes(+e.ad)) e.ad = 0; render(); } return; }
   if (el.dataset.horse) { const ev = curEv(); if (!ev) return; const hz = DB.get('horses', el.value);
     return safe(() => updEv({ charros: ev.charros.map(c => c.id === el.dataset.horse ? { ...c, horseId: el.value || null } : c) }), hz ? `Caballo asignado: ${hz.name}` : 'Caballo quitado'); }
   if (el.dataset.photo) { const f = el.files[0]; el.value = ''; if (!f) return; return safe(async () => savePhoto(el.dataset.photo, await readPhoto(f)), 'Foto actualizada'); }
@@ -2794,7 +2959,7 @@ document.addEventListener('change', async e => {
 let searchT;
 document.addEventListener('input', e => {
   const el = e.target;
-  if (el.dataset.ep && State.ej && State.ej.d && el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'number') { setP(State.ej.d, el.dataset.ep, el.value); State.ej.dirty = true; return; }
+  if (el.dataset.ep && State.ej && State.ej.d && el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'number') { setP(State.ej.d, el.dataset.ep, el.value); State.ej.dirty = true; escDraftSet(); return; }
   if (el.dataset.jp === 'notes') { setP(State.j.d, 'notes', el.value); State.j.dirty = true; return; }
   if (el.dataset.model === 'histQ') { clearTimeout(searchT); searchT = setTimeout(() => { State.histQ = el.value; const pos = el.selectionStart; render(); const n = document.querySelector('[data-model="histQ"]'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 250); }
 });

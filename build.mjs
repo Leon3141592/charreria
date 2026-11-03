@@ -3,7 +3,7 @@
 //   docs/demo/index.html  -> modo demostración (datos en el navegador, cuentas de prueba)
 //   docs/tcg/ y docs/demo/tcg/ -> CharreríaTCG: la misma app con SITE 'tcg', comparte datos y sesión
 // Uso: node build.mjs
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, cpSync } from 'node:fs';
 
 const src = readFileSync('index.html', 'utf8');
 const CONFIG_RE = /const CONFIG = \{[^\n]*\};/;
@@ -18,6 +18,7 @@ const build = (dir, cfg) => {
 
 mkdirSync('docs', { recursive: true });
 writeFileSync('docs/.nojekyll', '');
+cpSync('formatos', 'docs/formatos', { recursive: true });   // formatos oficiales para los PDF de escaramuzas
 build('docs/demo', { MODE: 'demo', SUPABASE_URL: '', SUPABASE_ANON_KEY: '' });
 build('docs/demo/tcg', { MODE: 'demo', SITE: 'tcg', SUPABASE_URL: '', SUPABASE_ANON_KEY: '' });
 
