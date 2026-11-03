@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0a08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Charrería Pro">
+<title>Charrería Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0a08;--bg2:#15100c;--card:#1c1510;--card2:#251b14;--line:#3a2b20;--line2:#4d3a2b;--gold:#d9a84e;--gold2:#f2cd7e;--vino:#8e1b2c;--vino2:#b02a3e;--red:#ef4444;--green:#3fb37f;--blue:#5b9bd5;--text:#f4ece1;--mut:#a8988a;--mut2:#76685c;--r:16px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.4}
+body{padding-bottom:calc(78px + env(safe-area-inset-bottom));min-height:100vh;background:radial-gradient(1200px 500px at 50% -200px,rgba(142,27,44,.28),transparent 70%),var(--bg)}
+a{color:var(--gold2)}button,input,select,textarea{font:inherit;color:inherit}
+.top{position:sticky;top:0;z-index:20;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:rgba(14,10,8,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.top-in{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--text);flex:1;min-width:0}
+.brand b{font-family:'Cinzel',serif;font-size:19px;font-weight:800;letter-spacing:.03em;white-space:nowrap}.brand b span{color:var(--gold)}
+.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(145deg,var(--vino2),#4a0d17);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(242,205,126,.35);flex:none}
+.logo svg{width:20px;height:20px;color:var(--gold2)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--card2);border:1px solid var(--line2);display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--gold2);text-decoration:none;flex:none}
+.wrap{max-width:560px;margin:0 auto;padding:14px 16px 24px}
+.wrap.wide{max-width:900px}
+.nav{position:fixed;bottom:0;left:0;right:0;z-index:30;background:rgba(21,16,12,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+.nav-in{max-width:560px;margin:0 auto;display:flex}
+.nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--mut2);text-decoration:none;padding:6px 0 4px;border-radius:12px;position:relative}
+.nav a.on{color:var(--gold2)}.nav a.on::before{content:"";position:absolute;top:-7px;width:26px;height:3px;border-radius:0 0 4px 4px;background:var(--gold)}
+.nav svg{width:23px;height:23px}
+.nav .dot{position:absolute;top:3px;right:calc(50% - 18px);width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px var(--bg2);animation:pulse 1.6s infinite}
+svg{flex:none}h1,h2,h3{margin:0}
+.h1{font-family:'Cinzel',serif;font-size:24px;font-weight:800;line-height:1.15}
+.h2{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:8px;margin:22px 2px 10px}
+.h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line2),transparent)}.h2 a{font-size:12px;letter-spacing:0;text-transform:none;font-weight:600;order:3}
+.sub{color:var(--mut);font-size:13.5px}.mut{color:var(--mut)}.mut2{color:var(--mut2)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}.card+.card{margin-top:10px}
+.list>*+*{margin-top:10px}
+.row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}.wrapf{flex-wrap:wrap}.grow{flex:1;min-width:0}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--card2);border:1px solid var(--line2);color:var(--mut);white-space:nowrap}
+.chip svg{width:12px;height:12px}
+.chip.live{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.45);color:#ff8a8a}.chip.live i{width:7px;height:7px;border-radius:50%;background:var(--red);animation:pulse 1.4s infinite}
+.chip.gold{background:rgba(217,168,78,.12);border-color:rgba(217,168,78,.45);color:var(--gold2)}
+.chip.green{background:rgba(63,179,127,.12);border-color:rgba(63,179,127,.45);color:#7fdcb0}
+.chip.blue{background:rgba(91,155,213,.12);border-color:rgba(91,155,213,.45);color:#9cc5ee}
+.chip.red{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#ff9a9a}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:13px;padding:12px 16px;font-weight:700;font-size:14.5px;cursor:pointer;text-decoration:none;background:var(--card2);color:var(--text);border:1px solid var(--line2);min-height:46px}
+.btn svg{width:18px;height:18px}
+.btn.pri{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#2a1a08;border-color:transparent}
+.btn.vino{background:linear-gradient(180deg,var(--vino2),var(--vino));color:#fff;border-color:transparent}
+.btn.live{background:linear-gradient(180deg,#f25555,#c92a2a);color:#fff;border-color:transparent}
+.btn.ghost{background:transparent}.btn.sm{padding:7px 12px;min-height:36px;font-size:13px;border-radius:11px}.btn.block{width:100%}.btn:disabled{opacity:.45;pointer-events:none}
+.btns{display:flex;gap:8px;flex-wrap:wrap}.btns>.btn{flex:1}
+label.f{display:block;font-size:12.5px;font-weight:700;color:var(--mut);margin:12px 0 6px}
+.in{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:12px;padding:12px 13px;font-size:16px;outline:none}
+.in:focus{border-color:var(--gold)}
+select.in{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);background-position:calc(100% - 18px) 52%,calc(100% - 13px) 52%;background-size:5px 5px;background-repeat:no-repeat;padding-right:34px}
+textarea.in{min-height:64px;resize:vertical}
+.seg{display:flex;background:var(--bg2);border:1px solid var(--line);border-radius:13px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:transparent;padding:9px 6px;border-radius:10px;font-weight:700;font-size:13px;color:var(--mut);cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--card2);color:var(--gold2);box-shadow:inset 0 0 0 1px var(--line2)}
+.scroller{display:flex;gap:8px;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}.scroller::-webkit-scrollbar{display:none}.scroller>*{flex:none}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.tog{border:1px solid var(--line2);background:var(--bg2);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;color:var(--mut);text-align:left}
+.tog.on{background:rgba(217,168,78,.14);border-color:var(--gold);color:var(--gold2)}
+.tog.done{border-color:rgba(63,179,127,.55);color:#9fe3c3}
+.tog.done.on{background:rgba(63,179,127,.16);color:#b8f0d4;border-color:var(--green)}
+.tog b{font-weight:800}
+.hero{position:relative;overflow:hidden;border-radius:20px;padding:18px;border:1px solid rgba(239,68,68,.35);background:radial-gradient(400px 200px at 100% 0,rgba(239,68,68,.22),transparent 70%),linear-gradient(160deg,#2a1510,#160e0b)}
+.hero .score-big{font-family:'Cinzel',serif;font-size:40px;font-weight:800;color:var(--gold2);line-height:1}
+.pattern{position:absolute;inset:auto 0 0 0;height:6px;background:repeating-linear-gradient(90deg,var(--gold) 0 10px,transparent 10px 14px,var(--vino2) 14px 24px,transparent 24px 28px);opacity:.55}
+.evc{display:block;text-decoration:none;color:inherit}.evc .t{font-weight:800;font-size:15.5px;line-height:1.25}.evc .meta{font-size:12.5px;color:var(--mut);margin-top:3px}
+.datebox{width:48px;text-align:center;border-radius:12px;background:var(--bg2);border:1px solid var(--line2);padding:6px 0;flex:none}
+.datebox b{display:block;font-family:'Cinzel',serif;font-size:19px;color:var(--gold2);line-height:1}.datebox span{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--mut);text-transform:uppercase}
+.rank{display:flex;align-items:center;gap:12px;padding:11px 12px;border-bottom:1px solid var(--line)}.rank:last-child{border-bottom:0}
+.pos{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:13px;background:var(--bg2);color:var(--mut);border:1px solid var(--line2);flex:none}
+.pos.p1{background:linear-gradient(160deg,#f7d98c,#c8902e);color:#2a1a08;border:0}.pos.p2{background:linear-gradient(160deg,#e4e4e4,#9a9a9a);color:#1d1d1d;border:0}.pos.p3{background:linear-gradient(160deg,#e0a072,#9b5a2e);color:#25140a;border:0}
+.pts{font-family:'Cinzel',serif;font-weight:800;font-size:19px;color:var(--gold2);text-align:right;line-height:1}.pts small{display:block;font-family:'Plus Jakarta Sans';font-size:10.5px;font-weight:600;color:var(--mut2);margin-top:3px}
+.pad0{padding:0;overflow:hidden}
+.bar{height:6px;border-radius:6px;background:var(--bg2);overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--vino2),var(--gold))}
+.feed .it{padding:12px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}.feed .it:last-child{border-bottom:0}
+.feed .num{min-width:54px;text-align:center;border-radius:12px;padding:8px 4px;background:var(--bg2);border:1px solid var(--line2)}
+.feed .num b{display:block;font-family:'Cinzel',serif;font-size:22px;color:var(--gold2);line-height:1}.feed .num span{font-size:9.5px;color:var(--mut2);font-weight:700;letter-spacing:.06em}
+.flash{animation:flash 2.2s ease-out}@keyframes flash{0%{background:rgba(242,205,126,.28)}100%{background:transparent}}
+.video{position:relative;border-radius:16px;overflow:hidden;background:#000;aspect-ratio:16/9;border:1px solid var(--line)}
+.video iframe,.video video{position:absolute;inset:0;width:100%;height:100%;border:0}
+.video .ph{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--mut);background:repeating-linear-gradient(135deg,#140e0b 0 14px,#18110d 14px 28px)}
+.video .ph svg{width:34px;height:34px;color:var(--mut2);margin:0 auto 6px;display:block}
+.empty{text-align:center;padding:28px 16px;color:var(--mut)}.empty svg{width:40px;height:40px;color:var(--mut2);margin-bottom:8px}
+.banner{font-size:12.5px;border-radius:12px;padding:10px 12px;background:rgba(91,155,213,.1);border:1px solid rgba(91,155,213,.35);color:#bcd8f3;display:flex;gap:8px;align-items:flex-start}
+.banner svg{width:16px;height:16px;margin-top:1px}
+.banner.warn{background:rgba(217,168,78,.1);border-color:rgba(217,168,78,.4);color:var(--gold2)}.banner.err{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4);color:#ffb0b0}
+.banner.ok{background:rgba(63,179,127,.1);border-color:rgba(63,179,127,.4);color:#a6ecc9}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 10px}.kpi b{display:block;font-family:'Cinzel',serif;font-size:24px;color:var(--gold2);line-height:1}.kpi span{font-size:11px;color:var(--mut);font-weight:600}
+.stepper{display:inline-flex;align-items:center;gap:8px}
+.stepper button{width:40px;height:40px;border-radius:11px;border:1px solid var(--line2);background:var(--bg2);font-size:20px;font-weight:700;cursor:pointer}
+.stepper b{min-width:28px;text-align:center;font-size:18px}
+.toasts{position:fixed;left:0;right:0;bottom:calc(88px + env(safe-area-inset-bottom));z-index:60;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding:0 16px}
+.toast{background:#2b211a;border:1px solid var(--line2);color:var(--text);padding:11px 16px;border-radius:13px;font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.45);animation:tin .25s ease-out;max-width:520px}
+.toast.ok{border-color:rgba(63,179,127,.6)}.toast.err{border-color:rgba(239,68,68,.6)}
+@keyframes tin{from{transform:translateY(10px);opacity:0}}
+.modal{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.62);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+.modal .box{width:100%;max-width:540px;max-height:86vh;overflow:auto;background:var(--card);border:1px solid var(--line2);border-radius:20px;padding:18px;margin-bottom:env(safe-area-inset-bottom);animation:tin .2s ease-out}
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--mut);text-decoration:none;font-size:13.5px;font-weight:600;margin-bottom:10px}.back svg{width:16px;height:16px}
+.team{border:1px solid var(--line2);border-radius:14px;padding:12px;background:var(--bg2);margin-top:10px}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:6px 6px 6px 11px;border-radius:999px;background:var(--card2);border:1px solid var(--line2);font-size:13px;margin:6px 6px 0 0}
+.tag button{width:22px;height:22px;border-radius:50%;border:0;background:var(--line);color:var(--mut);cursor:pointer;display:grid;place-items:center;padding:0}.tag button svg{width:12px;height:12px}
+.tag.bad{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4);color:#ffc2c2}
+.ic{width:18px;height:18px}
+.badge-n{min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;font-weight:800;display:inline-grid;place-items:center}
+.verified{display:inline-flex;vertical-align:-2px;color:var(--gold2)}.verified svg{width:15px;height:15px}
+.sep{height:1px;background:var(--line);margin:14px 0}
+.small{font-size:12.5px}.center{text-align:center}.mt{margin-top:12px}.mt2{margin-top:20px}
+.marrow{display:grid;place-items:center;transform:rotate(180deg);color:var(--mut2)}.marrow svg{width:20px;height:20px}
+.footer{text-align:center;color:var(--mut2);font-size:11.5px;margin-top:28px}
+/* Mesa del juez */
+.opp{border:1px solid var(--line2);border-radius:14px;background:var(--bg2);padding:12px;margin-top:10px}
+.opp.dq{border-color:rgba(239,68,68,.55)}
+.opp-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800}
+.score-line{display:flex;gap:6px;align-items:center;font-size:12.5px;font-weight:700}
+.score-line .b{color:#7fdcb0}.score-line .m{color:#ff9a9a}.score-line .t{color:var(--gold2);font-family:'Cinzel',serif;font-size:18px}
+.mini-l{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mut2);margin:12px 0 6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sum-bar{position:sticky;bottom:calc(70px + env(safe-area-inset-bottom));z-index:10;margin-top:14px;background:rgba(28,21,16,.97);border:1px solid var(--gold);border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 -6px 24px rgba(0,0,0,.4)}
+.sum-bar .big{font-family:'Cinzel',serif;font-size:30px;font-weight:800;color:var(--gold2);line-height:1}
+/* Hoja oficial */
+.sheet-wrap{overflow:auto;margin:0 -16px;padding:0 16px 10px}
+.sheet{width:800px;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;font-size:10px;padding:18px 18px 22px;border-radius:6px;margin:0 auto}
+.sheet table{border-collapse:collapse;width:100%;table-layout:fixed}
+.sheet td,.sheet th{border:1px solid #222;padding:2px 3px;text-align:center;vertical-align:middle;height:20px;overflow:hidden}
+.sheet th{font-size:8.5px;font-weight:700}
+.sheet .fn{font-size:13px;font-weight:800;background:#e3e3e3;text-align:center;letter-spacing:.02em}
+.sheet .who{text-align:left;font-size:10px;font-weight:600}
+.sheet .red{color:#c00}.sheet .g{background:#e3e3e3;font-weight:700}
+.sheet .gt{background:#e3e3e3;font-weight:800;font-size:11px}
+.sheet .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+.sheet .ttl{font-size:17px;font-weight:800;color:#1f6b2d;letter-spacing:.04em}
+.sheet .stl{font-size:9.5px;color:#444;margin-top:2px}
+.sheet .flds{display:grid;grid-template-columns:2.2fr 1fr;gap:3px 14px;font-size:11px;font-weight:700;margin-top:8px}
+.sheet .flds span{display:flex;gap:6px}.sheet .flds em{flex:1;font-style:normal;font-weight:400;border-bottom:1px solid #222;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sheet .blk{margin-top:9px;break-inside:avoid}
+.sheet .aux{display:flex;justify-content:flex-end;align-items:center;gap:14px;margin-top:3px;font-size:10px;font-weight:700}
+.sheet .box{display:inline-block;min-width:54px;border:1.5px solid #222;padding:2px 6px;text-align:center;font-weight:800}
+.sheet .det{font-size:8.5px;color:#333;text-align:left;margin-top:2px;line-height:1.35}
+.sheet .tot{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.sheet .tot .box{font-size:14px;min-width:90px;padding:6px 10px}
+.sheet .firmas{display:grid;grid-template-columns:repeat(4,1fr);margin-top:14px;font-size:10px;font-weight:800;text-align:center}
+.sheet .firmas div{border:1px solid #222;border-top:0;height:42px;display:flex;flex-direction:column;justify-content:flex-end;padding:3px;font-weight:600;font-size:9px}
+.sheet .firmas b{border:0;display:block;padding-bottom:3px}
+.sheet .foot{margin-top:12px;font-size:8.5px;color:#555;display:flex;justify-content:space-between;gap:10px}
+.sheet .stamp{color:#1f6b2d;font-weight:800}
+@media print{
+  body{background:#fff!important;padding:0}
+  .top,.nav,.noprint,.toasts,#modal{display:none!important}
+  .wrap{max-width:none;padding:0}.sheet-wrap{overflow:visible;margin:0;padding:0}
+  .sheet{zoom:1!important;width:100%;border-radius:0;padding:0}
+  @page{size:letter portrait;margin:8mm}
+}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in" id="top"></div></header>
+<main class="wrap" id="view"></main>
+<nav class="nav"><div class="nav-in" id="nav"></div></nav>
+<div class="toasts" id="toasts"></div>
+<div id="modal"></div>
+<script>
+/* =====================================================================
+   MOTOR DE CALIFICACIÓN — Reglamento Oficial de Charros Libre y Juvenil
+   2024-2028. Cada valor viene del reglamento (artículo / fracción).
+   ===================================================================== */
+const RULES = (() => {
+  // ---------- Sanciones generales (Cap. XI) ----------
+  const GEN = [
+    ['gI','Montura sucia, retobo roto o sin chapetones',1],['gII','Montura con fuste quebrado',2],
+    ['gIII','Jinete pierde o se le sale arreo, atuendo o chaleco',1],['gV','No traer o perder la cuarta (arreador)',2],
+    ['gVI','Sogas de material no permitido o sin lazada (arreador)',2],['gVII','Falta de tientos o menores a 5 cm',2],
+    ['gVIII','Pantalón roto o se pierde/desabrocha parte del atuendo',2],['gIX','Falta de baberillos en el freno',4],
+    ['gX','Quitarse el sombrero durante la faena',2],['gXI','Voltear o soltar los estribos',2],
+    ['gXII','Hacer sangrar la cabalgadura',2],['gXIII','Reclamar calificación sin ser capitán',5],
+    ['gXIV','Irse la montura de lado',2],['gXV','Apoyarse de la cabeza de la montura o cabalgadura',2],
+    ['gXVI','Perder el tiempo injustificadamente',2],['gXVIII','Crin o cola amarrada o trenzada',4],
+    ['gXIX','Golpear la cabalgadura en la cabeza',4],['gXXI','Caerse o desmontarse sin autorización',6],
+    ['gXXIII','Camisa mal fajada o mangas arremangadas',1],['gXXIV','Usar puya eléctrica en el ruedo',4],
+    ['gXXV','Falta de atuendo o arreos (arreador)',2],['gXXVIII','Cadenilla con vuelta en el freno',2],
+    ['gXXIX','Tratar de sorprender al jurado',5],['gXXX','Calentar cabalgaduras durante las faenas',2]
+  ];
+  const GEN_EQ = [
+    ['eIV','Rebasar 2 min para limpiar prendas (por minuto)',1],['eXI','Arreador voltea o suelta estribos',2],
+    ['eXIV','Montura de lado (arreador)',2],['eXVII','Capitán reclama puntuación de otro equipo sin razón',5],
+    ['eXIX','Auxiliar o arreador golpea cabalgadura en la cabeza',4],['eXX','Conducta antideportiva al devolver yeguas',5],
+    ['eXXII','Revisión de video solicitada sin razón',5],['eXXVI','Integrante se retira del ruedo durante las calas',4],
+    ['eXXVII','Borrar líneas o desatender indicaciones de jueces',5]
+  ];
+
+  // ---------- Cala de caballo (Cap. XII) ----------
+  const CALA_INF = [
+    ['I','Rebasar 1 min al enfrenar y montar',1],['II','Rebasar 2 min al enfrenar y montar',1],['III','Resistirse a ser enfrenado',1],
+    ['IV','Resistirse a dar el estribo',1],['V','Ingresar por un costado al rectángulo central',5],['VI','Dar la espalda a la línea de 90 m',1],
+    ['VII','Patada con una extremidad',4],['VIII','No saludar (por ocasión)',1],['IX','No correr en línea recta (por ocasión)',1],
+    ['X','Estrellarse en la barda del partidero',4],['XI','Alborotarse',1],['XII','No poner en mano de frente al partidero',1],
+    ['XIII','Rebasar el minuto sin arrancar',1],['XIV','No desarrollar toda la velocidad desde los 20 m',4],['XV','Cuartear de medio cuerpo hacia delante',3],
+    ['XVI','Parar sobre las manos o cargarse en la rienda',2],['XVII','Rebasar la línea de 90 m en la punta',1],['XX','Preguntar o cuestionar a los jueces',1],
+    ['XXI','Cejar sobre las marcas sin autorización',1],['XXII','Abrir el hocico (excepto en la punta)',1],['XXIII','Rabear o espiguear',1],
+    ['XXIV','Enjetarse',1],['XXV','Cachetear',1],['XXVI','Estrellar, despapar o gorbetear',1],['XXVII','Salirse el freno de su lugar',2],
+    ['XXVIII','Lados sin apoyar los cuartos traseros (por lado)',2],['XXIX','Dar la espalda al terminar los lados (por lado)',5],
+    ['XXX','No completar 180° en medios lados (por lado)',1],['XXXI','Anticiparse el caballo al mando (por ocasión)',5],
+    ['XXXII','Cambiar de mano durante los ejercicios',1],['XXXIII','Cejar al terminar medios lados',2],['XXXIV','No cejar en línea recta hasta los 60 m',1],
+    ['XXXV','Soltar uno o ambos estribos',2],['XXXVI','Andadura de mondingo o trote',1],['XXXVII','Reventarse arreos o protectores',2],
+    ['XXXVIII','Perder la cuarta',1],['XXXIX','Sangrar al caballo',2],['XL','Titubear o disminuir velocidad en los lados (por lado)',4],
+    ['XLI','Disminuir la velocidad en la ceja',4],['XLII','Sujetarse de la cabeza de la montura en descanso',2],['XLIII','Descansar la mano en el paso natural',2]
+  ];
+  const CALA_EQ = [['XVIII','Revisor de punta no participa en otra faena',5],['XIX','Revisor de punta ingresa al rectángulo',2]];
+
+  // ---------- Piales en el lienzo (Cap. XIII) ----------
+  const PIAL_REM = [['verijas','Lazo de verijas',14],['remAd','Remolineado hacia adelante',18],['remAt','Remolineado hacia atrás',20],
+    ['piqAd','De piquete hacia adelante',22],['piqAt','De piquete hacia atrás',24],['rompe','Rompe chaqueta',26],
+    ['florAd','Floreado hacia adelante',28],['florAt','Floreado hacia atrás',30]];
+  const PIAL_EX = [['rect','Detuvo sin salir del rectángulo de tiro',1],['madera','Chorreó con relleno de madera',2],['vueltas','Sostuvo todas las vueltas en la mano',1]];
+  const PIAL_INF = [['I','Pisar o rebasar la línea de 4 m al rematar',4],['II','Fallar vueltas o no agarrar la guía',2],['III','Amarrar no siendo pial',2],
+    ['IV','Cabrestear de 10 a 20 m',2],['V','Chorrear con el caballo atravesado',2],['VI','Caballo camina al contralienzo con pial',3],
+    ['VII','Minuto excedente (por minuto)',2],['VIII','Pial que no entra limpio (pega en el pecho)',2],['IX','Sostenerse amarrado no siendo pial',4],
+    ['X','Hacerse media al chorrear',2],['XI','Pisar línea lateral del cuadro de tiro',4],['XIII','La yegua le quita la soga con pial',6],
+    ['XIV','Le cabrestean o arrean la cabalgadura',2],['A97','Presentarse cabresteado o arreado',2]];
+  const PIAL_EQ = [['XII','Persona extra con el pialador (por persona)',4]];
+
+  // ---------- Coleadero (Cap. XIV) ----------
+  const CAIDAS = [['redDer','Redonda derecha',12],['medDer','Media derecha',10],['lomoDer','Sobre lomo derecha',10],['redCon','Redonda contraria',8],
+    ['lomoIzq','Sobre lomo izquierda',6],['medCon','Media contraria',6],['panzazo','Panzazo',6],['senton','Sentón',6],['molinete','Molinete',6]];
+  const COLA_DIST = [['d30','Antes de 30 m',3],['d40','Entre 30 y 40 m',2],['d50','Entre 40 y 50 m',1]];
+  const COLA_EX = [['lola','A la Lola',2],['sinApretador','Sin apretador',1]];
+  const COLA_INF = [['I','No saludar',2],['II','No pachonear',2],['III','No agarrar la cola',2],['IV','Apoyarse de la cabalgadura o montura',2],
+    ['V','Arcionar en dos o más intentos (no cuenta)',2],['VI','El auxiliar entra a apoyar',2],['VII','Perder o reventarse un arreo, estribos, sombrero',2],
+    ['VIII','Estirar mal amarrado',2],['IX','Encorvarse al estirar',2],['X','Castigar innecesariamente al caballo',2],['XI','Arcionar después de 60 m',2],
+    ['XII','No parar totalmente al caballo',2],['XIII','Estrellar al caballo en la pared',2],['XIV','Quitarse el sombrero al estirar',2],
+    ['XV','Amarrar arriba de la rodilla (no cuenta)',4],['XVII','Le apachurra más de un charro',4],['XVIII','Lastimar su cabalgadura',4],
+    ['XIX','El toro cae después de 70 m',4],['XXI','Rienda en forma de ramo',2],['A132','Castigar al caballo de regreso al partidero',2]];
+  const COLA_EQ = [['XVI','Apretador del lado izquierdo',4],['XX','Dar picadero u ocupar la puerta fuera de turno',2]];
+
+  // ---------- Jineteos (Cap. XV y XVII) ----------
+  const CLS = [['exc','Excelente'],['buena','Buena'],['reg','Regular'],['mreg','Media regular'],['min','Mínima']];
+  const TORO_COLS = [['piochi','A piochi y cola'],['lola','A la Lola'],['unaMano','A una mano'],['caraAtras','Cara atrás montado'],['tentemozo','Pretal tentemozo'],
+    ['gaza','Pretal de gaza a dos manos'],['piernas','Jugar las piernas'],['qVerijero','Quitar el pretal verijero'],['qPretal','Quitar pretal de gaza o tentemozo'],
+    ['bajarse','Bajarse sin ser lazado el toro'],['levSin','Caerse y levantarse sin ayuda'],['levCon','Caerse y levantarse con ayuda']];
+  const TORO_T = { exc:[20,3,3,3,3,3,4,3,2,2,1,3,2,-1], buena:[16,2,2,2,2,2,4,2,2,2,1,2,1,-2], reg:[12,1,1,1,2,1,3,1,1,1,1,1,0,-3], mreg:[8,0,0,0,1,1,1,0,0,1,0,1,0,-4], min:[6,0,0,0,0,0,0,0,0,0,0,0,0,-5] };
+  const YEGUA_COLS = [['lola','A la Lola'],['unaMano','A una mano'],['grena','A la greña'],['caraAtras','Cara atrás montado'],['tentemozo','Pretal tentemozo'],
+    ['gaza','Pretal de gaza a dos manos'],['piernas','Jugar las piernas'],['qVerijero','Quitar el pretal verijero'],['qPretal','Quitar pretal de gaza o tentemozo'],
+    ['oreja','Oreja o cruzar la pierna al apearse'],['levSin','Caerse y levantarse sin ayuda'],['levCon','Caerse y levantarse con ayuda']];
+  const YEGUA_T = { exc:[20,3,3,3,3,4,4,3,2,2,1,3,2,-1], buena:[16,2,2,2,2,4,4,2,2,2,1,2,1,-2], reg:[12,1,1,1,1,2,3,1,1,1,1,1,0,-3], mreg:[8,0,0,0,1,1,1,0,0,1,0,1,0,-4], min:[6,0,0,0,0,0,0,0,0,0,0,0,0,-5] };
+  const TORO_INF = [['II','Perder o salirse parte del atuendo',1],['III','Bajarse sin cruzar la pierna por delante',1],['IV','No quedar de pie al apearse',1],
+    ['V','El verijero se cae o se va de lado',4],['VI','Sangrar al toro con las espuelas',2],['VIII','Quitar el verijero con el toro reparando',2],['IX','No quitar el pretal de presilla o asa',4]];
+  const TORO_EQ = [['VII','Lazador o integrante sale de su cuadro (por persona)',4],['X','Más de tres apretaladores (por persona extra)',2],
+    ['XI','Aspavientos u objetos para quitar intensidad (por persona)',4],['XII','Destroncar o trabajar al toro lazado',4],['XIII','Arreadores soguean o cuartean al toro',4]];
+  const YEGUA_INF = [['I','No quedar de pie al desmontarse',1],['III','Perder o salirse parte del atuendo',1],['IV','El verijero se cae o se va de lado',4],
+    ['V','No apearse tras la indicación (por minuto)',1],['VIII','Sangrar a la yegua con las espuelas',2],['XI','Quitar el verijero con la yegua reparando',2],['XII','No quitar el pretal de presilla o asa',4]];
+  const YEGUA_EQ = [['VI','Más de tres apretaladores (por persona extra)',2],['VII','No regresar la yegua al devolvedero',2],['IX','Arreadores soguean o cuartean a la yegua',4],
+    ['X','Arreador sale de la circunferencia (por persona)',4],['XIII','La yegua se estrella en la barda y desmonta al jinete',4]];
+
+  // ---------- Terna en el ruedo (Cap. XVI) ----------
+  const CABEZA = [['sencillo','Lazo sencillo',5],['echado','Sencillo o floreado con toro echado',5],['efecto','Lazo con efecto',8],['floreado','Floreado de una o más vueltas',10]];
+  const PIAL_RUEDO = [['sencillo','Sencillo',5],['efecto','Sencillo con efecto',8],['floreado','Floreado',10],['corvero','Corvero',10],['contraCorvero','Contra corvero',11],
+    ['cuadrilero','Cuadrilero o verijero',11],['contraCuadrilero','Contracuadrilero o contra verijero',12],['vientoDer','Del viento por la derecha',13],
+    ['vientoIzq','Del viento por la izquierda',14],['contraVientoDer','Contraviento por la derecha',15],['contraVientoIzq','Contraviento por la izquierda',16]];
+  const FLOREO_TERNA = [['arracada','Arracadas',1],['espejo','Espejos',1],['resSencillo','Resortes sencillos',1],['resSostenido','Resortes sostenidos',2],
+    ['resCorvejones','Resortes hasta los corvejones',4],['resMismo','Resortes girando en el mismo sentido',2],['resContrario','Resortes girando en sentido contrario',3],
+    ['resCabeza','Resortes incluyendo la cabeza del caballo',3],['resCabezaSost','Resortes sostenidos con la cabeza del caballo',4],
+    ['movEsp','Movimientos especificados',1],['movNoEsp','Movimientos no especificados',1],['parado','Pararse floreando sobre el caballo',2],['pasadaCaballo','Pasada con todo y caballo',6]];
+  const REM_CABEZA = [['atras','Rematar hacia atrás',2],['parado','Rematar a toro parado',1],['primera','Lazar en la primera oportunidad',1],
+    ['cuernos','Cerrar solo en los cuernos',2],['bozal','Bozalear en la primera oportunidad',1],['sinAyuda','Lazar sin ayuda',1]];
+  const REM_PIAL = [['cuadDer','Cuadrilero derecho (gancho)',2],['cuadIzq','Cuadrilero izquierdo (gancho)',2],['ccuadDer','Contracuadrilero derecho',2],['ccuadIzq','Contracuadrilero izquierdo',2],
+    ['viento','Del viento',3],['vientoEsp','Del viento dando la espalda',3],['cuadEsp','Cuadrilero dando la espalda',3],['contraviento','Contraviento',4],
+    ['primera','Pialar en la primera oportunidad',1],['corriendo','Floreado corriendo lazador y toro',2],['girar','Girar el caballo al rematar',1]];
+  const TERNA_INF_CAB = [['I','Destroncar al toro (por vez)',4],['II','Fuera del cuadro sin florear',4],['III','Floreo defectuoso (por vez)',1],['IV','Perder la reata',6],
+    ['VI','Lazar o estirar de media cabeza',2],['VII','Agarrar la lazada durante el floreo',2],['VIII','Fallar vueltas o amarrar después del primer intento',2],
+    ['IX','Bajar la mano a la campana del fuste',2],['X','Se encuarta toro o caballo',1],['XI','No encuartar tras avisar',1],['XII','Estirar lastimando los ojos',2],
+    ['XIII','Estirar lazada la giba',1],['XIV','Seguir estirando al toro caído sin pial',6],['XV','El toro lazado salta la barrera',4],['XVI','Caerse al pararse a florear',6],
+    ['XVII','No intentar lazar la cabeza',2],['XVIII','No lazar en movimiento tras solicitarlo',4],['XIX','Limpiar pretales antes de lazar',4],['XX','Le arrean el caballo al estirar',4],
+    ['A151','Tironear al toro echado sin pial',6]];
+  const TERNA_INF_PIAL = [['I','Floreo defectuoso (por vez)',1],['II','El pial se cae del cuadril',2],['III','Bajar el pial con la mano',2],['IV','Agarrar la lazada durante el floreo',2],
+    ['V','Fallar vueltas o amarrar después del primer intento',2],['VI','Bajar la mano a la campana del fuste',2],['VII','Estirar no siendo pial',2],
+    ['VIII','Estirar del mismo lado que el cabecero',2],['XI','Perder la reata',6],['XII','Pial que roza o pega en las manos',2],['XIII','Caerse al pararse a florear',6],
+    ['XIV','Sujetar la cola, pechazo o acomodar el pial',2],['XV','No intentar pialar',2],['XVI','Le arrean el caballo al estirar',4],['XVII','Entra una pata caminando hacia atrás',2],
+    ['XVIII','Estirar la soga apezuñada',2],['XIX','Hacerse el pial después de tres pasos',2]];
+  const TERNA_EQ = [['V','Arreadores soguean al toro con jinete montado',4],['IX','Más de tres charros limpian al toro',4],['X','No regresan el toro al devolvedero',2],
+    ['XIVp','Ayuda para lograr el pial (no consumado)',2]];
+
+  // ---------- Manganas (Cap. XVIII) ----------
+  const MPIE_REM = [['mascara','Máscara',10],['contraMascara','Contra máscara',10],['desden','Desdén',10],['contraDesden','Contra desdén',10],['encontrada','Encontrada',10]];
+  const MPIE_FL = [['pasadas23','Dos o tres pasadas',1],['pasadas4','Cuatro pasadas o más',2],['relampago','Pasada relámpago o de medio efecto',1],['arracada','Arracadas',1],
+    ['resSencillo','Resortes sencillos',1],['resMismo','Resortes en el mismo sentido',2],['resContrario','Resortes en sentido contrario',3],['espejo','Espejos',1],
+    ['movEsp','Movimientos especificados',1],['movNoEsp','Movimientos no especificados',1],['giro','Giros de 180° entre pasadas',1],['cambioMano','Cambiar de mano',1]];
+  const MPIE_RM = [['desden','Desdén en máscara',1],['contraDesden','Contra desdén',1],['encontrada','Encontrada',1]];
+  const MPIE_ES = [['chorreaSuelta','Chorreando soltando la reata',1],['chorreaGira','Chorreando girando sin soltar',2],['ahorcado','Tirón del ahorcado',3],
+    ['muerte','Tirón de la muerte',3],['unPie','Amarrado de un pie y enredado del otro',1]];
+  const MPIE_INF = [['I','Componer el atuendo o tiros de práctica',2],['III','Floreo defectuoso',1],['IV','Tirón de la flecha',1],['V','Pisar la línea de 4 m con un pie',4],
+    ['VI','Desplazarse para rematar',2],['VII','Acertar y no estirar',2],['VIII','Seguir más de dos pasos a la yegua',2],['IX','Estirar no siendo mangana',2],
+    ['X','Estirar apoyando mano o rodilla',2],['XI','Mangana con hocico',2],['XII','Mangana sobre lomo',2],['XIII','Estirar cayendo la yegua de hocico',2],
+    ['XIV','Caer el lazador al estirar',3],['XV','La yegua rinde de panza o sentada',4],['XVI','Segundo estirón',2],['XVII','Tercer estirón',4],['XVIII','Perder la reata',6],
+    ['XXII','Mangana puesta en el minuto 7',3],['XXIII','La mangana se hace en el camino',4],['XXIV','Intentar chorrear y no lograrlo',2],['XXV','Vuelta de tanteo',6],
+    ['XXVII','Levantado o de bruces en el ahorcado',3]];
+  const MPIE_EQ = [['II','Apisonar el terreno',2],['XIX','Arreadores florean o tiran a los animales',2],['XX','No regresan la yegua a los corrales',2],
+    ['XXI','Personas a pie en el ruedo durante el arreo',2],['XXVI','Mover la yegua en el cambio de faena',6],['XXVIII','Personas en puertas o bardas azuzando',2]];
+  const MCAB_REM = [['mascara','Máscara, loro o gavilán',10],['rodada','Rodada, morena o bigotona',12],['contraLoro','Contra loro o contra gavilán',12],
+    ['desdenRodada','Desdén en rodada, morena o bigotona',13],['contraRodada','Contra rodada, morena o bigotona',13],['espalda','De espalda a la yegua (ancas a la barda)',14],
+    ['contraMascara','Contra máscara',14],['contraDesden','Contra desdén',16],['desdenCM','Desdén en contra máscara',16],['centenario','Centenario',16]];
+  const MCAB_FL = [['resSencillo','Resortes sencillos',1],['arracada','Arracadas',1],['resMismo','Resortes en el mismo sentido',2],['resContrario','Resortes en sentido contrario',3],
+    ['resCabeza','Resortes con la cabeza del caballo',4],['resCabezaSost','Resortes sostenidos con la cabeza del caballo',5],['espejo','Espejos',1],
+    ['movNoEsp','Movimientos no especificados',1],['movEsp','Movimientos especificados',1],['parado','Pararse sobre el caballo con pasada',1],['cambioMano','Cambiar de mano',1]];
+  const MCAB_RM = [['encontrada','Rematar de encontrada',1]];
+  const MCAB_INF = [['I','Floreo defectuoso',1],['III','Una vuelta adicional para rematar',1],['IV','Dos o más vueltas extra al rematar',2],['V','Estirar no siendo mangana',2],
+    ['VI','Acertar y no estirar',2],['VII','Fallar vueltas o botarse la soga',2],['VIII','Desplazarse más de dos pasos',2],['IX','Seguir a la yegua para amarrar',4],
+    ['X','Mangana sobre lomo',2],['XI','Mangana con hocico',2],['XII','Estirar cayendo la yegua de hocico',2],['XIII','La yegua rinde de panza o sentada',4],
+    ['XIV','Segundo estirón',2],['XV','Tercer estirón',4],['XVI','Perder la reata',6],['XVII','Derribar de espaldas en el primer tirón',6],
+    ['XVIII','Derribar de espaldas en el 2º o 3er tirón',2],['XIX','Vuelta de tanteo',6],['XXII','Le cabrestean el caballo',2],['XXIII','Pisar la línea de 4 m con un casco',4],
+    ['XXIV','Mangana puesta en el minuto 7',3],['XXV','La mangana se hace en el camino',4]];
+  const MCAB_EQ = [['II','Personas a pie en el ruedo durante el arreo',2],['XX','Arreadores florean o tiran a los animales',2],['XXI','No regresan la yegua',2],['XXVI','Personas en puertas o bardas azuzando',2]];
+
+  // ---------- Paso de la muerte (Cap. XIX) ----------
+  const PASO_CLS = [['exc','Excelente'],['buena','Buena'],['reg','Regular'],['min','Mínima']];
+  // [sin arreo, con arreo, cuartear sin arreo, cuartear con arreo, apearse oreja/pierna, levantarse sin ayuda, descomponerse]
+  const PASO_T = { exc:[6,2,3,2,1,2,0], buena:[4,2,2,1,1,1,-1], reg:[2,0,1,0,0,0,-2], min:[1,0,0,0,0,0,-3] };
+  const PASO_INF = [['II','No caer bien montado o no armar el brinco',2],['III','Espuelas en las verijas',2],['V','Sangrar a la yegua',2],['VI','Exceder el minuto para apearse (por minuto)',1],
+    ['VII','No quedar de pie al apearse',1],['VIII','Perder parte del atuendo',1],['X','No realizar el brinco',2],['XII','No traer la cuarta en la mano',4],
+    ['XIV','Tapar la carrera de la yegua (15 m al primer cuarto)',6],['XVI','No soltar la rienda del manso a los dos trancos',4],['XVII','No intentar la faena',10]];
+  const PASO_EQ = [['I','Arreador sin cuarta (por arreador)',2],['IX','No regresan la yegua a los corrales',2],['XI','La puerta del cajón se cierra',4],
+    ['XIII','Arreador invade el carril de la yegua',6],['XV','Soguear o golpear en exceso a la yegua',5]];
+
+  // ---------- Definición de faenas ----------
+  const F = {
+    cala:     { name:'Cala de caballo',     short:'Cala',        inf:CALA_INF, eq:CALA_EQ },
+    piales:   { name:'Piales en el lienzo', short:'Piales',      inf:PIAL_INF, eq:PIAL_EQ },
+    coleadero:{ name:'Coleadero',           short:'Colas',       inf:COLA_INF, eq:COLA_EQ },
+    toro:     { name:'Jineteo de toro',     short:'Toro',        inf:TORO_INF, eq:TORO_EQ },
+    terna:    { name:'Terna en el ruedo',   short:'Terna',       inf:TERNA_INF_CAB, infPial:TERNA_INF_PIAL, eq:TERNA_EQ },
+    yegua:    { name:'Jineteo de yegua',    short:'Yegua',       inf:YEGUA_INF, eq:YEGUA_EQ },
+    mpie:     { name:'Manganas a pie',      short:'Mang. pie',   inf:MPIE_INF, eq:MPIE_EQ },
+    mcab:     { name:'Manganas a caballo',  short:'Mang. caballo', inf:MCAB_INF, eq:MCAB_EQ },
+    paso:     { name:'Paso de la muerte',   short:'Paso',        inf:PASO_INF, eq:PASO_EQ }
+  };
+  const ORDER_EQ = ['cala','piales','coleadero','toro','terna','yegua','mpie','mcab','paso'];
+  const ORDER_CC = ['cala','piales','coleadero','toro','mpie','mcab','paso'];
+
+  // ---------- utilidades ----------
+  const val = (list, k) => { const r = list.find(x => x[0] === k); return r ? r[2] : 0; };
+  const lbl = (list, k) => { const r = list.find(x => x[0] === k); return r ? r[1] : ''; };
+  const sumKeys = (list, keys) => (keys || []).reduce((s, k) => s + val(list, k), 0);
+  const infDefs = (fk, extra) => [...(extra || F[fk].inf), ...GEN];
+  const eqDefs = fk => [...F[fk].eq, ...GEN_EQ];
+  const sumInf = (m, defs) => (m || []).reduce((s, x) => s + val(defs, x.c) * (x.n || 1), 0);
+  const num = v => (v === '' || v == null || isNaN(+v)) ? null : +v;
+  // Art. 92: después de los 6 m, si supera 51 cm se va al metro inmediato superior
+  const roundMetros = m => { const f = Math.floor(m); return Math.round((m - f) * 100) >= 51 ? f + 1 : f; };
+  const savedMin = (t, max) => { const x = num(t); return x == null ? 0 : Math.max(0, Math.floor(max - x)); };
+
+  // ---------- cálculo por faena ----------
+  function calcCala(d){
+    const metros = num(d.metros), t = num(d.tiempos);
+    const okPunta = metros != null && metros >= 6 && t != null && t <= 4;
+    const P = okPunta ? Math.max(0, roundMetros(metros) - 6) : 0;           // Adic. IV
+    const T = okPunta ? ({1:3,2:2,3:1}[t] || 0) : 0;                          // Adic. I–III
+    const LD = (d.ld6 ? 2 : 0) + (d.ldPata ? 1 : 0);                          // Adic. V y VI
+    const LI = (d.li6 ? 2 : 0) + (d.liPata ? 1 : 0);
+    const MD = Math.max(0, +d.md || 0), MI = Math.max(0, +d.mi || 0);         // Adic. VII
+    const PC = d.pc ? 1 : 0;                                                  // Adic. VIII
+    const buenos = d.dq || !d.who ? 0 : 20 + P + T + LD + LI + MD + MI + PC;
+    const malos = sumInf(d.m, infDefs('cala'));
+    return { cells:{ base: d.who ? 20 : 0, P, T, LD, LI, MD, MI, PC }, buenos, malos, total: buenos - malos,
+      parts: d.who ? [{ id: d.who, pts: buenos - malos }] : [] };
+  }
+  function oppPial(o){
+    if (!o || !o.res || o.dq) return 0;
+    const b = val(PIAL_REM, o.res);
+    if (o.res === 'verijas') return b; // Art. 103: sin derecho a adicionales
+    return b + Math.max(0, +o.dist || 0) + sumKeys(PIAL_EX, o.ex);
+  }
+  function calcPiales(d){
+    const tiros = (d.tiros || []).slice(0, 3); const warn = [];
+    const rem = tiros.filter(o => o && o.res && !o.dq).map(o => o.res);
+    if (rem.length === 3 && new Set(rem).size === 1) warn.push('Art. 97: debe usar al menos un remate diferente; la 3ª oportunidad se descalifica.');
+    const rows = tiros.map((o, i) => {
+      let b = oppPial(o);
+      if (i === 2 && rem.length === 3 && new Set(rem).size === 1) b = 0;
+      const m = sumInf(o && o.m, infDefs('piales'));
+      return { b, m, t: b - m };
+    });
+    const buenos = rows.reduce((s, r) => s + r.b, 0), malos = rows.reduce((s, r) => s + r.m, 0);
+    return { rows, buenos, malos, total: buenos - malos, warn, parts: d.who ? [{ id: d.who, pts: buenos - malos }] : [] };
+  }
+  function calcColeadero(d){
+    const parts = []; let buenos = 0, malos = 0;
+    const cols = (d.coleadores || []).map(c => {
+      const rows = (c.pasadas || []).slice(0, 3).map(o => {
+        const b = o && o.res && !o.dq ? val(CAIDAS, o.res) + val(COLA_DIST, o.dist) + sumKeys(COLA_EX, o.ex) : 0;
+        const m = sumInf(o && o.m, infDefs('coleadero'));
+        return { b, m, t: b - m };
+      });
+      const cb = rows.reduce((s, r) => s + r.b, 0), cm = rows.reduce((s, r) => s + r.m, 0);
+      buenos += cb; malos += cm; if (c.who) parts.push({ id: c.who, pts: cb - cm });
+      return { who: c.who, rows, b: cb, m: cm, t: cb - cm };
+    });
+    return { cols, buenos, malos, total: buenos - malos, parts };
+  }
+  function calcJineteo(kind, d){
+    const T_ = kind === 'toro' ? TORO_T : YEGUA_T, COLS = kind === 'toro' ? TORO_COLS : YEGUA_COLS;
+    const row = d.cls ? T_[d.cls] : null; const warn = [];
+    const tiempo = num(d.tiempo);
+    let dq = !!d.dq;
+    if (tiempo != null && tiempo > 5) { dq = true; warn.push('Rebasó los 5 minutos: se pierde la jineteada.'); }
+    const cells = { base: 0 }; COLS.forEach(([k], i) => cells[k] = row && (d.ad || []).includes(k) ? row[i + 1] : 0);
+    if (row && !dq) cells.base = row[0]; else COLS.forEach(([k]) => cells[k] = 0);
+    const buenos = sum(Object.values(cells));
+    let malos = sumInf(d.m, infDefs(kind));
+    const desc = row && d.desc ? -row[13] : 0;                     // Infracción "Descomponerse" (tabla)
+    malos += desc;
+    let timeInf = 0; if (tiempo != null) { if (tiempo > 3) timeInf++; if (tiempo > 4) timeInf++; }   // Infr. XIV y XV
+    malos += timeInf;
+    const T = row && !dq && d.cls !== 'min' ? savedMin(tiempo, 3) : 0;   // Adic. I (mínima no adiciona)
+    const total = buenos - malos + T;
+    return { cells, buenos, malos, desc, timeInf, T, total, warn, parts: d.who ? [{ id: d.who, pts: total }] : [] };
+  }
+  function calcTerna(d){
+    const laz = d.lazadores || ['', '', '']; const warn = [];
+    const int = (d.intentos || []).slice(0, 5);
+    if ((d.intentos || []).length > 5) warn.push('Solo hay cinco oportunidades para la terna.');
+    let cabeza = null, pial = null; const usedPial = {};
+    const rows = int.map((o, i) => {
+      const list = o.tipo === 'pial' ? PIAL_RUEDO : CABEZA;
+      const fl = o.tipo === 'pial' ? FLOREO_TERNA : FLOREO_TERNA, rmL = o.tipo === 'pial' ? REM_PIAL : REM_CABEZA;
+      let ok = !!(o.res && !o.dq);
+      if (ok && o.tipo === 'pial') {
+        const key = o.l + ':' + o.res;
+        if (usedPial[key]) { ok = false; warn.push(`Intento ${i + 1}: el mismo lazador repitió el remate del pial (Art. 152), se descalifica.`); }
+        usedPial[key] = true;
+      }
+      if (ok && o.tipo === 'cabeza' && cabeza != null) ok = false;
+      if (ok && o.tipo === 'pial' && pial != null) ok = false;
+      const floreado = o.res === 'floreado';                         // Adic. por floreo solo en lazos/piales floreados (Art. 163)
+      const remOk = o.tipo === 'cabeza' || floreado;                  // Adic. al rematar píales: solo píales floreados
+      const b = ok ? val(list, o.res) + (floreado ? sumKeys(fl, o.fl) : 0) + (remOk ? sumKeys(rmL, o.rm) : 0) : 0;
+      if (ok && o.tipo === 'cabeza') cabeza = i; if (ok && o.tipo === 'pial') pial = i;
+      const m = sumInf(o.m, infDefs('terna', o.tipo === 'pial' ? TERNA_INF_PIAL : TERNA_INF_CAB));
+      return { l: o.l, tipo: o.tipo, res: o.res, b, m, t: b - m, ok };
+    });
+    const consumada = cabeza != null && pial != null;
+    const saved = consumada ? savedMin(d.tiempo, 7) : 0;          // Art. 155: 2 pts por minuto, uno a cada lazador
+    const per = laz.map((who, li) => {
+      const rs = rows.filter(r => r.l === li);
+      const b = rs.reduce((s, r) => s + r.b, 0), m = rs.reduce((s, r) => s + r.m, 0);
+      let T = 0; if (consumada) { if (rows[cabeza].l === li) T += saved; if (rows[pial].l === li) T += saved; }
+      return { who, b, m, T, t: b - m + T };
+    });
+    const buenos = per.reduce((s, p) => s + p.b, 0), malos = per.reduce((s, p) => s + p.m, 0), T = saved * (consumada ? 2 : 0);
+    return { rows, per, consumada, saved, buenos, malos, T, total: buenos - malos + T, warn,
+      parts: per.filter(p => p.who).map(p => ({ id: p.who, pts: p.t })) };
+  }
+  function calcManga(kind, d){
+    const REM = kind === 'mpie' ? MPIE_REM : MCAB_REM, FL = kind === 'mpie' ? MPIE_FL : MCAB_FL, RM = kind === 'mpie' ? MPIE_RM : MCAB_RM;
+    const seen = {}; const warn = [];
+    const rows = (d.tiros || []).slice(0, 3).map((o, i) => {
+      let ok = !!(o && o.res && !o.dq);
+      if (ok && seen[o.res]) { ok = false; warn.push(`Oportunidad ${i + 1}: repitió el remate “${lbl(REM, o.res)}”, se descalifica.`); }
+      if (ok) seen[o.res] = true;
+      const b = ok ? val(REM, o.res) + sumKeys(FL, o.fl) + sumKeys(RM, o.rm) + (kind === 'mpie' ? sumKeys(MPIE_ES, o.es) : 0) : 0;
+      const m = sumInf(o && o.m, infDefs(kind));
+      return { b, m, t: b - m, ok };
+    });
+    const any = rows.some(r => r.ok);
+    const T = any ? savedMin(d.tiempo, 7) : 0;                    // Adic. por tiempo
+    const buenos = rows.reduce((s, r) => s + r.b, 0), malos = rows.reduce((s, r) => s + r.m, 0);
+    return { rows, T, buenos, malos, total: buenos - malos + T, warn, parts: d.who ? [{ id: d.who, pts: buenos - malos + T }] : [] };
+  }
+  function calcPaso(d){
+    const r = d.cls ? PASO_T[d.cls] : null; const ok = !!(d.vuelta && !d.dq && d.who);
+    const c = { v1: 0, v2: 0, dist: 0, cuarta: 0, reparos: 0, oreja: 0 };
+    if (ok) {
+      if (d.vuelta === '1') c.v1 = 20; else if (d.vuelta === '2') c.v2 = 15; else if (d.vuelta === 'parada') c.v1 = 5;
+      if (d.vuelta === '1') c.dist = ({ '1': 3, '2': 2, '3': 1 }[d.cuarto] || 0);
+      if (r) {
+        const con = d.arreo === 'con';
+        c.reparos = r[con ? 1 : 0] + (d.levantarse ? r[5] : 0);
+        c.cuarta = d.cuartear ? r[con ? 3 : 2] : 0;
+        c.oreja = d.apearse ? r[4] : 0;
+      }
+    }
+    const buenos = sum(Object.values(c));
+    const desc = ok && r && d.desc ? -r[6] : 0;
+    const malos = sumInf(d.m, infDefs('paso')) + desc;
+    return { cells: c, buenos, malos, desc, total: buenos - malos, parts: d.who ? [{ id: d.who, pts: buenos - malos }] : [] };
+  }
+  function sum(a){ return a.reduce((s, x) => s + (+x || 0), 0); }
+
+  function calc(fk, d){
+    d = d || {};
+    let r;
+    switch (fk) {
+      case 'cala': r = calcCala(d); break;
+      case 'piales': r = calcPiales(d); break;
+      case 'coleadero': r = calcColeadero(d); break;
+      case 'toro': r = calcJineteo('toro', d); break;
+      case 'yegua': r = calcJineteo('yegua', d); break;
+      case 'terna': r = calcTerna(d); break;
+      case 'mpie': r = calcManga('mpie', d); break;
+      case 'mcab': r = calcManga('mcab', d); break;
+      case 'paso': r = calcPaso(d); break;
+      default: r = { buenos: 0, malos: 0, total: 0, parts: [] };
+    }
+    r.eq = sumInf(d.eq, eqDefs(fk));
+    r.warn = r.warn || [];
+    return r;
+  }
+
+  // Plantilla vacía de captura para cada faena
+  function blank(fk, mode){
+    const opp = () => ({ res: '', ex: [], fl: [], rm: [], es: [], m: [], dq: false, dist: '' });
+    switch (fk) {
+      case 'cala': return { who: '', metros: '', tiempos: '', ld6: false, ldPata: false, li6: false, liPata: false, md: 0, mi: 0, pc: false, m: [], dq: false, eq: [] };
+      case 'piales': return { who: '', tiros: [opp(), opp(), opp()], eq: [] };
+      case 'coleadero': return { coleadores: Array.from({ length: mode === 'completo' ? 1 : 3 }, () => ({ who: '', pasadas: [opp(), opp(), opp()] })), eq: [] };
+      case 'toro': case 'yegua': return { who: '', cls: '', ad: [], desc: false, tiempo: '', m: [], dq: false, eq: [] };
+      case 'terna': return { lazadores: ['', '', ''], intentos: [], tiempo: '', eq: [] };
+      case 'mpie': case 'mcab': return { who: '', tiros: [opp(), opp(), opp()], tiempo: '', eq: [] };
+      case 'paso': return { who: '', vuelta: '', cuarto: '', cls: '', arreo: 'sin', cuartear: false, apearse: false, levantarse: false, desc: false, m: [], dq: false, tiempo: '', eq: [] };
+    }
+    return {};
+  }
+
+  return { F, ORDER_EQ, ORDER_CC, GEN, GEN_EQ, CALA_INF, PIAL_REM, PIAL_EX, CAIDAS, COLA_DIST, COLA_EX, CLS, TORO_COLS, TORO_T, YEGUA_COLS, YEGUA_T,
+    CABEZA, PIAL_RUEDO, FLOREO_TERNA, REM_CABEZA, REM_PIAL, TERNA_INF_CAB, TERNA_INF_PIAL, MPIE_REM, MPIE_FL, MPIE_RM, MPIE_ES, MCAB_REM, MCAB_FL, MCAB_RM,
+    PASO_CLS, PASO_T, val, lbl, infDefs, eqDefs, calc, blank, roundMetros };
+})();
+if (typeof module !== 'undefined') module.exports = RULES;
+
+</script>
+<script>
+/* =====================================================================
+   CHARRERÍA PRO — calificaciones en vivo, hoja oficial digital, historial
+   MODE 'demo': todo se guarda en este navegador, con datos y cuentas de prueba.
+   MODE 'real': usa Supabase (SUPABASE_URL + SUPABASE_ANON_KEY, ejecuta instalar_todo.sql). Nunca cae a demo.
+   MODE 'auto': real si hay llaves, si no demo. `node build.mjs` genera docs/ (real) y docs/demo/.
+   ===================================================================== */
+const CONFIG = {"APP_NAME":"Charrería Pro","MODE":"demo","SUPABASE_URL":"","SUPABASE_ANON_KEY":""};
+const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
+const CATEGORIAS = ['Libre','Juvenil'];
+const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites'];
+const FN = k => RULES.F[k].name;
+
+/* ------------------------- ICONOS ------------------------- */
+const I = {
+  horse:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.5 3.5c-1.6-.3-3 .3-4 1.2L9.8 6.2C6.6 7 4.3 9.6 3.8 12.8l-.6 4.1a1 1 0 0 0 1 1.1h1.3l1-3.3c.3.9 1 1.7 1.9 2.1L7.6 20h2.1l.9-2.6c.8.1 1.7.1 2.5-.1L14 20h2.1l-.6-3.6c1.3-.9 2.1-2.4 2.1-4.1v-1.8l1.9 1.3c.6.4 1.4.2 1.8-.4l.5-.8c.3-.5.2-1.1-.2-1.5L19.7 7l.8-2.2c.2-.6-.3-1.2-1-1.3Z"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/></svg>',
+  live:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M8.2 15.8a5.4 5.4 0 0 1 0-7.6M15.8 8.2a5.4 5.4 0 0 1 0 7.6M5.1 18.9a9.8 9.8 0 0 1 0-13.8M18.9 5.1a9.8 9.8 0 0 1 0 13.8"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  trophy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16Z"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>',
+  verified:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.8 14.6 4l3.4-.3.9 3.3 3 1.7-1.3 3.2 1.3 3.2-3 1.7-.9 3.3-3.4-.3L12 22.2 9.4 20l-3.4.3-.9-3.3-3-1.7L3.4 12 2.1 8.8l3-1.7.9-3.3 3.4.3Z"/><path d="m8 12 3 3 5-6" fill="none" stroke="#1c1510" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  video:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5Z"/></svg>',
+  arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18 9 12l6-6"/></svg>',
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v14"/></svg>',
+  gavel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 5 5 5M11 8l5 5M9.5 6.5l8 8M13 15l-8 8-2-2 8-8M3 21h8"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>',
+  key:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>',
+  logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg>',
+  doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>',
+  print:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7Z"/></svg>'
+};
+
+/* ------------------------- UTILIDADES ------------------------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim().replace(/\s+/g,' ');
+const sum = a => a.reduce((x, y) => x + (Number(y) || 0), 0);
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const MESES_L = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const fdate = iso => { if(!iso) return ''; const [y,m,d] = iso.slice(0,10).split('-').map(Number); return `${d} ${MESES[m-1]} ${y}`; };
+const ftime = ts => new Date(ts).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+const fdt = ts => { const d = new Date(ts); return `${d.getDate()} ${MESES[d.getMonth()]} · ${ftime(ts)}`; };
+const initials = n => String(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const localISO = (t = Date.now()) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const demoHash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return 'd' + (h >>> 0).toString(36); };
+const genCode = p => p + '-' + Math.random().toString(36).slice(2,6).toUpperCase() + Math.random().toString(36).slice(2,4).toUpperCase();
+const clone = o => JSON.parse(JSON.stringify(o));
+const signed = n => n > 0 ? '+' + n : String(n);
+function loadScript(src){ return new Promise((ok, ko) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = ko; document.head.appendChild(s); }); }
+
+/* ------------------------- DATOS ------------------------- */
+const DB = {
+  data: {}, backend: null,
+  all(t){ return (this.data[t] || []).filter(r => !r.deleted); },
+  get(t, id){ return this.all(t).find(r => r.id === id); },
+  async put(t, row){
+    const arr = this.data[t] || (this.data[t] = []);
+    const i = arr.findIndex(r => r.id === row.id); const prev = i >= 0 ? arr[i] : null;
+    if (i >= 0) arr[i] = row; else arr.push(row);
+    try { await this.backend.put(t, row); }
+    catch (e) { const j = arr.findIndex(r => r.id === row.id); if (prev) arr[j] = prev; else arr.splice(j, 1); throw e; }
+    return row;
+  }
+};
+const LS_KEY = 'charreriapro_demo_v4', SS_KEY = 'charreriapro_session';
+let memSession = null;
+const Local = {
+  mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
+  async init(){
+    let raw = null; try { raw = localStorage.getItem(LS_KEY); } catch(e){}
+    try { DB.data = raw ? JSON.parse(raw) : seed(); } catch(e){ DB.data = seed(); }
+    TABLES.forEach(t => DB.data[t] = DB.data[t] || []);
+    if (!raw) this.persist();
+    if (this.bc) this.bc.onmessage = () => this.reload();
+    window.addEventListener('storage', e => { if (e.key === LS_KEY) this.reload(); });
+  },
+  reload(){ try { const r = localStorage.getItem(LS_KEY); if (r) DB.data = JSON.parse(r); } catch(e){} onRemoteChange(); },
+  persist(){ try { localStorage.setItem(LS_KEY, JSON.stringify(DB.data)); } catch(e){} },
+  async put(){ this.persist(); if (this.bc) this.bc.postMessage('sync'); },
+  sessionGet(){ try { return localStorage.getItem(SS_KEY); } catch(e){ return memSession; } },
+  sessionSet(v){ memSession = v; try { v ? localStorage.setItem(SS_KEY, v) : localStorage.removeItem(SS_KEY); } catch(e){} },
+  async restore(){ const id = this.sessionGet(); return id ? DB.get('profiles', id) || null : null; },
+  async login(email, pass){
+    const p = DB.all('profiles').find(x => norm(x.email) === norm(email));
+    if (!p || p.passHash !== demoHash(pass)) throw new Error('Correo o contraseña incorrectos');
+    this.sessionSet(p.id); return p;
+  },
+  async register(payload, pass){
+    if (DB.all('profiles').some(x => norm(x.email) === norm(payload.email))) throw new Error('Ese correo ya está registrado');
+    const id = 'u' + uid(); const prof = await createAccount(id, payload, { passHash: demoHash(pass) });
+    this.sessionSet(id); return { profile: prof };
+  },
+  async logout(){ this.sessionSet(null); },
+  async uploadVideo(file){ return URL.createObjectURL(file); },
+  async reset(){ try { localStorage.removeItem(LS_KEY); localStorage.removeItem(SS_KEY); } catch(e){} DB.data = seed(); this.persist(); }
+};
+const Remote = {
+  mode: 'supabase', sb: null,
+  async init(){
+    await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
+    this.sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    const errs = await this.refetch();
+    if (errs.length === TABLES.length) throw new Error(errs[0].message || 'Sin respuesta del servidor');
+    this.sb.channel('charreriapro-all').on('postgres_changes', { event: '*', schema: 'public' }, p => {
+      const t = p.table; if (!TABLES.includes(t)) return;
+      const arr = DB.data[t] || (DB.data[t] = []);
+      if (p.eventType === 'DELETE') DB.data[t] = arr.filter(r => r.id !== p.old.id);
+      else { const row = p.new.data; const i = arr.findIndex(r => r.id === row.id); if (i >= 0) arr[i] = row; else arr.push(row); }
+      onRemoteChange();
+    }).subscribe();
+  },
+  async refetch(){ const errs = []; await Promise.all(TABLES.map(async t => { const { data, error } = await this.sb.from(t).select('id,data').limit(20000); if (error) errs.push(error); DB.data[t] = error ? [] : data.map(r => r.data); })); return errs; },
+  async put(t, row){ const { error } = await this.sb.from(t).upsert({ id: row.id, data: row }); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
+  async ensureProfile(user){
+    let p = DB.get('profiles', user.id);
+    if (!p && user.user_metadata && user.user_metadata.pending) { await createAccount(user.id, user.user_metadata.pending, {}); await this.refetch(); p = DB.get('profiles', user.id); }
+    return p || null;
+  },
+  async restore(){ const { data } = await this.sb.auth.getSession(); return data.session ? this.ensureProfile(data.session.user) : null; },
+  async login(email, pass){
+    const { data, error } = await this.sb.auth.signInWithPassword({ email, password: pass });
+    if (error) throw new Error(error.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos' : error.message);
+    await this.refetch(); const p = await this.ensureProfile(data.user);
+    if (!p) throw new Error('Tu cuenta no tiene perfil. Contacta al administrador.'); return p;
+  },
+  async register(payload, pass){
+    const { data, error } = await this.sb.auth.signUp({ email: payload.email, password: pass, options: { data: { pending: payload } } });
+    if (error) throw new Error(error.message);
+    if (!data.session) return { needsConfirm: true };
+    await this.refetch(); return { profile: await this.ensureProfile(data.user) };
+  },
+  async logout(){ await this.sb.auth.signOut(); await this.refetch(); },
+  async uploadVideo(file, eventId){
+    const path = `${eventId}/${Date.now()}-${file.name.replace(/[^\w.-]/g,'_')}`;
+    const { error } = await this.sb.storage.from('videos').upload(path, file, { upsert: false });
+    if (error) throw new Error(error.message);
+    return this.sb.storage.from('videos').getPublicUrl(path).data.publicUrl;
+  }
+};
+async function createAccount(id, pl, extra){
+  let status = 'pendiente', lienzoId = pl.lienzoId || null; const role = pl.role; let inv = null;
+  if (pl.invite) {
+    inv = DB.get('invites', pl.invite);
+    if (DB.backend.mode === 'demo' && (!inv || inv.used || inv.role !== role)) throw new Error('Código de invitación inválido o ya usado');
+    status = 'aprobado'; if (inv && inv.lienzoId) lienzoId = inv.lienzoId;
+  }
+  if (role === 'lienzo') lienzoId = 'l' + uid();
+  const prof = { id, name: pl.name, email: pl.email, phone: pl.phone || '', role, status, lienzoId, invite: pl.invite || null, createdAt: Date.now(), ...extra };
+  await DB.put('profiles', prof);
+  if (role === 'lienzo') await DB.put('lienzos', { id: lienzoId, name: pl.lienzoName, city: pl.city, state: pl.state, ownerId: id, status, createdAt: Date.now() });
+  if (inv && DB.backend.mode === 'demo') await DB.put('invites', { ...inv, used: true, usedBy: id, usedAt: Date.now() });
+  await audit('registro', `${pl.name} se registró como ${roleName(role)}${pl.invite ? ' con invitación ' + pl.invite : ''}`, id, pl.name);
+  return prof;
+}
+
+/* ------------------------- GENERADOR DE CALIFICACIONES (demo) ------------------------- */
+function genFaena(fk, ev, team, rng){
+  const ch = ev.charros.filter(c => c.teamId === team.id); const P = i => ch.length ? ch[i % ch.length].id : '';
+  const R = RULES, pick = l => l[Math.floor(rng() * l.length)][0], some = (l, p) => l.filter(() => rng() < p).map(x => x[0]);
+  const malos = (defs, p = .35) => rng() < p ? [{ c: defs[Math.floor(rng() * Math.min(defs.length, 14))][0], n: 1 }] : [];
+  const d = R.blank(fk, ev.mode);
+  const cc = ev.mode === 'completo';
+  switch (fk) {
+    case 'cala': Object.assign(d, { who: P(0), metros: (5 + rng() * 6).toFixed(2), tiempos: String(1 + Math.floor(rng() * 5)), ld6: rng() > .35, ldPata: rng() > .6, li6: rng() > .4, liPata: rng() > .65, md: Math.floor(rng() * 3), mi: Math.floor(rng() * 3), pc: rng() > .5, m: malos(R.CALA_INF, .6), dq: rng() < .05 }); break;
+    case 'piales': { d.who = P(cc ? 0 : 1); const used = []; d.tiros = d.tiros.map(o => { const r = rng() < .62 ? pick(R.PIAL_REM.filter(x => !used.includes(x[0]))) : ''; if (r) used.push(r); return { ...o, res: r, dist: r && rng() > .6 ? 1 + Math.floor(rng() * 3) : '', ex: r ? some(R.PIAL_EX, .35) : [], m: malos(R.F.piales.inf, .25) }; }); break; }
+    case 'coleadero': d.coleadores = d.coleadores.map((c, i) => ({ who: P(cc ? 0 : 2 + i), pasadas: c.pasadas.map(o => { const r = rng() < .68 ? pick(R.CAIDAS) : ''; return { ...o, res: r, dist: r ? pick([...R.COLA_DIST, ['', '', 0]]) : '', ex: r ? some(R.COLA_EX, .15) : [], m: malos(R.F.coleadero.inf, .3) }; }) })); break;
+    case 'toro': case 'yegua': { const cls = ['exc','buena','buena','reg','reg','mreg','min'][Math.floor(rng() * 7)]; const cols = fk === 'toro' ? R.TORO_COLS : R.YEGUA_COLS;
+      Object.assign(d, { who: P(cc ? 0 : (fk === 'toro' ? 5 : 3)), cls, ad: some(cols, .22), desc: rng() < .3, tiempo: (0.6 + rng() * 3.2).toFixed(1), m: malos(R.F[fk].inf, .3), dq: rng() < .08 }); break; }
+    case 'terna': { d.lazadores = [P(0), P(1), P(2)]; let cab = false, pi = false, n = 0;
+      while (n < 5 && !(cab && pi)) { const tipo = cab ? 'pial' : 'cabeza'; const ok = rng() < (cab ? .45 : .55);
+        const res = ok ? pick(tipo === 'pial' ? R.PIAL_RUEDO : R.CABEZA) : '';
+        d.intentos.push({ l: n % 3, tipo, res, fl: res === 'floreado' ? some(R.FLOREO_TERNA.slice(0, 9), .3) : [], rm: res ? some(tipo === 'pial' ? R.REM_PIAL.slice(8) : R.REM_CABEZA, .25) : [], m: malos(tipo === 'pial' ? R.TERNA_INF_PIAL : R.TERNA_INF_CAB, .2) });
+        if (ok && tipo === 'cabeza') cab = true; if (ok && tipo === 'pial') pi = true; n++; }
+      d.tiempo = cab && pi ? (2 + rng() * 5).toFixed(1) : ''; break; }
+    case 'mpie': case 'mcab': { d.who = P(cc ? 0 : (fk === 'mpie' ? 4 : 5)); const REM = fk === 'mpie' ? R.MPIE_REM : R.MCAB_REM, FL = fk === 'mpie' ? R.MPIE_FL : R.MCAB_FL; const used = [];
+      d.tiros = d.tiros.map(o => { const r = rng() < .55 ? pick(REM.filter(x => !used.includes(x[0]))) : ''; if (r) used.push(r);
+        return { ...o, res: r, fl: r ? some(FL, .25) : [], es: fk === 'mpie' && r ? some(R.MPIE_ES.slice(0, 2), .3) : [], m: malos(R.F[fk].inf, .3) }; });
+      d.tiempo = (3 + rng() * 4).toFixed(1); break; }
+    case 'paso': { const v = rng(); Object.assign(d, { who: P(cc ? 0 : 1), vuelta: v < .45 ? '1' : v < .7 ? '2' : '', cuarto: String(1 + Math.floor(rng() * 3)), cls: pick(R.PASO_CLS), arreo: rng() < .7 ? 'sin' : 'con', cuartear: rng() > .5, apearse: rng() > .6, desc: rng() < .25, m: malos(R.F.paso.inf, .25) }); break; }
+  }
+  if (rng() < .12) d.eq = [{ c: RULES.F[fk].eq[0][0], n: 1 }];
+  return d;
+}
+function scoreRow(ev, team, fk, d, judge, ts){
+  const r = RULES.calc(fk, d), name = id => (ev.charros.find(c => c.id === id) || {}).name || '';
+  return { id: `${ev.id}-${team.id}-${fk}`, eventId: ev.id, teamId: team.id, teamName: team.name, faena: fk, input: d,
+    buenos: r.buenos, malos: r.malos, total: r.total, eq: r.eq, net: r.total - r.eq,
+    parts: r.parts.map(p => ({ ...p, name: name(p.id) })), judgeId: judge[0], judgeName: judge[1], createdAt: ts, updatedAt: ts };
+}
+
+/* ------------------------- DATOS DE EJEMPLO ------------------------- */
+function seed(){
+  let s = 11; const rng = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const day = n => localISO(Date.now() + n * 864e5);
+  const P = [], L = [], E = [], S = [], SH = [], A = [], IV = [];
+  const prof = (id, name, email, role, status, lienzoId) => P.push({ id, name, email, role, status, lienzoId, passHash: demoHash(role === 'superadmin' ? 'admin123' : 'demo123'), createdAt: Date.now() - (status === 'pendiente' ? 2 : 200) * 864e5 });
+  prof('uadmin','Súper Usuario','admin@charreriapro.mx','superadmin','aprobado',null);
+  prof('uvilla','Administración Lienzo de la Villa','villa@demo.mx','lienzo','aprobado','lvilla');
+  prof('ustm','Rancho Santa María','santamaria@demo.mx','lienzo','aprobado','lstm');
+  prof('uherr','Lienzo El Herradero','herradero@demo.mx','lienzo','pendiente','lherr');
+  prof('ujuez','Juez Ricardo Ponce','juez@demo.mx','juez','aprobado','lvilla');
+  prof('ujuez2','Juez Ana Lucía Bravo','juez2@demo.mx','juez','aprobado','lstm');
+  prof('ujuez3','Martín Esquivel','martin@demo.mx','juez','pendiente','lvilla');
+  L.push({ id:'lvilla', name:'Lienzo Charro de la Villa', city:'Gustavo A. Madero', state:'Ciudad de México', ownerId:'uvilla', status:'aprobado', createdAt: Date.now()-200*864e5 });
+  L.push({ id:'lstm', name:'Rancho Santa María', city:'Tlaquepaque', state:'Jalisco', ownerId:'ustm', status:'aprobado', createdAt: Date.now()-190*864e5 });
+  L.push({ id:'lherr', name:'Lienzo El Herradero', city:'Fresnillo', state:'Zacatecas', ownerId:'uherr', status:'pendiente', createdAt: Date.now()-2*864e5 });
+  const TEAMS = [
+    ['Regionales de la Villa','Ciudad de México',['Ernesto Villaseñor','Ramiro Cázares','Julián Ortega','Tomás Arredondo','Daniel Ocampo','Sergio Lara']],
+    ['RG2','Estado de México',['Alberto Fidencio Ramírez','Saúl Medrano','Iván Quiroz','Mauro Lechuga','Rogelio Nava','Elías Pedraza']],
+    ['Soyate','Jalisco',['Lorenzo Vázquez','Efraín Gallardo','Heriberto Luna','Chema Ibarra','Ramón Tapia','Gilberto Anaya']],
+    ['Rancho El Pitayo','Zacatecas',['Gerardo Solís','Nicolás Peralta','Arturo Banda','Fermín Zúñiga','Leandro Ríos','Joel Marmolejo']],
+    ['Hacienda San Isidro','Guanajuato',['Rubén Escamilla','Jacinto Mora','Leonel Treviño','Bruno Castañón','Isaac Ponce','Adrián Becerra']],
+    ['Los Alazanes','Aguascalientes',['Octavio Rentería','Valente Rocha','Abel Santillán','Pablo Urías','Felipe Macías','Ulises Durán']]
+  ];
+  const judgeOf = l => l === 'lvilla' ? ['ujuez','Juez Ricardo Ponce'] : ['ujuez2','Juez Ana Lucía Bravo'];
+  const mkEvent = (id, title, lienzoId, date, idxs, status, official, extra = {}) => {
+    const teams = [], charros = [];
+    idxs.forEach(i => { const tid = 't' + i; teams.push({ id: tid, name: TEAMS[i][0], state: TEAMS[i][1], capitan: TEAMS[i][2][0] }); TEAMS[i][2].forEach((n, k) => charros.push({ id: `c${i}x${k}`, name: n, teamId: tid })); });
+    const ev = { id, title, lienzoId, date, mode: 'equipos', category: 'Libre', status, official, requestOfficial: official, suertes: RULES.ORDER_EQ.slice(), teams, charros, streamUrl: '', videoUrl: '', createdAt: Date.now(), ...extra };
+    E.push(ev); return ev;
+  };
+  const scoreAll = (ev, upto, deliver) => {
+    const j = judgeOf(ev.lienzoId); const t0 = new Date(ev.date + 'T16:00:00').getTime();
+    ev.suertes.slice(0, upto).forEach((fk, fi) => ev.teams.forEach((tm, ti) => S.push(scoreRow(ev, tm, fk, genFaena(fk, ev, tm, rng), j, t0 + (fi * ev.teams.length + ti) * 6 * 60000))));
+    if (deliver) ev.teams.forEach(tm => SH.push({ id: `${ev.id}-${tm.id}`, eventId: ev.id, teamId: tm.id, capitan: tm.capitan || '', hora: '16:00', entregada: true, entregadaAt: t0 + 5 * 3600000, jueces: [{ id: j[0], name: j[1], ts: t0 + 5 * 3600000 }], capitanFirma: tm.capitan || '' }));
+  };
+  scoreAll(mkEvent('eprim','Copa Primavera Charra','lstm',day(-180),[0,1,2,3],'finalizado',true), 9, true);
+  scoreAll(mkEvent('eaniv','Torneo Aniversario de la Villa','lvilla',day(-120),[0,1,2,5],'finalizado',true), 9, true);
+  scoreAll(mkEvent('eferia','Charreada de Feria Regional','lstm',day(-75),[2,3,4,5],'finalizado',false), 9, true);
+  scoreAll(mkEvent('ecirc','Circuito Estatal · Fecha 3','lvilla',day(-40),[0,1,3,4],'finalizado',true), 9, true);
+  scoreAll(mkEvent('eoto','Copa Otoño','lstm',day(-12),[1,2,4,5],'finalizado',true), 9, true);
+  // Charro completo
+  const cc = { id:'ecc', title:'Campeonato Charro Completo', lienzoId:'lvilla', date: day(-25), mode:'completo', category:'Libre', status:'finalizado', official:true, requestOfficial:true, suertes: RULES.ORDER_CC.slice(), teams:[], charros:[], streamUrl:'', videoUrl:'', createdAt: Date.now() };
+  [[0,0],[1,0],[2,1],[3,2],[4,0]].forEach(([ti, k]) => { const id = 'k' + ti; cc.teams.push({ id, name: TEAMS[ti][2][k], assoc: TEAMS[ti][0], state: TEAMS[ti][1] }); cc.charros.push({ id: 'ck' + ti, name: TEAMS[ti][2][k], teamId: id }); });
+  E.push(cc); scoreAll(cc, 7, true);
+  const live = mkEvent('elive','Torneo Nacional Charro Bicentenario','lvilla',day(0),[0,1,2],'en_vivo',true,{ startedAt: Date.now() - 70*60000 });
+  scoreAll(live, 3, false);
+  S.filter(x => x.eventId === 'elive').forEach((x, i) => { x.createdAt = x.updatedAt = Date.now() - (60 - i * 6) * 60000; });
+  mkEvent('eguad','Gran Charreada Guadalupana','lstm',day(40),[3,4,5],'programado',false,{ requestOfficial: true });
+  A.push({ id:'a1', actorId:'uadmin', actorName:'Súper Usuario', action:'aprobar', detail:'Aprobó el lienzo Rancho Santa María', ts: Date.now()-190*864e5 });
+  A.push({ id:'a2', actorId:'uadmin', actorName:'Súper Usuario', action:'oficial', detail:'Marcó como oficial: Torneo Nacional Charro Bicentenario', ts: Date.now()-2*864e5 });
+  A.push({ id:'a3', actorId:'uherr', actorName:'Lienzo El Herradero', action:'registro', detail:'Lienzo El Herradero se registró como Lienzo', ts: Date.now()-2*864e5 });
+  IV.push({ id:'JUEZ-7KQ2M9', code:'JUEZ-7KQ2M9', role:'juez', lienzoId:'lvilla', used:false, createdBy:'uadmin', createdAt: Date.now()-864e5 });
+  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV };
+}
+
+/* ------------------------- LÓGICA ------------------------- */
+const roleName = r => ({ superadmin:'Súper usuario', lienzo:'Lienzo', juez:'Juez' }[r] || r);
+const lienzo = id => DB.get('lienzos', id) || { name:'Lienzo', state:'', city:'' };
+const isApproved = u => u && u.status === 'aprobado';
+const isSuper = u => u && u.role === 'superadmin' && isApproved(u);
+const myLienzo = u => u && u.role === 'lienzo' ? DB.get('lienzos', u.lienzoId) : null;
+const ownsLienzo = (u, lid) => isApproved(u) && u.role === 'lienzo' && u.lienzoId === lid && lienzo(lid).status === 'aprobado';
+const isJudgeOf = (u, lid) => isApproved(u) && u.role === 'juez' && u.lienzoId === lid;
+const canManage = (u, ev) => isSuper(u) || ownsLienzo(u, ev.lienzoId);
+const canScore = (u, ev) => ev && ev.status === 'en_vivo' && (isSuper(u) || ownsLienzo(u, ev.lienzoId) || isJudgeOf(u, ev.lienzoId));
+const canSheet = (u, ev) => ev && ['en_vivo','finalizado'].includes(ev.status) && (isSuper(u) || ownsLienzo(u, ev.lienzoId) || isJudgeOf(u, ev.lienzoId));
+const publicEvents = () => DB.all('events').filter(e => e.status !== 'borrador' && lienzo(e.lienzoId).status === 'aprobado');
+const evScores = id => DB.all('scores').filter(s => s.eventId === id);
+const sheetOf = (eid, tid) => DB.get('sheets', `${eid}-${tid}`);
+const isLocked = (ev, tid) => { const sh = sheetOf(ev.id, tid); return !!(sh && sh.entregada); };
+const teamLabel = ev => ev.mode === 'completo' ? 'Charro' : 'Equipo';
+function teamStandings(ev){
+  const sc = evScores(ev.id);
+  return ev.teams.map(t => { const ts = sc.filter(s => s.teamId === t.id); return { ...t, pts: sum(ts.map(s => s.net)), malos: sum(ts.map(s => s.malos + s.eq)), n: ts.length }; })
+    .sort((a, b) => b.pts - a.pts || a.malos - b.malos);
+}
+function charroStandings(ev){
+  const m = {};
+  evScores(ev.id).forEach(s => s.parts.forEach(p => { const r = m[p.id] = m[p.id] || { name: p.name, team: s.teamName, pts: 0, n: 0, f: [] }; r.pts += p.pts; r.n++; r.f.push(RULES.F[s.faena].short); }));
+  return Object.values(m).sort((a, b) => b.pts - a.pts);
+}
+async function audit(action, detail, actorId, actorName){
+  const u = State.user;
+  try { await DB.put('audit', { id: 'a' + uid(), actorId: actorId || (u && u.id) || null, actorName: actorName || (u && u.name) || 'Sistema', action, detail, ts: Date.now() }); } catch(e){}
+}
+
+/* ------------------------- ESTADO ------------------------- */
+const State = { user: null, route: 'inicio', param: null, param2: null,
+  homeTab: 'marcador', rankTab: 'charros', rankSuerte: '', rankYear: String(new Date().getFullYear()), rankOficial: true, rankEstado: '',
+  histQ: '', histEstado: '', histOficial: false, authMode: 'login', regRole: 'lienzo', adminTab: 'solicitudes',
+  j: null, seen: new Set(), seenInit: false, pendingRender: false, fit: true };
+
+/* ------------------------- RUTAS ------------------------- */
+function go(h){ if (location.hash.slice(1) === h) render(); else location.hash = h; }
+function parseRoute(){
+  const h = location.hash.slice(1) || 'inicio';
+  const m = h.match(/^(evento|panel-evento|juez|hoja)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
+  if (m) { State.route = m[1]; State.param = m[2]; State.param2 = m[3] || null; } else { State.route = h; State.param = State.param2 = null; }
+}
+window.addEventListener('hashchange', () => { parseRoute(); render(); window.scrollTo(0, 0); });
+
+/* ------------------------- RENDER ------------------------- */
+function render(){
+  State.pendingRender = false; const u = State.user;
+  $('#top').innerHTML = `<a class="brand" href="#inicio"><span class="logo">${I.horse}</span><b>Charrería <span>Pro</span></b></a>
+    ${DB.backend.mode === 'demo' ? '<span class="chip blue">DEMO</span>' : ''}
+    <a class="avatar" href="#cuenta" aria-label="Cuenta">${u ? esc(initials(u.name)) : '<span style="width:18px;height:18px;display:block">' + I.user + '</span>'}</a>`;
+  const liveN = publicEvents().filter(e => e.status === 'en_vivo').length, pend = isSuper(u) ? pendingCount() : 0;
+  const tabs = [['inicio','Inicio',I.home],['vivo','En vivo',I.live,liveN],['historial','Historial',I.clock],['ranking','Ranking',I.trophy],['cuenta', u ? (isSuper(u) ? 'Admin' : 'Mi panel') : 'Entrar', isSuper(u) ? I.shield : I.user, 0, pend]];
+  const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta' }[State.route] || State.route;
+  $('#nav').innerHTML = tabs.map(([k, l, ic, dot, badge]) => `<a href="#${k === 'cuenta' && isSuper(u) ? 'admin' : k}" class="${active === k ? 'on' : ''}">${ic}${dot ? '<span class="dot"></span>' : ''}${badge ? `<span class="badge-n" style="position:absolute;top:0;right:calc(50% - 22px)">${badge}</span>` : ''}<span>${l}</span></a>`).join('');
+  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja };
+  $('#view').className = 'wrap' + (State.route === 'hoja' ? ' wide' : '');
+  $('#view').innerHTML = (views[State.route] || vInicio)();
+  fitSheet();
+  DB.all('scores').forEach(s => State.seen.add(s.id + ':' + s.updatedAt)); State.seenInit = true;
+}
+function fitSheet(){ const sh = document.querySelector('.sheet'); if (!sh) return; const w = Math.min(window.innerWidth, 900) - 32; sh.style.zoom = State.fit ? Math.min(1, w / 800) : 1; }
+window.addEventListener('resize', fitSheet);
+function onRemoteChange(){
+  if (State.user) State.user = DB.get('profiles', State.user.id) || State.user;
+  const a = document.activeElement;
+  if (State.route === 'juez' && State.j) { State.pendingRender = true; return; }   // no interrumpir al juez mientras captura
+  if (a && ['INPUT','TEXTAREA','SELECT'].includes(a.tagName) && a.closest('#view')) { State.pendingRender = true; return; }
+  render();
+}
+document.addEventListener('focusout', () => setTimeout(() => { if (State.pendingRender && State.route !== 'juez' && !(document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))) render(); }, 50));
+
+/* ---------- componentes ---------- */
+const verifiedMark = l => l && l.status === 'aprobado' ? `<span class="verified" title="Lienzo verificado">${I.verified}</span>` : '';
+function statusChip(ev){
+  if (ev.status === 'en_vivo') return '<span class="chip live"><i></i>EN VIVO</span>';
+  if (ev.status === 'programado') return '<span class="chip blue">Próxima</span>';
+  if (ev.status === 'finalizado') return '<span class="chip">Finalizada</span>';
+  return '<span class="chip">Borrador</span>';
+}
+const officialChip = ev => ev.official ? `<span class="chip gold">${I.shield}Oficial</span>` : '';
+const modeChip = ev => ev.mode === 'completo' ? '<span class="chip">Charro completo</span>' : `<span class="chip">${esc(ev.category || 'Libre')}</span>`;
+function dateBox(iso){ const [y,m,d] = iso.split('-').map(Number); return `<div class="datebox"><b>${d}</b><span>${MESES[m-1]}</span></div>`; }
+function eventCard(ev){
+  const L = lienzo(ev.lienzoId), st = ev.status !== 'programado' ? teamStandings(ev) : [], lead = st[0] && st[0].n ? st[0] : null;
+  return `<a class="card evc" href="#evento-${ev.id}"><div class="row" style="align-items:flex-start">${dateBox(ev.date)}
+    <div class="grow"><div class="row wrapf" style="gap:6px;margin-bottom:5px">${statusChip(ev)}${officialChip(ev)}${ev.mode === 'completo' ? modeChip(ev) : ''}</div>
+    <div class="t">${esc(ev.title)}</div><div class="meta">${esc(L.name)} ${verifiedMark(L)} · ${esc(L.state)}</div>
+    ${lead ? `<div class="meta" style="margin-top:6px;color:var(--text)">${ev.status === 'finalizado' ? '🏆 Ganador' : 'Va ganando'}: <b>${esc(lead.name)}</b> · <span style="color:var(--gold2);font-weight:800">${lead.pts} pts</span></div>` : ''}
+    </div></div></a>`;
+}
+function emptyState(icon, title, text, btn){ return `<div class="card empty">${icon}<div style="font-weight:700;color:var(--text)">${title}</div><div class="small" style="margin-top:4px">${text}</div>${btn ? `<div class="mt">${btn}</div>` : ''}</div>`; }
+function embed(url){
+  if (!url) return ''; let m;
+  if ((m = url.match(/(?:youtube\.com\/(?:watch\?v=|live\/|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/))) return `<iframe src="https://www.youtube.com/embed/${m[1]}?playsinline=1" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+  if (/facebook\.com|fb\.watch/.test(url)) return `<iframe src="https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+  if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(url) || url.startsWith('blob:') || url.includes('/storage/v1/object/')) return `<video src="${esc(url)}" controls playsinline preload="metadata"></video>`;
+  return '';
+}
+function videoBlock(ev){
+  const isLive = ev.status === 'en_vivo', url = isLive ? ev.streamUrl : (ev.videoUrl || ev.streamUrl), e = embed(url), label = isLive ? 'Transmisión en vivo' : 'Video de la charreada';
+  if (!url) return `<div class="video"><div class="ph"><div>${I.video}<div style="font-weight:700;color:var(--text)">${isLive ? 'Sin transmisión por ahora' : 'Sin video publicado'}</div><div class="small">${isLive ? 'Las calificaciones se actualizan en vivo abajo.' : 'El lienzo aún no ha subido la grabación.'}</div></div></div></div>`;
+  return `<div class="video">${e || `<div class="ph"><div>${I.video}<div style="font-weight:700;color:var(--text)">${label}</div></div></div>`}</div>
+    <div class="row between small" style="margin-top:8px"><span class="mut">${label}</span><a href="${esc(url)}" target="_blank" rel="noopener">Abrir en otra ventana ↗</a></div>`;
+}
+function rankRow(i, name, meta, pts, unit){
+  return `<div class="rank"><div class="pos ${i < 3 ? 'p' + (i + 1) : ''}">${i + 1}</div><div class="grow"><div class="ell" style="font-weight:700">${esc(name)}</div><div class="small mut ell">${meta}</div></div><div class="pts">${pts}<small>${unit}</small></div></div>`;
+}
+
+/* ---------- INICIO ---------- */
+function vInicio(){
+  const evs = publicEvents(), live = evs.filter(e => e.status === 'en_vivo');
+  const next = evs.filter(e => e.status === 'programado').sort((a, b) => a.date.localeCompare(b.date)).slice(0, 4);
+  const past = evs.filter(e => e.status === 'finalizado').sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
+  const top = rankingCharros({ year: String(new Date().getFullYear()), oficial: true }).slice(0, 5);
+  let h = '';
+  if (live.length) {
+    const ev = live[0], L = lienzo(ev.lienzoId), st = teamStandings(ev), last = evScores(ev.id).sort((a, b) => b.updatedAt - a.updatedAt)[0];
+    h += `<a href="#evento-${ev.id}" class="hero evc"><div class="row wrapf" style="gap:6px">${statusChip(ev)}${officialChip(ev)}</div>
+      <div class="h1" style="margin-top:10px">${esc(ev.title)}</div><div class="sub" style="margin-top:4px">${esc(L.name)} ${verifiedMark(L)} · ${esc(L.city)}, ${esc(L.state)}</div>
+      <div class="row between mt2" style="align-items:flex-end"><div><div class="small mut">Va ganando</div><div style="font-weight:800;font-size:17px">${esc(st[0] ? st[0].name : '—')}</div>
+      ${last ? `<div class="small mut" style="margin-top:6px">Última: <span style="color:var(--text)">${esc(FN(last.faena))}</span> · ${esc(last.teamName)} · <b style="color:var(--gold2)">${last.net}</b></div>` : ''}</div>
+      <div class="score-big">${st[0] ? st[0].pts : 0}<div class="small" style="font-family:'Plus Jakarta Sans';font-size:11px;color:var(--mut);text-align:right">pts</div></div></div>
+      <div class="btn live block mt">${I.live} Ver en vivo</div><div class="pattern"></div></a>`;
+    if (live.length > 1) h += `<div class="h2">Más en vivo</div><div class="list">${live.slice(1).map(eventCard).join('')}</div>`;
+  } else {
+    h += `<div class="hero" style="border-color:var(--line2)"><div class="h1">La charrería, en vivo y con historia.</div><div class="sub" style="margin-top:8px">Calificaciones al momento conforme al reglamento, hojas oficiales digitales y el ranking nacional.</div>
+      <div class="btns mt2"><a class="btn pri" href="#ranking">${I.trophy} Ver ranking</a><a class="btn" href="#historial">${I.clock} Historial</a></div><div class="pattern"></div></div>`;
+  }
+  h += `<div class="h2">Próximas charreadas</div>` + (next.length ? `<div class="list">${next.map(eventCard).join('')}</div>` : emptyState(I.clock, 'Sin charreadas programadas', 'Cuando un lienzo publique su próxima charreada aparecerá aquí.'));
+  h += `<div class="h2">Top charros ${new Date().getFullYear()}<a href="#ranking">Ver todo</a></div>` + (top.length ? `<div class="card pad0">${top.map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.n} faenas`, c.pts, 'pts')).join('')}</div>` : emptyState(I.trophy, 'Aún sin ranking', 'Se forma con las charreadas oficiales finalizadas.'));
+  h += `<div class="h2">Resultados recientes<a href="#historial">Historial</a></div><div class="list">${past.map(eventCard).join('') || emptyState(I.clock, 'Sin resultados', '')}</div>`;
+  if (!State.user) h += `<div class="card mt2" style="background:linear-gradient(160deg,#2a1510,#1c1510)"><div style="font-weight:800;font-size:16px">¿Tienes un lienzo charro?</div>
+    <div class="sub" style="margin-top:4px">Registra tu lienzo, califica con tus jueces desde el celular, entrega la hoja oficial digital y transmite tus charreadas.</div>
+    <a class="btn pri block mt" href="#cuenta" data-act="reg">${I.plus} Registrar mi lienzo</a></div>`;
+  return h + `<div class="footer">${CONFIG.APP_NAME} · Calificación conforme al Reglamento Oficial de Charros Libre y Juvenil 2024–2028</div>`;
+}
+
+/* ---------- EN VIVO ---------- */
+function vVivo(){
+  const evs = publicEvents(), live = evs.filter(e => e.status === 'en_vivo'), next = evs.filter(e => e.status === 'programado').sort((a, b) => a.date.localeCompare(b.date));
+  return `<div class="h1">En vivo</div><div class="sub" style="margin-top:4px">Charreadas calificándose en este momento.</div><div class="h2">Ahora</div>` +
+    (live.length ? `<div class="list">${live.map(eventCard).join('')}</div>` : emptyState(I.live, 'No hay charreadas en vivo', 'Aquí aparecerán las que inicien.')) +
+    `<div class="h2">Próximas</div>` + (next.length ? `<div class="list">${next.map(eventCard).join('')}</div>` : emptyState(I.clock, 'Sin próximas', ''));
+}
+
+/* ---------- DETALLE DE EVENTO ---------- */
+function vEvento(){
+  const ev = DB.get('events', State.param);
+  if (!ev) return `<a class="back" href="#inicio">${I.arrow} Inicio</a>` + emptyState(I.info, 'Charreada no encontrada', '');
+  const L = lienzo(ev.lienzoId), u = State.user, st = teamStandings(ev), max = Math.max(1, ...st.map(t => t.pts));
+  const sc = evScores(ev.id).sort((a, b) => b.updatedAt - a.updatedAt);
+  let h = `<a class="back" href="#${ev.status === 'finalizado' ? 'historial' : 'vivo'}">${I.arrow} Volver</a>
+    <div class="row wrapf" style="gap:6px">${statusChip(ev)}${officialChip(ev)}${modeChip(ev)}</div>
+    <div class="h1" style="margin-top:10px">${esc(ev.title)}</div><div class="sub" style="margin-top:5px">${esc(L.name)} ${verifiedMark(L)}</div>
+    <div class="small mut" style="margin-top:2px">${fdate(ev.date)} · ${esc(L.city)}, ${esc(L.state)}</div><div class="mt">${videoBlock(ev)}</div>`;
+  if (!ev.official && ev.status !== 'programado') h += `<div class="banner warn mt">${I.info}<span>Charreada no oficial: no cuenta para el ranking nacional.</span></div>`;
+  const btns = [];
+  if (canScore(u, ev) || canSheet(u, ev)) btns.push(`<a class="btn pri" href="#juez-${ev.id}">${I.gavel} Mesa del juez</a>`);
+  if (canManage(u, ev)) btns.push(`<a class="btn" href="#panel-evento-${ev.id}">${I.edit} Administrar</a>`);
+  btns.push(`<button class="btn" data-act="share" data-id="${ev.id}">${I.share} Compartir</button>`);
+  h += `<div class="btns mt">${btns.join('')}</div>`;
+  if (DB.backend.mode === 'demo' && ev.status === 'en_vivo') h += `<button class="btn ghost block sm mt" data-act="simulate" data-id="${ev.id}">Simular la siguiente faena calificada (demo)</button>`;
+  if (ev.status === 'programado') return h + `<div class="h2">${ev.mode === 'completo' ? 'Charros inscritos' : 'Equipos inscritos'}</div><div class="card pad0">${ev.teams.map(t => `<div class="rank"><div class="grow"><div style="font-weight:700">${esc(t.name)}</div><div class="small mut">${esc(t.assoc || t.state || '')}${ev.mode !== 'completo' ? ' · ' + ev.charros.filter(c => c.teamId === t.id).length + ' charros' : ''}</div></div></div>`).join('') || '<div class="empty">Aún sin inscritos</div>'}</div>`;
+  h += `<div class="seg mt2">${[['marcador','Marcador'],['feed','Calificaciones'],['charros','Charros']].map(([k, l]) => `<button class="${State.homeTab === k ? 'on' : ''}" data-act="evtab" data-k="${k}">${l}</button>`).join('')}</div>`;
+  if (State.homeTab === 'marcador') {
+    h += `<div class="card pad0 mt">${st.map((t, i) => `<div class="rank" style="display:block"><div class="row"><div class="pos ${i < 3 && t.n ? 'p' + (i + 1) : ''}">${i + 1}</div><div class="grow"><div style="font-weight:700" class="ell">${esc(t.name)}</div><div class="small mut">${t.n}/${ev.suertes.length} faenas · ${t.malos} puntos malos</div></div><div class="pts">${t.pts}<small>pts</small></div></div><div class="bar"><i style="width:${Math.max(0, Math.round(t.pts / max * 100))}%"></i></div>
+      <div class="row" style="justify-content:flex-end;margin-top:6px"><a class="small" href="#hoja-${ev.id}-${t.id}">${I.doc.replace('<svg', '<svg style="width:13px;height:13px;vertical-align:-2px"')} Hoja de calificación${sheetOf(ev.id, t.id) && sheetOf(ev.id, t.id).entregada ? ' · entregada ✓' : ''}</a></div></div>`).join('')}</div>`;
+    const done = ev.suertes.filter(fk => sc.some(s => s.faena === fk));
+    if (done.length) h += `<div class="h2">Por faena</div><div class="card pad0" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:${130 + st.length * 74}px">
+      <tr style="color:var(--mut);font-size:11.5px"><th style="text-align:left;padding:10px 12px">Faena</th>${st.map(t => `<th style="padding:10px 6px;text-align:right">${esc(t.name.length > 11 ? t.name.slice(0, 10) + '…' : t.name)}</th>`).join('')}</tr>
+      ${done.map(fk => `<tr style="border-top:1px solid var(--line)"><td style="padding:9px 12px">${esc(RULES.F[fk].short)}</td>${st.map(t => { const s = sc.find(x => x.faena === fk && x.teamId === t.id); return `<td style="text-align:right;padding:9px 8px;font-weight:700">${s ? s.net : '<span class="mut2">–</span>'}</td>`; }).join('')}</tr>`).join('')}
+    </table></div>`;
+  } else if (State.homeTab === 'feed') {
+    h += sc.length ? `<div class="card pad0 feed mt">${sc.map(scoreItem).join('')}</div>` : `<div class="mt">${emptyState(I.gavel, 'Aún sin calificaciones', 'En cuanto el juez publique, aparecerán aquí al instante.')}</div>`;
+  } else {
+    const cs = charroStandings(ev);
+    h += cs.length ? `<div class="card pad0 mt">${cs.map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${esc(c.f.join(', '))}`, c.pts, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.user, 'Sin charros calificados', '')}</div>`;
+  }
+  return h;
+}
+function scoreItem(s){
+  const isNew = State.seenInit && !State.seen.has(s.id + ':' + s.updatedAt);
+  return `<div class="it ${isNew ? 'flash' : ''}"><div class="num"><b>${s.net}</b><span>PTS</span></div><div class="grow">
+    <div class="row between" style="gap:6px"><span class="chip gold" style="font-size:11px">${esc(FN(s.faena))}</span><span class="small mut2">${ftime(s.updatedAt)}</span></div>
+    <div style="font-weight:700;margin-top:6px">${esc(s.teamName)}</div>
+    <div class="small mut">${s.parts.map(p => `${esc(p.name)} <b style="color:var(--text)">${p.pts}</b>`).join(' · ') || '—'}</div>
+    <div class="score-line" style="margin-top:5px"><span class="b">Buenos ${s.buenos}</span><span class="m">Malos −${s.malos}</span>${s.eq ? `<span class="m">Equipo −${s.eq}</span>` : ''}</div>
+    <div class="small mut2" style="margin-top:4px">${esc(s.judgeName)}${s.history && s.history.length ? ' · corregida' : ''}</div></div></div>`;
+}
+
+/* ---------- HISTORIAL ---------- */
+function vHistorial(){
+  const q = norm(State.histQ);
+  let evs = publicEvents().filter(e => e.status === 'finalizado');
+  if (State.histOficial) evs = evs.filter(e => e.official);
+  if (State.histEstado) evs = evs.filter(e => lienzo(e.lienzoId).state === State.histEstado);
+  if (q) evs = evs.filter(e => norm(e.title + ' ' + lienzo(e.lienzoId).name + ' ' + e.teams.map(t => t.name).join(' ') + ' ' + e.charros.map(c => c.name).join(' ')).includes(q));
+  evs.sort((a, b) => b.date.localeCompare(a.date));
+  const groups = {}; evs.forEach(e => { const [y, m] = e.date.split('-'); const k = `${MESES_L[+m - 1]} ${y}`; (groups[k] = groups[k] || []).push(e); });
+  const estados = [...new Set(publicEvents().map(e => lienzo(e.lienzoId).state))].sort();
+  let h = `<div class="h1">Historial</div><div class="sub" style="margin-top:4px">Charreadas pasadas con sus calificaciones y hojas.</div>
+    <div class="mt" style="position:relative"><span style="position:absolute;left:13px;top:13px;width:18px;height:18px;color:var(--mut2)">${I.search}</span><input class="in" style="padding-left:40px" placeholder="Buscar charro, equipo, lienzo…" value="${esc(State.histQ)}" data-model="histQ"></div>
+    <div class="row mt" style="gap:8px"><select class="in" data-model="histEstado" style="flex:1"><option value="">Todos los estados</option>${estados.map(s => `<option ${s === State.histEstado ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+    <button class="tog ${State.histOficial ? 'on' : ''}" data-act="histOficial" style="white-space:nowrap">Solo oficiales</button></div>`;
+  if (!evs.length) return h + `<div class="mt">${emptyState(I.search, 'Sin resultados', 'Prueba con otra búsqueda o filtro.')}</div>`;
+  Object.entries(groups).forEach(([k, list]) => { h += `<div class="h2">${k}</div><div class="list">${list.map(eventCard).join('')}</div>`; });
+  return h;
+}
+
+/* ---------- RANKING ---------- */
+const rankingEvents = ({ year, oficial, estado, mode }) => publicEvents().filter(e => e.status === 'finalizado' && (!oficial || e.official) && (!year || e.date.startsWith(year)) && (!estado || lienzo(e.lienzoId).state === estado) && (!mode || (e.mode || 'equipos') === mode));
+function rankingCharros(opt){
+  const ids = new Set(rankingEvents(opt).map(e => e.id)), m = {};
+  DB.all('scores').filter(s => ids.has(s.eventId) && (!opt.suerte || s.faena === opt.suerte)).forEach(s => s.parts.forEach(p => {
+    const k = norm(p.name); const r = m[k] = m[k] || { name: p.name, team: s.teamName, pts: 0, n: 0, best: -99, evs: new Set() };
+    r.pts += p.pts; r.n++; r.best = Math.max(r.best, p.pts); r.evs.add(s.eventId); r.team = s.teamName;
+  }));
+  return Object.values(m).sort((a, b) => b.pts - a.pts || b.best - a.best);
+}
+function rankingEquipos(opt, mode){
+  const m = {};
+  rankingEvents({ ...opt, mode }).forEach(ev => teamStandings(ev).forEach((t, i) => {
+    const pts = opt.suerte ? sum(evScores(ev.id).filter(s => s.teamId === t.id && s.faena === opt.suerte).map(s => s.net)) : t.pts;
+    const k = norm(t.name); const r = m[k] = m[k] || { name: t.name, state: t.assoc || t.state, pts: 0, wins: 0, evs: 0, best: -99 };
+    r.pts += pts; r.evs++; r.best = Math.max(r.best, pts); if (i === 0 && !opt.suerte && t.n) r.wins++;
+  }));
+  return Object.values(m).sort((a, b) => b.pts - a.pts);
+}
+function vRanking(){
+  const years = [...new Set(publicEvents().map(e => e.date.slice(0, 4)))].sort().reverse(), estados = [...new Set(publicEvents().map(e => lienzo(e.lienzoId).state))].sort();
+  const opt = { year: State.rankYear, oficial: State.rankOficial, suerte: State.rankSuerte, estado: State.rankEstado };
+  let h = `<div class="h1">Ranking nacional</div><div class="sub" style="margin-top:4px">Puntos netos (buenos menos malos) en charreadas ${State.rankOficial ? 'oficiales ' : ''}finalizadas.</div>
+    <div class="seg mt">${[['charros','Charros'],['equipos','Equipos'],['completo','Charro completo']].map(([k, l]) => `<button class="${State.rankTab === k ? 'on' : ''}" data-act="ranktab" data-k="${k}">${l}</button>`).join('')}</div>
+    <div class="row mt" style="gap:8px"><select class="in" data-model="rankYear"><option value="">Histórico</option>${years.map(y => `<option ${y === State.rankYear ? 'selected' : ''}>${y}</option>`).join('')}</select>
+    <select class="in" data-model="rankSuerte"><option value="">Todas las faenas</option>${RULES.ORDER_EQ.map(k => `<option value="${k}" ${k === State.rankSuerte ? 'selected' : ''}>${esc(FN(k))}</option>`).join('')}</select></div>
+    <div class="row mt" style="gap:8px"><select class="in" data-model="rankEstado"><option value="">Todo México</option>${estados.map(s => `<option ${s === State.rankEstado ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+    <button class="tog ${State.rankOficial ? 'on' : ''}" data-act="rankOficial" style="white-space:nowrap">Solo oficiales</button></div>`;
+  if (State.rankTab === 'charros') { const r = rankingCharros(opt); h += r.length ? `<div class="card pad0 mt">${r.slice(0, 100).map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.evs.size} charreadas · mejor ${c.best}`, c.pts, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
+  else { const r = rankingEquipos(opt, State.rankTab === 'completo' ? 'completo' : 'equipos'); h += r.length ? `<div class="card pad0 mt">${r.map((t, i) => rankRow(i, t.name, `${esc(t.state || '')} · ${t.evs} charreadas${t.wins ? ` · ${t.wins} 🏆` : ''}`, t.pts, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
+  return h;
+}
+
+/* ---------- CUENTA ---------- */
+function vCuenta(){
+  const u = State.user; if (!u) return vAuth();
+  const L = myLienzo(u) || (u.lienzoId ? lienzo(u.lienzoId) : null);
+  let h = `<div class="card"><div class="row"><div class="avatar" style="width:52px;height:52px;font-size:18px">${esc(initials(u.name))}</div>
+    <div class="grow"><div style="font-weight:800;font-size:17px" class="ell">${esc(u.name)}</div><div class="small mut ell">${esc(u.email)}</div>
+    <div class="row wrapf" style="gap:6px;margin-top:6px"><span class="chip gold">${roleName(u.role)}</span>${u.status === 'aprobado' ? `<span class="chip green">${I.check}Verificada</span>` : u.status === 'pendiente' ? '<span class="chip blue">En revisión</span>' : `<span class="chip red">${esc(u.status)}</span>`}</div></div></div>
+    ${L && u.role !== 'superadmin' ? `<div class="sep"></div><div class="small mut">Lienzo</div><div style="font-weight:700">${esc(L.name)} ${verifiedMark(L)}</div><div class="small mut">${esc(L.city || '')}${L.city ? ', ' : ''}${esc(L.state || '')}</div>` : ''}</div>`;
+  if (u.status === 'pendiente') h += `<div class="banner warn mt">${I.info}<span>Tu cuenta está en revisión. El administrador la verificará para que puedas ${u.role === 'juez' ? 'calificar' : 'publicar charreadas'}.</span></div>`;
+  if (u.status === 'rechazado' || u.status === 'suspendido') h += `<div class="banner err mt">${I.info}<span>Tu cuenta está ${esc(u.status)}. Contacta al administrador.</span></div>`;
+  if (isApproved(u)) {
+    h += `<div class="h2">Herramientas</div><div class="list">`;
+    if (u.role === 'superadmin') h += menuItem('#admin', I.shield, 'Panel de súper usuario', `${pendingCount()} pendientes por autorizar`);
+    if (u.role === 'lienzo' || u.role === 'superadmin') h += menuItem('#panel', I.horse, u.role === 'superadmin' ? 'Charreadas (todas)' : 'Mis charreadas', 'Crear, transmitir, subir video');
+    h += menuItem('#juez', I.gavel, 'Mesa del juez', 'Calificar por faena y entregar la hoja oficial') + `</div>`;
+  }
+  h += `<button class="btn block mt2" data-act="logout">${I.logout} Cerrar sesión</button>`;
+  return h + (DB.backend.mode === 'demo' ? demoBox() : '');
+}
+const menuItem = (href, ic, t, d) => `<a class="card evc row" style="display:flex" href="${href}"><span class="logo" style="width:40px;height:40px">${ic}</span><div class="grow"><div class="t">${t}</div><div class="meta">${d}</div></div><span class="marrow">${I.arrow}</span></a>`;
+function demoBox(){
+  return `<div class="h2">Modo demostración</div><div class="card"><div class="small mut">Entra con una cuenta de prueba para ver cada rol. Abre la app en dos pestañas para ver las calificaciones llegar en vivo.</div>
+    <div class="btns mt"><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez</button></div>
+    <button class="btn ghost sm block mt" data-act="reset">Restablecer datos de ejemplo</button></div>`;
+}
+function vAuth(){
+  const m = State.authMode, lienzosOk = DB.all('lienzos').filter(l => l.status === 'aprobado');
+  let h = `<div class="center" style="margin:10px 0 18px"><span class="logo" style="width:56px;height:56px;margin:0 auto;border-radius:16px"><span style="width:30px;height:30px;display:block;color:var(--gold2)">${I.horse}</span></span>
+    <div class="h1" style="margin-top:12px">${m === 'login' ? 'Bienvenido' : 'Crear cuenta'}</div><div class="sub" style="margin-top:4px">${m === 'login' ? 'Entra para administrar tu lienzo o calificar.' : 'Cada cuenta es revisada y autorizada por el administrador.'}</div></div>
+    <div class="seg"><button class="${m === 'login' ? 'on' : ''}" data-act="authmode" data-k="login">Entrar</button><button class="${m === 'register' ? 'on' : ''}" data-act="authmode" data-k="register">Registrarme</button></div>`;
+  if (m === 'login') h += `<form class="card mt" data-form="login"><label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required><label class="f">Contraseña</label><input class="in" name="pass" type="password" autocomplete="current-password" required><button class="btn pri block mt2">Entrar</button></form>
+    <div class="small mut center mt">¿Solo quieres ver calificaciones? No necesitas cuenta.</div>`;
+  else { const r = State.regRole;
+    h += `<form class="card mt" data-form="register"><label class="f">Tipo de cuenta</label><div class="seg"><button type="button" class="${r === 'lienzo' ? 'on' : ''}" data-act="regrole" data-k="lienzo">Lienzo charro</button><button type="button" class="${r === 'juez' ? 'on' : ''}" data-act="regrole" data-k="juez">Juez</button></div>
+      <label class="f">${r === 'lienzo' ? 'Nombre del responsable' : 'Nombre completo'}</label><input class="in" name="name" required><label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required>
+      <label class="f">Teléfono / WhatsApp</label><input class="in" name="phone" type="tel" autocomplete="tel"><label class="f">Contraseña</label><input class="in" name="pass" type="password" minlength="6" autocomplete="new-password" required>
+      ${r === 'lienzo' ? `<label class="f">Nombre del lienzo</label><input class="in" name="lienzoName" required><div class="row" style="gap:8px"><div class="grow"><label class="f">Municipio</label><input class="in" name="city" required></div><div class="grow"><label class="f">Estado</label><select class="in" name="state" required>${ESTADOS.map(s => `<option>${s}</option>`).join('')}</select></div></div>`
+        : `<label class="f">Lienzo donde calificas</label><select class="in" name="lienzoId" required>${lienzosOk.map(l => `<option value="${l.id}">${esc(l.name)} · ${esc(l.state)}</option>`).join('')}</select>`}
+      <label class="f">Código de invitación (opcional)</label><input class="in" name="invite" placeholder="Ej. JUEZ-AB12CD" style="text-transform:uppercase">
+      <div class="small mut" style="margin-top:6px">Con un código del administrador tu cuenta queda aprobada al instante.</div><button class="btn pri block mt2">Crear cuenta</button></form>`; }
+  return h + (DB.backend.mode === 'demo' ? demoBox() : '');
+}
+
+/* ---------- PANEL DEL LIENZO ---------- */
+const needLogin = () => emptyState(I.user, 'Inicia sesión', 'Necesitas una cuenta para esta sección.', `<a class="btn pri" href="#cuenta">Entrar</a>`);
+function vPanel(){
+  const u = State.user; if (!u) return needLogin();
+  if (!isApproved(u) || !(u.role === 'lienzo' || isSuper(u))) return `<a class="back" href="#cuenta">${I.arrow} Cuenta</a>` + emptyState(I.shield, 'Sin acceso', 'Tu cuenta debe ser un lienzo verificado.');
+  const L = myLienzo(u), order = { en_vivo: 0, programado: 1, borrador: 2, finalizado: 3 };
+  const evs = DB.all('events').filter(e => isSuper(u) || e.lienzoId === u.lienzoId).sort((a, b) => order[a.status] - order[b.status] || b.date.localeCompare(a.date));
+  const judges = L ? DB.all('profiles').filter(p => p.role === 'juez' && p.lienzoId === L.id) : [];
+  let h = `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="row between"><div class="h1">${isSuper(u) ? 'Charreadas' : 'Mis charreadas'}</div>${L ? `<button class="btn pri sm" data-act="newEvent">${I.plus} Nueva</button>` : ''}</div>${L ? `<div class="sub" style="margin-top:4px">${esc(L.name)} ${verifiedMark(L)}</div>` : ''}`;
+  h += evs.length ? `<div class="list mt">${evs.map(ev => `<a class="card evc" href="#panel-evento-${ev.id}"><div class="row">${dateBox(ev.date)}<div class="grow"><div class="row wrapf" style="gap:6px;margin-bottom:4px">${statusChip(ev)}${officialChip(ev)}${modeChip(ev)}</div><div class="t">${esc(ev.title)}</div><div class="meta">${isSuper(u) ? esc(lienzo(ev.lienzoId).name) + ' · ' : ''}${ev.teams.length} ${ev.mode === 'completo' ? 'charros' : 'equipos'} · ${evScores(ev.id).length} faenas calificadas</div></div></div></a>`).join('')}</div>`
+    : `<div class="mt">${emptyState(I.horse, 'Aún no tienes charreadas', 'Crea tu primera charreada.', `<button class="btn pri" data-act="newEvent">${I.plus} Crear charreada</button>`)}</div>`;
+  if (L) { h += `<div class="h2">Jueces de tu lienzo</div>` + (judges.length ? `<div class="card pad0">${judges.map(j => `<div class="rank"><div class="avatar">${esc(initials(j.name))}</div><div class="grow"><div style="font-weight:700">${esc(j.name)}</div><div class="small mut">${esc(j.email)}</div></div>${j.status === 'aprobado' ? '<span class="chip green">Activo</span>' : `<span class="chip ${j.status === 'pendiente' ? 'blue' : 'red'}">${esc(j.status)}</span>`}</div>`).join('')}</div>` : `<div class="card small mut">Pide a tus jueces que se registren como “Juez” eligiendo tu lienzo; el administrador los autoriza.</div>`); }
+  return h;
+}
+function vPanelEvento(){
+  const u = State.user, ev = DB.get('events', State.param);
+  if (!ev) return `<a class="back" href="#panel">${I.arrow} Mis charreadas</a>` + emptyState(I.info, 'No encontrada', '');
+  if (!canManage(u, ev)) return `<a class="back" href="#inicio">${I.arrow} Inicio</a>` + emptyState(I.shield, 'Sin acceso', 'Solo el lienzo dueño o el administrador puede editar esta charreada.');
+  const locked = ev.status === 'finalizado' && !isSuper(u), dis = locked ? 'disabled' : '', hasScores = evScores(ev.id).length > 0, cc = ev.mode === 'completo';
+  const order = cc ? RULES.ORDER_CC : RULES.ORDER_EQ;
+  let h = `<a class="back" href="#panel">${I.arrow} Mis charreadas</a><div class="row wrapf" style="gap:6px">${statusChip(ev)}${officialChip(ev)}${modeChip(ev)}</div><div class="h1" style="margin-top:8px">${esc(ev.title || 'Nueva charreada')}</div><div class="card mt">`;
+  if (ev.status === 'borrador') h += `<div class="small mut">Completa datos e inscritos. Luego publícala para que aparezca como próxima.</div><button class="btn pri block mt" data-act="evStatus" data-s="programado">Publicar charreada</button>`;
+  if (ev.status === 'programado') h += `<div class="small mut">Cuando empiece, iníciala para que los jueces puedan calificar.</div><button class="btn live block mt" data-act="evStatus" data-s="en_vivo">${I.live} Iniciar EN VIVO</button>`;
+  if (ev.status === 'en_vivo') h += `<div class="btns"><a class="btn pri" href="#juez-${ev.id}">${I.gavel} Mesa del juez</a><a class="btn" href="#evento-${ev.id}">Ver pública</a></div><button class="btn vino block mt" data-act="evStatus" data-s="finalizado">Finalizar charreada</button>`;
+  if (ev.status === 'finalizado') h += `<div class="small mut">Charreada finalizada.${isSuper(u) ? '' : ' Solo el administrador puede reabrirla.'}</div><div class="btns mt"><a class="btn" href="#evento-${ev.id}">Ver resultados</a><a class="btn" href="#juez-${ev.id}">Hojas</a>${isSuper(u) ? `<button class="btn" data-act="evStatus" data-s="en_vivo">Reabrir</button>` : ''}</div>`;
+  h += `<div class="sep"></div><div class="row between"><div><div style="font-weight:700">Charreada oficial</div><div class="small mut">${ev.official ? 'Cuenta para el ranking nacional.' : ev.requestOfficial ? 'Solicitud enviada al administrador.' : 'Solicita que cuente para el ranking.'}</div></div>
+    ${isSuper(u) ? `<button class="tog ${ev.official ? 'on' : ''}" data-act="toggleOfficial" data-id="${ev.id}">${ev.official ? 'Oficial' : 'Hacer oficial'}</button>` : ev.official ? `<span class="chip gold">${I.shield}Oficial</span>` : `<button class="tog ${ev.requestOfficial ? 'on' : ''}" data-act="reqOfficial">${ev.requestOfficial ? 'Solicitado' : 'Solicitar'}</button>`}</div></div>`;
+  h += `<div class="h2">Datos</div><form class="card" data-form="evData"><label class="f" style="margin-top:0">Nombre de la charreada</label><input class="in" name="title" value="${esc(ev.title)}" required ${dis}>
+    <div class="row" style="gap:8px"><div class="grow"><label class="f">Fecha</label><input class="in" type="date" name="date" value="${esc(ev.date)}" required ${dis}></div><div class="grow"><label class="f">Categoría</label><select class="in" name="category" ${dis}>${CATEGORIAS.map(c => `<option ${c === ev.category ? 'selected' : ''}>${c}</option>`).join('')}</select></div></div>
+    <label class="f">Modalidad</label><select class="in" name="mode" ${dis || hasScores || ev.teams.length ? 'disabled' : ''}><option value="equipos" ${!cc ? 'selected' : ''}>Charreada por equipos</option><option value="completo" ${cc ? 'selected' : ''}>Charro completo</option></select>
+    ${locked ? '' : '<button class="btn block mt">Guardar datos</button>'}</form>`;
+  h += `<div class="h2">Faenas</div><div class="card"><div class="chips">${order.map(k => `<button class="tog ${ev.suertes.includes(k) ? 'on' : ''}" data-act="toggleSuerte" data-s="${k}" ${dis}>${esc(FN(k))}</button>`).join('')}</div><div class="small mut mt">Orden oficial de las faenas conforme al reglamento.</div></div>`;
+  h += `<div class="h2">${cc ? 'Charros completos inscritos' : 'Equipos y charros'}</div>`;
+  h += ev.teams.map(t => `<div class="team"><div class="row between"><div><div style="font-weight:800">${esc(t.name)}</div><div class="small mut">${esc(cc ? (t.assoc || '') + (t.state ? ' · ' + t.state : '') : (t.state || '') + (t.capitan ? ' · Capitán: ' + t.capitan : ''))}</div></div>${locked ? '' : `<button class="btn ghost sm" data-act="delTeam" data-id="${t.id}">${I.x}</button>`}</div>
+    ${cc ? '' : `<div>${ev.charros.filter(c => c.teamId === t.id).map(c => `<span class="tag">${esc(c.name)}${locked ? '' : `<button data-act="delCharro" data-id="${c.id}" aria-label="Quitar">${I.x}</button>`}</span>`).join('') || '<div class="small mut mt">Sin charros todavía</div>'}</div>
+    ${locked ? '' : `<form class="row mt" data-form="addCharro" data-team="${t.id}" style="gap:8px"><input class="in" name="name" placeholder="Nombre del charro" required><button class="btn sm" style="min-height:46px">${I.plus}</button></form>`}`}</div>`).join('');
+  if (!locked) h += cc ? `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Inscribir charro completo</div><input class="in mt" name="name" placeholder="Nombre del charro" required><input class="in mt" name="assoc" placeholder="Equipo / asociación"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn block mt">${I.plus} Inscribir</button></form>`
+    : `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Agregar equipo</div><input class="in mt" name="name" placeholder="Nombre del equipo / asociación" required><input class="in mt" name="capitan" placeholder="Capitán"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn block mt">${I.plus} Agregar equipo</button></form>`;
+  h += `<div class="h2">Transmisión en vivo</div><form class="card" data-form="stream"><div class="small mut">Transmite desde YouTube Live o Facebook Live y pega aquí el enlace.</div><input class="in mt" name="url" type="url" placeholder="https://youtube.com/live/…" value="${esc(ev.streamUrl)}"><button class="btn block mt">Guardar enlace</button></form>`;
+  h += `<div class="h2">Video grabado</div><div class="card"><div class="small mut">Pega el enlace del video o sube el archivo grabado.</div><form data-form="video"><input class="in mt" name="url" type="url" placeholder="https://youtube.com/watch?v=…" value="${esc(ev.videoUrl && !ev.videoUrl.startsWith('blob:') ? ev.videoUrl : '')}"><button class="btn block mt">Guardar enlace</button></form>
+    <label class="btn block mt" style="cursor:pointer">${I.upload} Subir archivo de video<input type="file" accept="video/*" data-upload="${ev.id}" style="display:none"></label>${ev.videoUrl ? `<div class="small mt" style="color:#7fdcb0">✓ Video publicado</div>` : ''}</div>`;
+  if (ev.status === 'borrador' || isSuper(u)) h += `<button class="btn ghost block mt2" style="color:#ff9a9a" data-act="delEvent">Eliminar charreada</button>`;
+  return h;
+}
+
+/* =====================================================================
+   MESA DEL JUEZ — captura por faena y oportunidad
+   ===================================================================== */
+const getP = (o, p) => p.split('.').reduce((x, k) => x == null ? x : x[k], o);
+function setP(o, p, v){ const ks = p.split('.'); let x = o; ks.slice(0, -1).forEach(k => { if (x[k] == null) x[k] = {}; x = x[k]; }); x[ks[ks.length - 1]] = v; }
+const DEFS = key => { const [t, fk] = key.split(':'); if (t === 'eq') return RULES.eqDefs(fk); if (fk === 'ternaPial') return RULES.infDefs('terna', RULES.TERNA_INF_PIAL); if (fk === 'ternaCab') return RULES.infDefs('terna', RULES.TERNA_INF_CAB); return RULES.infDefs(fk); };
+
+function jSelWho(path, ev, tid, label){
+  const d = State.j.d, cur = getP(d, path) || '', ch = ev.charros.filter(c => c.teamId === tid);
+  return `${label ? `<label class="f">${label}</label>` : ''}<select class="in" data-jp="${path}"><option value="">— Elegir charro —</option>${ch.map(c => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>`;
+}
+function jSel(path, list, placeholder, withPts = true){
+  const cur = getP(State.j.d, path) || '';
+  return `<select class="in" data-jp="${path}"><option value="">${placeholder}</option>${list.map(x => `<option value="${x[0]}" ${x[0] === cur ? 'selected' : ''}>${esc(x[1])}${withPts && x[2] != null ? ' · ' + x[2] : ''}</option>`).join('')}</select>`;
+}
+function jTog(path, label, pts){ const on = !!getP(State.j.d, path); return `<button class="tog ${on ? 'on' : ''}" data-jt="${path}">${on ? '✓ ' : ''}${esc(label)}${pts != null ? ` <b>${signed(pts)}</b>` : ''}</button>`; }
+function jArr(path, list, ptsFn){
+  const cur = getP(State.j.d, path) || [];
+  return `<div class="chips">${list.map((x, i) => { const on = cur.includes(x[0]); const p = ptsFn ? ptsFn(i, x) : x[2]; return `<button class="tog ${on ? 'on' : ''}" data-ja="${path}" data-v="${x[0]}">${on ? '✓ ' : ''}${esc(x[1])} <b>${signed(p)}</b></button>`; }).join('')}</div>`;
+}
+function jStep(path, min, max, label){ const v = +getP(State.j.d, path) || 0; return `<div class="row between" style="margin-top:8px"><span class="small" style="font-weight:600">${label}</span><span class="stepper"><button data-js="${path}" data-d="-1" data-min="${min}" data-max="${max}">−</button><b>${v}</b><button data-js="${path}" data-d="1" data-min="${min}" data-max="${max}">+</button></span></div>`; }
+function jNum(path, label, ph, step = 'any'){ return `<div><label class="f">${label}</label><input class="in" type="number" inputmode="decimal" step="${step}" min="0" placeholder="${ph || ''}" value="${esc(getP(State.j.d, path) ?? '')}" data-jp="${path}"></div>`; }
+function jMalos(path, key, title = 'Infracciones (puntos malos)'){
+  const cur = getP(State.j.d, path) || [], defs = DEFS(key);
+  return `<div class="mini-l">${title}</div><div>${cur.map((m, i) => { const df = defs.find(x => x[0] === m.c) || [m.c, m.c, 0]; return `<span class="tag bad">${esc(df[0].replace(/^[ge]/, ''))} · ${esc(df[1])}${m.n > 1 ? ' ×' + m.n : ''} <b>−${df[2] * (m.n || 1)}</b><button data-jrm="${path}" data-i="${i}" aria-label="Quitar">${I.x}</button></span>`; }).join('')}</div>
+    <button class="btn sm ghost mt" style="margin-top:8px" data-jadd="${path}" data-key="${key}">${I.plus} Agregar infracción</button>`;
+}
+function oppHead(title, b, m, dqPath){
+  const dq = dqPath && getP(State.j.d, dqPath);
+  return `<div class="opp-h"><span>${title}</span><span class="score-line"><span class="b">${b}</span><span class="m">−${m}</span><span class="t">${b - m}</span></span></div>
+    ${dqPath ? `<div class="row" style="justify-content:flex-end;margin-top:6px"><button class="tog ${dq ? 'on' : ''}" style="${dq ? 'border-color:var(--red);color:#ffb0b0;background:rgba(239,68,68,.12)' : ''}" data-jt="${dqPath}">${dq ? '✕ Descalificada' : 'Descalificar'}</button></div>` : ''}`;
+}
+
+function faenaForm(ev, team, fk){
+  const d = State.j.d, r = RULES.calc(fk, d), R = RULES, tid = team.id;
+  let h = '';
+  if (fk === 'cala') {
+    h += jSelWho('who', ev, tid, 'Calador') + `<div class="opp ${d.dq ? 'dq' : ''}">${oppHead('Cala completa', r.buenos, r.malos, 'dq')}
+      <div class="grid2">${jNum('metros', 'Metros de la punta', 'Ej. 7.40')}<div><label class="f">Tiempos</label><select class="in" data-jp="tiempos"><option value="">—</option>${[1,2,3,4,5].map(t => `<option ${String(t) === String(d.tiempos) ? 'selected' : ''} value="${t}">${t === 5 ? 'Más de 4' : t + (t === 1 ? ' tiempo' : ' tiempos')}</option>`).join('')}</select></div></div>
+      <div class="small mut" style="margin-top:6px">Base 20 · Punta P ${signed(r.cells.P)} · Tiempos T ${signed(r.cells.T)} (desde 6 m y hasta 4 tiempos; más de 51 cm sube al metro siguiente)</div>
+      <div class="mini-l">Lados</div><div class="chips">${jTog('ld6', 'Derecha: 6 o más con velocidad', 2)}${jTog('ldPata', 'Derecha: asentó la pata', 1)}${jTog('li6', 'Izquierda: 6 o más con velocidad', 2)}${jTog('liPata', 'Izquierda: asentó la pata', 1)}</div>
+      <div class="mini-l">Medios lados (1 por cada uno completo, ida y regreso)</div>${jStep('md', 0, 4, 'Medios lados derecha (MD)')}${jStep('mi', 0, 4, 'Medios lados izquierda (MI)')}
+      <div class="mini-l">Cambio de rectángulo</div><div class="chips">${jTog('pc', 'De lado dando pierna (PC)', 1)}</div>${jMalos('m', 'inf:cala')}</div>`;
+  }
+  if (fk === 'piales') {
+    h += jSelWho('who', ev, tid, 'Pialador');
+    r.rows.forEach((x, i) => { const o = d.tiros[i], verijas = o.res === 'verijas';
+      h += `<div class="opp ${o.dq ? 'dq' : ''}">${oppHead(['1er','2do','3er'][i] + ' tiro', x.b, x.m, `tiros.${i}.dq`)}<label class="f">Remate</label>${jSel(`tiros.${i}.res`, R.PIAL_REM, 'Falló / sin pial')}
+      ${o.res && !verijas ? `${jStep(`tiros.${i}.dist`, 0, 20, 'Metros excedentes de la distancia (+1 c/u)')}<div class="mini-l">Adicionales</div>${jArr(`tiros.${i}.ex`, R.PIAL_EX)}` : verijas ? '<div class="small mut mt">Lazo de verijas: sin derecho a adicionales (Art. 103).</div>' : ''}
+      ${jMalos(`tiros.${i}.m`, 'inf:piales')}</div>`; });
+  }
+  if (fk === 'coleadero') {
+    r.cols.forEach((c, ci) => { h += `<div class="card mt" style="padding:12px">${jSelWho(`coleadores.${ci}.who`, ev, tid, `Coleador ${ev.mode === 'completo' ? '' : ci + 1}`)}`;
+      c.rows.forEach((x, i) => { const o = d.coleadores[ci].pasadas[i];
+        h += `<div class="opp ${o.dq ? 'dq' : ''}">${oppHead(['1a','2a','3a'][i] + ' pasada', x.b, x.m, `coleadores.${ci}.pasadas.${i}.dq`)}<label class="f">Caída</label>${jSel(`coleadores.${ci}.pasadas.${i}.res`, R.CAIDAS, 'Sin derribar')}
+        ${o.res ? `<label class="f">Distancia</label>${jSel(`coleadores.${ci}.pasadas.${i}.dist`, R.COLA_DIST, 'Después de 50 m (sin adicional)')}<div class="mini-l">Adicionales</div>${jArr(`coleadores.${ci}.pasadas.${i}.ex`, R.COLA_EX)}` : ''}
+        ${jMalos(`coleadores.${ci}.pasadas.${i}.m`, 'inf:coleadero')}</div>`; });
+      h += `<div class="row between small" style="margin-top:8px;font-weight:700"><span>Total del coleador</span><span style="color:var(--gold2)">${c.t}</span></div></div>`; });
+  }
+  if (fk === 'toro' || fk === 'yegua') {
+    const COLS = fk === 'toro' ? R.TORO_COLS : R.YEGUA_COLS, T_ = fk === 'toro' ? R.TORO_T : R.YEGUA_T, row = d.cls ? T_[d.cls] : null;
+    h += jSelWho('who', ev, tid, 'Jinete') + `<div class="opp ${d.dq ? 'dq' : ''}">${oppHead('Jineteada', r.buenos, r.malos, 'dq')}<label class="f">Clasificación de la jineteada</label>${jSel('cls', R.CLS.map(([k, l]) => [k, l, T_[k][0]]), 'Sin calificar')}
+      ${row ? `<div class="mini-l">Adicionales según la tabla (${esc(R.CLS.find(x => x[0] === d.cls)[1])})</div>${jArr('ad', COLS, i => row[i + 1])}
+      <div class="mini-l">Descomponerse (tabla)</div><div class="chips">${jTog('desc', 'Se descompuso', row[13])}</div>` : ''}
+      ${jNum('tiempo', 'Tiempo de apretalamiento hasta abrir la puerta (min)', 'Ej. 1.5')}
+      <div class="small mut" style="margin-top:6px">T: ${r.T} pts por minuto ahorrado de 3${d.cls === 'min' ? ' (base mínima no adiciona)' : ''}${r.timeInf ? ` · Infracción por tiempo −${r.timeInf}` : ''}</div>
+      ${jMalos('m', 'inf:' + fk)}</div>`;
+  }
+  if (fk === 'terna') {
+    h += `<div class="grid2" style="grid-template-columns:1fr">${[0,1,2].map(i => jSelWho(`lazadores.${i}`, ev, tid, `Lazador ${i + 1}`)).join('')}</div>`;
+    d.intentos.forEach((o, i) => { const x = r.rows[i], cab = o.tipo === 'cabeza';
+      h += `<div class="opp ${o.dq ? 'dq' : ''}">${oppHead(`Oportunidad ${i + 1}`, x.b, x.m, `intentos.${i}.dq`)}
+        <div class="grid2"><div><label class="f">Lazador</label><select class="in" data-jp="intentos.${i}.l" data-num="1">${[0,1,2].map(l => `<option value="${l}" ${o.l === l ? 'selected' : ''}>${esc((ev.charros.find(c => c.id === d.lazadores[l]) || {}).name || 'Lazador ' + (l + 1))}</option>`).join('')}</select></div>
+        <div><label class="f">Lazo</label><select class="in" data-jp="intentos.${i}.tipo"><option value="cabeza" ${cab ? 'selected' : ''}>De cabeza</option><option value="pial" ${!cab ? 'selected' : ''}>Pial</option></select></div></div>
+        <label class="f">Resultado</label>${jSel(`intentos.${i}.res`, cab ? R.CABEZA : R.PIAL_RUEDO, 'Falló')}
+        ${o.res === 'floreado' ? `<div class="mini-l">Adicionales por floreo</div>${jArr(`intentos.${i}.fl`, R.FLOREO_TERNA)}` : ''}
+        ${o.res && (cab || o.res === 'floreado') ? `<div class="mini-l">Adicionales al rematar</div>${jArr(`intentos.${i}.rm`, cab ? R.REM_CABEZA : R.REM_PIAL)}` : ''}
+        ${x.res && !x.ok && !o.dq ? '<div class="small" style="color:#ffb0b0;margin-top:6px">No cuenta: ya hay un lazo de este tipo consumado o se repitió el remate.</div>' : ''}
+        ${jMalos(`intentos.${i}.m`, cab ? 'inf:ternaCab' : 'inf:ternaPial')}
+        <button class="btn ghost sm mt" data-jdel="intentos" data-i="${i}" style="color:#ff9a9a">Quitar oportunidad</button></div>`; });
+    if (d.intentos.length < 5) h += `<button class="btn block mt" data-jaddint="1">${I.plus} Registrar oportunidad ${d.intentos.length + 1} de 5</button>`;
+    h += jNum('tiempo', 'Terminado en (min, de 7)', 'Ej. 4.2') + `<div class="small mut" style="margin-top:6px">${r.consumada ? `Terna consumada · ${r.saved} min ahorrados → +${r.saved} al cabecero y +${r.saved} al pialador` : 'Al consumarse lazo de cabeza y pial se suman los minutos ahorrados.'}</div>
+      <div class="card mt" style="padding:10px">${r.per.map((p, i) => `<div class="row between small" style="padding:3px 0"><span>${esc((ev.charros.find(c => c.id === p.who) || {}).name || 'Lazador ' + (i + 1))}</span><span>${p.b} − ${p.m}${p.T ? ' + T' + p.T : ''} = <b style="color:var(--gold2)">${p.t}</b></span></div>`).join('')}</div>`;
+  }
+  if (fk === 'mpie' || fk === 'mcab') {
+    const REM = fk === 'mpie' ? R.MPIE_REM : R.MCAB_REM, FL = fk === 'mpie' ? R.MPIE_FL : R.MCAB_FL, RM = fk === 'mpie' ? R.MPIE_RM : R.MCAB_RM;
+    h += jSelWho('who', ev, tid, 'Manganeador');
+    r.rows.forEach((x, i) => { const o = d.tiros[i];
+      h += `<div class="opp ${o.dq ? 'dq' : ''}">${oppHead(['1er','2do','3er'][i] + ' tiro', x.b, x.m, `tiros.${i}.dq`)}<label class="f">${fk === 'mpie' ? 'Remate (base 10)' : 'Remate'}</label>${jSel(`tiros.${i}.res`, REM, 'Falló / sin mangana', fk !== 'mpie')}
+      ${o.res ? `<div class="mini-l">Adicionales por floreo</div>${jArr(`tiros.${i}.fl`, FL)}<div class="mini-l">Adicionales al rematar</div>${jArr(`tiros.${i}.rm`, RM)}${fk === 'mpie' ? `<div class="mini-l">Adicionales al estirar</div>${jArr(`tiros.${i}.es`, R.MPIE_ES)}` : ''}` : ''}
+      ${o.res && !x.ok && !o.dq ? '<div class="small" style="color:#ffb0b0;margin-top:6px">Remate repetido: se descalifica la oportunidad.</div>' : ''}
+      ${jMalos(`tiros.${i}.m`, 'inf:' + fk)}</div>`; });
+    h += jNum('tiempo', 'Terminado en (min, de 7)', 'Ej. 5.3') + `<div class="small mut" style="margin-top:6px">T: +${r.T} (1 por minuto no utilizado, si consumó al menos una)</div>`;
+  }
+  if (fk === 'paso') {
+    const row = d.cls ? R.PASO_T[d.cls] : null;
+    h += jSelWho('who', ev, tid, 'Pasador') + `<div class="opp ${d.dq ? 'dq' : ''}">${oppHead('Paso de la muerte', r.buenos, r.malos, 'dq')}
+      <label class="f">Paso</label>${jSel('vuelta', [['1','En la primera vuelta',20],['2','En la segunda vuelta',15],['parada','A yegua parada, caminando o al trote',5]], 'No lo realizó')}
+      ${d.vuelta === '1' ? `<label class="f">Cuarto del brinco</label>${jSel('cuarto', [['1','Primer cuarto',3],['2','Segundo cuarto',2],['3','Tercer cuarto',1]], 'Después del tercer cuarto')}` : ''}
+      ${d.vuelta ? `<label class="f">Jineteada</label><div class="grid2">${jSel('cls', R.PASO_CLS.map(([k, l]) => [k, l]), 'Sin calificar', false)}<select class="in" data-jp="arreo"><option value="sin" ${d.arreo !== 'con' ? 'selected' : ''}>Sin arreo</option><option value="con" ${d.arreo === 'con' ? 'selected' : ''}>Con arreo</option></select></div>
+      ${row ? `<div class="chips mt">${jTog('cuartear', 'Cuarteó (2 cuartazos)', row[d.arreo === 'con' ? 3 : 2])}${jTog('apearse', 'Se apeó cruzando la pierna u oreja', row[4])}${jTog('levantarse', 'Se levantó sin ayuda tras caer la yegua', row[5])}${jTog('desc', 'Se descompuso', row[6])}</div>` : ''}` : ''}
+      ${jNum('tiempo', 'Tiempo en salir la yegua (min)', 'Ej. 1.2')}${jMalos('m', 'inf:paso')}</div>`;
+  }
+  h += `<div class="card mt" style="padding:12px">${jMalos('eq', 'eq:' + fk, 'Infracción al equipo')}</div>`;
+  h += `<label class="f">Observaciones</label><textarea class="in" data-jp="notes" placeholder="Opcional">${esc(d.notes || '')}</textarea>`;
+  if (r.warn.length) h += `<div class="banner err mt">${I.info}<span>${r.warn.map(esc).join('<br>')}</span></div>`;
+  return { html: h, r };
+}
+
+function vJuez(){
+  const u = State.user; if (!u) return needLogin();
+  if (!isApproved(u)) return `<a class="back" href="#cuenta">${I.arrow} Cuenta</a>` + emptyState(I.shield, 'Cuenta en revisión', 'Podrás calificar cuando el administrador autorice tu cuenta.');
+  if (!State.param) {
+    const evs = DB.all('events').filter(e => canSheet(u, e)).sort((a, b) => (a.status === 'en_vivo' ? -1 : 1) - (b.status === 'en_vivo' ? -1 : 1) || b.date.localeCompare(a.date));
+    return `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="h1">Mesa del juez</div><div class="sub" style="margin-top:4px">Califica por faena y entrega la hoja oficial de cada ${'equipo'}.</div>` +
+      (evs.length ? `<div class="list mt">${evs.map(ev => `<a class="card evc" href="#juez-${ev.id}"><div class="row wrapf" style="gap:6px;margin-bottom:5px">${statusChip(ev)}${modeChip(ev)}</div><div class="t">${esc(ev.title)}</div><div class="meta">${esc(lienzo(ev.lienzoId).name)} · ${evScores(ev.id).length} faenas calificadas</div></a>`).join('')}</div>` : `<div class="mt">${emptyState(I.gavel, 'No hay charreadas disponibles', 'El lienzo debe iniciar la charreada para habilitar la calificación.')}</div>`);
+  }
+  const ev = DB.get('events', State.param);
+  if (!ev || !canSheet(u, ev)) return `<a class="back" href="#juez">${I.arrow} Mesa del juez</a>` + emptyState(I.shield, 'Sin acceso a esta charreada', 'No tienes permiso en este lienzo o la charreada no ha iniciado.');
+  if (!ev.teams.length) return `<a class="back" href="#juez">${I.arrow} Mesa del juez</a>` + emptyState(I.info, 'Sin inscritos', 'La charreada no tiene equipos o charros.');
+  // estado de captura
+  let j = State.j;
+  if (!j || j.eid !== ev.id) j = State.j = { eid: ev.id, tid: ev.teams[0].id, fk: ev.suertes[0], d: null };
+  if (!ev.teams.some(t => t.id === j.tid)) j.tid = ev.teams[0].id;
+  if (!ev.suertes.includes(j.fk)) j.fk = ev.suertes[0];
+  const team = ev.teams.find(t => t.id === j.tid), sc = evScores(ev.id), existing = sc.find(s => s.teamId === j.tid && s.faena === j.fk);
+  if (!j.d) { j.d = existing ? clone(existing.input) : RULES.blank(j.fk, ev.mode); j.dirty = false; }
+  const locked = isLocked(ev, team.id) && !isSuper(u), editable = canScore(u, ev) && !locked;
+  const st = teamStandings(ev);
+  let h = `<a class="back" href="#evento-${ev.id}">${I.arrow} Ver pública</a><div class="row between"><div class="grow"><div class="row" style="gap:6px">${statusChip(ev)}${modeChip(ev)}</div><div style="font-weight:800;font-size:17px;margin-top:6px" class="ell">${esc(ev.title)}</div></div></div>
+    <label class="f">${teamLabel(ev)}</label><div class="scroller">${st.map(t => `<button class="tog ${t.id === j.tid ? 'on' : ''}" data-jteam="${t.id}">${esc(t.name)} · <b>${t.pts}</b>${isLocked(ev, t.id) ? ' 🔒' : ''}</button>`).join('')}</div>
+    <label class="f">Faena</label><div class="scroller">${ev.suertes.map(fk => { const done = sc.some(s => s.teamId === j.tid && s.faena === fk); return `<button class="tog ${done ? 'done' : ''} ${fk === j.fk ? 'on' : ''}" data-jfaena="${fk}">${done ? '✓ ' : ''}${esc(RULES.F[fk].short)}</button>`; }).join('')}</div>`;
+  if (locked) h += `<div class="banner ok mt">${I.check}<span>La hoja de ${esc(team.name)} ya fue entregada y firmada. Solo el súper usuario puede reabrirla.</span></div>`;
+  else if (!canScore(u, ev)) h += `<div class="banner warn mt">${I.info}<span>La charreada no está en vivo: puedes revisar y entregar las hojas, pero no modificar calificaciones.</span></div>`;
+  const { html, r } = faenaForm(ev, team, j.fk);
+  h += `<div class="h2">${esc(FN(j.fk))} · ${esc(team.name)}</div><div id="jform" ${editable ? '' : 'style="pointer-events:none;opacity:.6"'}>${html}</div>`;
+  h += `<div class="sum-bar"><div class="grow"><div class="small mut">${esc(RULES.F[j.fk].short)} · ${existing ? (j.dirty ? 'cambios sin publicar' : 'publicada ' + ftime(existing.updatedAt)) : 'sin publicar'}</div>
+    <div class="score-line"><span class="b">B ${r.buenos}</span><span class="m">M −${r.malos}</span>${r.T ? `<span class="b">T +${r.T}</span>` : ''}${r.eq ? `<span class="m">Eq −${r.eq}</span>` : ''}</div></div>
+    <div class="big">${r.total - r.eq}</div>${editable ? `<button class="btn pri sm" data-act="jPublish">${I.check} ${existing ? 'Actualizar' : 'Publicar'}</button>` : ''}</div>`;
+  h += `<div class="btns mt2"><a class="btn" href="#hoja-${ev.id}-${team.id}">${I.doc} Hoja de ${esc(team.name)}</a></div>
+    <div class="small mut2 center mt">Cada publicación y corrección queda en la bitácora con tu nombre y hora.</div>`;
+  return h;
+}
+
+/* =====================================================================
+   HOJA DE CALIFICACIÓN DIGITAL (formato oficial)
+   ===================================================================== */
+function infCodes(m, key){ const defs = DEFS(key); return (m || []).map(x => { const df = defs.find(y => y[0] === x.c); return df ? `${/^[ge][IVXL]/.test(df[0]) ? 'SG-' + df[0].slice(1) : df[0]}${x.n > 1 ? '×' + x.n : ''}(${df[2] * (x.n || 1)})` : ''; }).join(' '); }
+function infList(m, key){ const defs = DEFS(key); return (m || []).map(x => { const df = defs.find(y => y[0] === x.c); return df ? `${esc(df[1])}${x.n > 1 ? ' ×' + x.n : ''} (−${df[2] * (x.n || 1)})` : ''; }).filter(Boolean); }
+const cname = (ev, id) => (ev.charros.find(c => c.id === id) || {}).name || '';
+const nz = v => v ? v : '';
+function sheetFaena(ev, team, fk, s){
+  const d = s ? s.input : RULES.blank(fk, ev.mode), r = RULES.calc(fk, d), R = RULES; const ttl = FN(fk).toUpperCase();
+  const det = []; const add = (who, m, key) => { const l = infList(m, key); if (l.length) det.push(`<b>${esc(who)}</b>: ${l.join('; ')}`); };
+  let t = '';
+  const left = (rows, sup = true) => `<td class="fn" rowspan="${rows}" style="width:150px">${ttl}</td>`;
+  if (fk === 'cala') {
+    const malCells = (d.m || []).flatMap(x => Array(Math.min(4, x.n || 1)).fill(R.val(DEFS('inf:cala'), x.c))).slice(0, 10);
+    t = `<table><tr><td class="fn" rowspan="2" style="width:150px">${ttl}</td><td colspan="9" style="font-weight:700"><u>&nbsp;${nz(d.metros)}&nbsp;</u> METROS EN <u>&nbsp;${nz(d.tiempos > 4 ? '+4' : d.tiempos)}&nbsp;</u> TIEMPOS</td><td colspan="10" class="red" style="font-weight:800">MALOS</td><th class="g" style="width:44px">TOTAL MALOS</th><th style="width:52px">PUNTOS PARCIALES</th></tr>
+      <tr>${['BASE','P','T','LD','LI','MD','MI','PC'].map(h => `<th>${h}</th>`).join('')}<th class="g">TOTAL</th>${Array.from({ length: 10 }, (_, i) => `<td class="red">${malCells[i] ? '-' + malCells[i] : ''}</td>`).join('')}<td class="red g">-${nz(r.malos)}</td><td></td></tr>
+      <tr><td class="who">${esc(cname(ev, d.who))}</td><td class="red" style="font-weight:800;font-size:13px">${d.who ? 20 : ''}</td>${['P','T','LD','LI','MD','MI','PC'].map(k => `<td>${nz(r.cells[k])}</td>`).join('')}<td class="g">${r.buenos}</td><td colspan="10" style="font-size:8px;text-align:left">${esc(infCodes(d.m, 'inf:cala'))}</td><td class="red g">-${nz(r.malos)}</td><td class="gt">${r.total}</td></tr></table>`;
+    add(cname(ev, d.who) || 'Calador', d.m, 'inf:cala');
+  }
+  if (fk === 'piales' || fk === 'mpie' || fk === 'mcab') {
+    const lab = fk === 'piales' ? ['1er TIRO','2do TIRO','3er TIRO'] : ['1er TIRO','2do TIRO','3er TIRO'], hasT = fk !== 'piales';
+    const REM = fk === 'piales' ? R.PIAL_REM : fk === 'mpie' ? R.MPIE_REM : R.MCAB_REM;
+    t = `<table><tr>${left(3)}${lab.map(l => `<th colspan="3">${l}</th>`).join('')}${hasT ? '<th rowspan="2" style="width:30px">T</th>' : ''}<th rowspan="2" class="g" style="width:54px">TOTAL</th></tr>
+      <tr>${lab.map(() => `<th>BUENO</th><th class="red">MALOS</th><th class="g">TOTAL</th>`).join('')}</tr>
+      <tr>${r.rows.map((x, i) => `<td>${nz(x.b)}</td><td class="red">-${nz(x.m)}</td><td class="g">${x.t}</td>`).join('')}${hasT ? `<td>${nz(r.T)}</td>` : ''}<td class="gt">${r.total}</td></tr>
+      <tr><td class="who">${esc(cname(ev, d.who))}</td>${(d.tiros || []).map((o, i) => `<td colspan="3" style="font-size:8px">${o.res ? esc(R.lbl(REM, o.res)) : '—'}${o.dq ? ' · DESC.' : ''}</td>`).join('')}${hasT ? '<td></td>' : ''}<td></td></tr></table>`;
+    if (hasT) t += `<div class="aux">TERMINADO EN <span class="box">${nz(d.tiempo)}</span> MIN.</div>`;
+    (d.tiros || []).forEach((o, i) => add(`${cname(ev, d.who) || 'Competidor'} · tiro ${i + 1}`, o.m, 'inf:' + fk));
+  }
+  if (fk === 'coleadero') {
+    t = `<table><tr>${left(2 + r.cols.length)}${['1a PASADA','2a PASADA','3a PASADA'].map(l => `<th colspan="3">${l}</th>`).join('')}<th rowspan="2" class="g" style="width:54px">TOTAL</th></tr>
+      <tr>${[0,1,2].map(() => `<th>BUENOS</th><th class="red">MALOS</th><th class="g">TOTAL</th>`).join('')}</tr>
+      ${r.cols.map((c, ci) => `<tr>${c.rows.map(x => `<td>${nz(x.b)}</td><td class="red">-${nz(x.m)}</td><td class="g">${x.t}</td>`).join('')}<td class="gt">${c.t}</td></tr>`).join('')}
+      <tr><td colspan="9" class="who" style="font-size:8.5px">${r.cols.map((c, ci) => `${ci + 1}. ${esc(cname(ev, c.who) || '—')}: ${d.coleadores[ci].pasadas.map(o => o.res ? esc(R.lbl(R.CAIDAS, o.res)) : '—').join(' / ')}`).join(' &nbsp;|&nbsp; ')}</td><td class="gt">${r.total}</td></tr></table>`;
+    d.coleadores.forEach((c, ci) => c.pasadas.forEach((o, i) => add(`${cname(ev, c.who) || 'Coleador ' + (ci + 1)} · pasada ${i + 1}`, o.m, 'inf:coleadero')));
+  }
+  if (fk === 'toro' || fk === 'yegua') {
+    const cols = fk === 'toro' ? [['gaza','PRETAL DE GASA'],['unaMano','1 MANO'],['piernas','PIERNAS'],['tentemozo','TENTE MOSO'],['qVerijero','VERIJERO'],['qPretal','PRETAL'],['levSin','CAERSE Y LEVANTARSE'],['bajarse','BAJARSE SIN SER LAZADO']]
+      : [['gaza','PRETAL DE GASA'],['piernas','PIERNAS'],['unaMano','1 MANO'],['tentemozo','TENTE MOSO'],['qVerijero','VERIJERO'],['qPretal','PRETAL'],['levSin','CAERSE Y LEVANTARSE'],['oreja','BAJAR OREJA C/PIERN']];
+    const other = (fk === 'toro' ? R.TORO_COLS : R.YEGUA_COLS).filter(([k]) => !cols.some(c => c[0] === k) && r.cells[k]);
+    const cellVal = k => k === 'levSin' ? (r.cells.levSin || r.cells.levCon || 0) : r.cells[k];
+    t = `<table><tr>${left(2)}<th>BASE</th>${cols.map(c => `<th style="font-size:7px">${c[1]}</th>`).join('')}<th class="g">TOTAL</th><th class="red">MALOS</th><th style="width:26px">T</th><th class="g" style="width:54px">TOTAL</th></tr>
+      <tr><td>${nz(r.cells.base)}</td>${cols.map(c => `<td>${nz(cellVal(c[0]))}</td>`).join('')}<td class="g">${r.buenos}</td><td class="red">-${nz(r.malos)}</td><td>${nz(r.T)}</td><td class="gt">${r.total}</td></tr>
+      <tr><td class="who">${esc(cname(ev, d.who))}</td><td colspan="${cols.length + 5}" style="font-size:8px;text-align:left">${d.cls ? 'Jineteada ' + esc(R.CLS.find(x => x[0] === d.cls)[1]) : 'Sin calificación'}${other.length ? ' · Otros adicionales: ' + other.map(o => `${esc(o[1])} ${r.cells[o[0]]}`).join(', ') : ''}${r.desc ? ` · Descomponerse −${r.desc}` : ''}${r.timeInf ? ` · Tiempo −${r.timeInf}` : ''}${d.dq ? ' · DESCALIFICADA' : ''}</td></tr></table>
+      <div class="aux">TERMINADO EN <span class="box">${nz(d.tiempo)}</span> MIN.</div>`;
+    add(cname(ev, d.who) || 'Jinete', d.m, 'inf:' + fk);
+  }
+  if (fk === 'terna') {
+    t = `<table><tr>${left(5)}<th colspan="4">5 OPORTUNIDADES</th><th rowspan="2" class="red" style="width:40px">MALOS</th><th rowspan="2" style="width:26px">T</th><th rowspan="2" class="g" style="width:54px">TOTAL</th></tr>
+      <tr><th>BASE/ADICIONALES</th><th>REMATE</th><th>BASE/ADICIONALES</th><th>REMATE</th></tr>
+      ${r.per.map((p, li) => { const ops = r.rows.map((x, i) => ({ ...x, o: d.intentos[i] })).filter(x => x.l === li).slice(0, 2);
+        const cell = x => x ? `<td>${x.b}</td><td style="font-size:7.5px">${x.o.tipo === 'pial' ? 'Pial ' : 'Cab. '}${x.res ? esc(R.lbl(x.tipo === 'pial' ? R.PIAL_RUEDO : R.CABEZA, x.res)) : 'falló'}</td>` : '<td></td><td></td>';
+        return `<tr>${cell(ops[0])}${cell(ops[1])}<td class="red">-${nz(p.m)}</td><td>${nz(p.T)}</td><td class="gt">${p.t}</td></tr>`; }).join('')}
+      <tr><td colspan="7" class="who" style="font-size:8.5px">${r.per.map((p, i) => `${i + 1}. ${esc(cname(ev, p.who) || '—')}`).join(' &nbsp;|&nbsp; ')}</td></tr></table>
+      <div class="aux">TERMINADO EN <span class="box">${nz(d.tiempo)}</span> MIN. ${r.consumada ? `&nbsp; Minutos ahorrados: ${r.saved}` : ''}</div>`;
+    (d.intentos || []).forEach((o, i) => add(`${cname(ev, d.lazadores[o.l]) || 'Lazador'} · oportunidad ${i + 1}`, o.m, o.tipo === 'pial' ? 'inf:ternaPial' : 'inf:ternaCab'));
+  }
+  if (fk === 'paso') {
+    const c = r.cells;
+    t = `<table><tr>${left(3)}<th>1ra VUELTA<br>BASE</th><th>2da VUELTA<br>BASE</th><th>DISTANCIA</th><th>CUARTA</th><th>REPAROS</th><th>OREJA C/P</th><th class="red">MALOS</th><th class="g" style="width:54px">TOTAL</th></tr>
+      <tr><td>${nz(c.v1)} +</td><td>${nz(c.v2)} +</td><td>${nz(c.dist)} +</td><td>${nz(c.cuarta)} +</td><td>${nz(c.reparos)} +</td><td>${nz(c.oreja)}</td><td class="red">-${nz(r.malos)}</td><td class="gt">${r.total}</td></tr>
+      <tr><td class="who" colspan="8" style="font-size:8.5px">${esc(cname(ev, d.who) || '—')}${d.cls ? ` · Jineteada ${esc(R.PASO_CLS.find(x => x[0] === d.cls)[1])} ${d.arreo === 'con' ? 'con' : 'sin'} arreo` : ''}${r.desc ? ` · Descomponerse −${r.desc}` : ''}${d.dq ? ' · DESCALIFICADO' : ''}</td></tr></table>
+      <div class="aux">TIEMPO EN SALIR <span class="box">${nz(d.tiempo)}</span> MIN.</div>`;
+    add(cname(ev, d.who) || 'Pasador', d.m, 'inf:paso');
+  }
+  const eqL = infList(d.eq, 'eq:' + fk);
+  return `<div class="blk">${t}<div class="aux">INFRACCIÓN AL EQUIPO <span class="box red">-${nz(r.eq)}</span> <span style="font-weight:400;color:#555">Suma puntos malos: ${r.malos + r.eq}</span></div>
+    ${det.length || eqL.length ? `<div class="det">${det.join(' · ')}${eqL.length ? `${det.length ? ' · ' : ''}<b>Equipo</b>: ${eqL.join('; ')}` : ''}</div>` : ''}${d.notes ? `<div class="det"><i>Obs.: ${esc(d.notes)}</i></div>` : ''}${!s ? '<div class="det" style="color:#999">Faena sin calificar</div>' : ''}</div>`;
+}
+function sheetHTML(ev, team){
+  const L = lienzo(ev.lienzoId), sc = evScores(ev.id).filter(s => s.teamId === team.id), sh = sheetOf(ev.id, team.id) || {}, cc = ev.mode === 'completo';
+  const totalMalos = sum(sc.map(s => s.malos + s.eq)), final = sum(sc.map(s => s.net));
+  const jueces = (sh.jueces || []).slice(0, 3);
+  return `<div class="sheet" id="sheet">
+    <div class="hd"><div><div class="ttl">${cc ? 'HOJA DE CALIFICACIÓN · CHARRO COMPLETO' : 'HOJA DE CALIFICACIÓN · EQUIPO DE CHARROS'}</div>
+      <div class="stl">Conforme al Reglamento Oficial de Charros Libre y Juvenil 2024 – 2028 · Categoría ${esc(ev.category || 'Libre')}${ev.official ? ' · Competencia oficial' : ''}</div></div>
+      <div style="text-align:right;font-size:9px;color:#444"><b>Folio</b> ${esc(ev.id + '-' + team.id).toUpperCase()}<br>${sh.entregada ? '<span class="stamp">ENTREGADA Y FIRMADA</span>' : 'BORRADOR'}</div></div>
+    <div class="flds"><span>EVENTO: <em>${esc(ev.title)}</em></span><span>HORA: <em>${esc(sh.hora || '')}</em></span>
+      ${cc ? `<span>NOMBRE: <em>${esc(team.name)}</em></span><span>FECHA: <em>${fdate(ev.date)}</em></span><span>EQUIPO: <em>${esc(team.assoc || '')}</em></span><span>LUGAR: <em>${esc(L.name)}, ${esc(L.city)}</em></span>`
+      : `<span>EQUIPO: <em>${esc(team.name)}</em></span><span>FECHA: <em>${fdate(ev.date)}</em></span><span>CAPITÁN: <em>${esc(sh.capitan || team.capitan || '')}</em></span><span>LUGAR: <em>${esc(L.name)}, ${esc(L.city)}</em></span>`}</div>
+    ${ev.suertes.map(fk => sheetFaena(ev, team, fk, sc.find(s => s.faena === fk))).join('')}
+    <div class="tot"><div><span class="box" style="background:#e3e3e3">${totalMalos}</span> <span class="red" style="font-weight:700">TOTAL, PUNTOS MALOS</span></div><div style="font-weight:800;font-size:13px">PUNTUACIÓN FINAL → <span class="box" style="background:#e3e3e3;font-size:18px">${final}</span></div></div>
+    <div class="firmas" style="border-top:0">${['JUEZ','JUEZ','JUEZ', cc ? 'CHARRO COMPLETO' : 'CAPITÁN'].map(x => `<b>${x}</b>`).join('')}
+      ${[0,1,2].map(i => `<div>${jueces[i] ? `<span class="stamp">✓ ${esc(jueces[i].name)}</span><span>${fdt(jueces[i].ts)}</span>` : ''}</div>`).join('')}<div>${sh.capitanFirma ? `<span class="stamp">✓ ${esc(sh.capitanFirma)}</span><span>${sh.entregadaAt ? fdt(sh.entregadaAt) : ''}</span>` : ''}</div></div>
+    <div class="foot"><span>Documento digital generado por ${CONFIG.APP_NAME}. Las cifras se calculan automáticamente con los valores del reglamento y cada cambio queda registrado en bitácora.</span><span>${sh.entregadaAt ? 'Entregada ' + fdt(sh.entregadaAt) : 'Generada ' + fdt(Date.now())}</span></div></div>`;
+}
+function vHoja(){
+  const ev = DB.get('events', State.param), team = ev && ev.teams.find(t => t.id === State.param2), u = State.user;
+  if (!ev || !team) return emptyState(I.doc, 'Hoja no encontrada', '');
+  const sh = sheetOf(ev.id, team.id), sc = evScores(ev.id).filter(s => s.teamId === team.id), can = canSheet(u, ev);
+  const missing = ev.suertes.filter(fk => !sc.some(s => s.faena === fk));
+  let h = `<div class="noprint"><a class="back" href="#${can ? 'juez-' + ev.id : 'evento-' + ev.id}">${I.arrow} ${can ? 'Mesa del juez' : 'Charreada'}</a>
+    <div class="row between wrapf" style="gap:8px"><div><div style="font-weight:800;font-size:17px">Hoja de ${esc(team.name)}</div><div class="small mut">${esc(ev.title)}</div></div>${sh && sh.entregada ? `<span class="chip green">${I.check}Entregada</span>` : '<span class="chip">Borrador</span>'}</div>
+    <div class="btns mt"><button class="btn sm" data-act="print">${I.print} Imprimir / PDF</button><button class="btn sm" data-act="fit">${State.fit ? 'Tamaño real' : 'Ajustar a pantalla'}</button></div>`;
+  if (can && !(sh && sh.entregada)) h += `<div class="card mt">${missing.length ? `<div class="banner warn">${I.info}<span>Faltan por calificar: ${missing.map(FN).join(', ')}.</span></div>` : '<div class="banner ok">' + I.check + '<span>Todas las faenas están calificadas.</span></div>'}
+    <form data-form="entrega" class="mt"><div class="grid2"><div><label class="f" style="margin-top:0">${ev.mode === 'completo' ? 'Firma del charro' : 'Capitán que firma'}</label><input class="in" name="capitan" value="${esc((sh && sh.capitan) || team.capitan || (ev.mode === 'completo' ? team.name : ''))}" required></div>
+    <div><label class="f" style="margin-top:0">Hora</label><input class="in" name="hora" type="time" value="${esc((sh && sh.hora) || '')}"></div></div>
+    <label class="row mt small" style="gap:8px;align-items:flex-start"><input type="checkbox" name="ok" required style="margin-top:3px"> <span>Revisé la hoja con el ${ev.mode === 'completo' ? 'charro' : 'capitán'} y confirmo las calificaciones (Art. 14 y 26).</span></label>
+    <button class="btn pri block mt">${I.check} Firmar y entregar hoja</button></form></div>`;
+  if (can && sh && sh.entregada && !sh.jueces.some(x => x.id === u.id) && sh.jueces.length < 3 && u.role !== 'lienzo') h += `<button class="btn block mt" data-act="cosign" data-id="${sh.id}">${I.gavel} Firmar también como juez</button>`;
+  if (isSuper(u) && sh && sh.entregada) h += `<button class="btn ghost block mt" data-act="reopenSheet" data-id="${sh.id}">Reabrir hoja (súper usuario)</button>`;
+  h += `</div><div class="sheet-wrap mt">${sheetHTML(ev, team)}</div>`;
+  return h;
+}
+
+/* ---------- SÚPER USUARIO ---------- */
+function pendingCount(){ return DB.all('profiles').filter(p => p.status === 'pendiente').length + DB.all('events').filter(e => e.requestOfficial && !e.official && e.status !== 'borrador').length; }
+const statusLabel = s => ({ borrador:'Borrador', programado:'Programada', en_vivo:'En vivo', finalizado:'Finalizada' }[s] || s);
+const stChip = s => s === 'aprobado' ? `<span class="chip green">${I.check}Verificado</span>` : s === 'pendiente' ? '<span class="chip blue">Pendiente</span>' : `<span class="chip red">${esc(s)}</span>`;
+function vAdmin(){
+  const u = State.user;
+  if (!isSuper(u)) return emptyState(I.shield, 'Solo súper usuario', 'Esta sección es exclusiva del administrador.', `<a class="btn" href="#cuenta">Ir a mi cuenta</a>`);
+  const P = DB.all('profiles'), Ls = DB.all('lienzos'), Es = DB.all('events'), pend = P.filter(p => p.status === 'pendiente'), offReq = Es.filter(e => e.requestOfficial && !e.official && e.status !== 'borrador'), t = State.adminTab;
+  let h = `<div class="row between"><div><div class="h1">Súper usuario</div><div class="sub" style="margin-top:3px">Control y credibilidad de la plataforma</div></div></div>
+    <div class="kpis mt"><div class="kpi"><b>${Ls.filter(l => l.status === 'aprobado').length}</b><span>Lienzos verificados</span></div><div class="kpi"><b>${P.filter(p => p.role === 'juez' && p.status === 'aprobado').length}</b><span>Jueces activos</span></div><div class="kpi"><b>${DB.all('sheets').filter(s => s.entregada).length}</b><span>Hojas entregadas</span></div></div>
+    <div class="scroller mt">${[['solicitudes','Solicitudes',pend.length + offReq.length],['lienzos','Lienzos'],['usuarios','Usuarios'],['eventos','Charreadas'],['invitaciones','Invitaciones'],['bitacora','Bitácora']].map(([k, l, n]) => `<button class="tog ${t === k ? 'on' : ''}" data-act="admintab" data-k="${k}">${l}${n ? ` <span class="badge-n">${n}</span>` : ''}</button>`).join('')}</div>`;
+  if (t === 'solicitudes') {
+    h += `<div class="h2">Cuentas por autorizar</div>` + (pend.length ? `<div class="list">${pend.map(p => { const L = p.role === 'lienzo' ? DB.get('lienzos', p.lienzoId) : lienzo(p.lienzoId); return `<div class="card"><div class="row"><div class="avatar">${esc(initials(p.name))}</div><div class="grow"><div style="font-weight:800">${esc(p.name)}</div><div class="small mut">${roleName(p.role)} · ${esc(p.email)}${p.phone ? ' · ' + esc(p.phone) : ''}</div></div></div>
+      <div class="small" style="margin-top:8px">${p.role === 'lienzo' ? `Lienzo: <b>${esc(L && L.name)}</b> · ${esc(L && L.city)}, ${esc(L && L.state)}` : `Juez en: <b>${esc(L.name)}</b>`}</div><div class="small mut2" style="margin-top:2px">Solicitado ${fdt(p.createdAt)}</div>
+      <div class="btns mt"><button class="btn pri sm" data-act="approve" data-id="${p.id}">${I.check} Autorizar</button><button class="btn sm" data-act="reject" data-id="${p.id}">${I.x} Rechazar</button></div></div>`; }).join('')}</div>` : `<div class="card small mut">No hay cuentas pendientes. ✓</div>`);
+    h += `<div class="h2">Charreadas que piden ser oficiales</div>` + (offReq.length ? `<div class="list">${offReq.map(e => `<div class="card"><div class="row">${dateBox(e.date)}<div class="grow"><div style="font-weight:800">${esc(e.title)}</div><div class="small mut">${esc(lienzo(e.lienzoId).name)} · ${e.teams.length} inscritos · ${statusLabel(e.status)}</div></div></div>
+      <div class="btns mt"><button class="btn pri sm" data-act="toggleOfficial" data-id="${e.id}">${I.shield} Hacer oficial</button><button class="btn sm" data-act="denyOfficial" data-id="${e.id}">No oficial</button><a class="btn sm" href="#evento-${e.id}">Ver</a></div></div>`).join('')}</div>` : `<div class="card small mut">Sin solicitudes. ✓</div>`);
+  }
+  if (t === 'lienzos') h += `<div class="list mt">${Ls.slice().sort((a, b) => a.name.localeCompare(b.name)).map(l => { const o = DB.get('profiles', l.ownerId); return `<div class="card"><div class="row"><div class="grow"><div style="font-weight:800">${esc(l.name)} ${verifiedMark(l)}</div><div class="small mut">${esc(l.city)}, ${esc(l.state)} · ${esc(o ? o.email : '')}</div><div class="small mut2">${Es.filter(e => e.lienzoId === l.id).length} charreadas</div></div>${stChip(l.status)}</div>
+    <div class="btns mt">${l.status !== 'aprobado' ? `<button class="btn pri sm" data-act="lienzoSt" data-id="${l.id}" data-s="aprobado">Verificar</button>` : `<button class="btn sm" data-act="lienzoSt" data-id="${l.id}" data-s="suspendido">Suspender</button>`}</div></div>`; }).join('')}</div>`;
+  if (t === 'usuarios') h += `<div class="card pad0 mt">${P.slice().sort((a, b) => a.role.localeCompare(b.role)).map(p => `<div class="rank"><div class="avatar">${esc(initials(p.name))}</div><div class="grow"><div style="font-weight:700" class="ell">${esc(p.name)}</div><div class="small mut ell">${roleName(p.role)} · ${esc(p.email)}${p.lienzoId ? ' · ' + esc(lienzo(p.lienzoId).name) : ''}</div></div>
+    ${p.role === 'superadmin' ? '<span class="chip gold">Admin</span>' : p.status === 'aprobado' ? `<button class="btn ghost sm" data-act="userSt" data-id="${p.id}" data-s="suspendido">Suspender</button>` : `<button class="btn sm" data-act="approve" data-id="${p.id}">Autorizar</button>`}</div>`).join('')}</div>`;
+  if (t === 'eventos') h += `<div class="list mt">${Es.slice().sort((a, b) => b.date.localeCompare(a.date)).map(e => `<div class="card"><div class="row wrapf" style="gap:6px">${statusChip(e)}${officialChip(e)}${modeChip(e)}</div><div style="font-weight:800;margin-top:6px">${esc(e.title)}</div><div class="small mut">${esc(lienzo(e.lienzoId).name)} · ${fdate(e.date)} · ${evScores(e.id).length} faenas · ${DB.all('sheets').filter(s => s.eventId === e.id && s.entregada).length}/${e.teams.length} hojas</div>
+    <div class="btns mt"><button class="btn sm ${e.official ? '' : 'pri'}" data-act="toggleOfficial" data-id="${e.id}">${e.official ? 'Quitar oficial' : 'Hacer oficial'}</button><a class="btn sm" href="#panel-evento-${e.id}">Administrar</a></div></div>`).join('')}</div>`;
+  if (t === 'invitaciones') { const inv = DB.all('invites').slice().sort((a, b) => b.createdAt - a.createdAt);
+    h += `<form class="card mt" data-form="invite"><div style="font-weight:800">Crear invitación</div><div class="small mut" style="margin-top:3px">Quien se registre con este código queda autorizado al instante.</div>
+      <label class="f">Tipo</label><select class="in" name="role"><option value="juez">Juez</option><option value="lienzo">Lienzo</option></select>
+      <label class="f">Lienzo (solo para jueces)</label><select class="in" name="lienzoId"><option value="">—</option>${Ls.filter(l => l.status === 'aprobado').map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select><button class="btn pri block mt2">${I.key} Generar código</button></form>
+      <div class="h2">Códigos</div>` + (inv.length ? `<div class="card pad0">${inv.map(i => `<div class="rank"><div class="grow"><div style="font-weight:800;font-family:monospace;font-size:15px">${esc(i.code)}</div><div class="small mut">${roleName(i.role)}${i.lienzoId ? ' · ' + esc(lienzo(i.lienzoId).name) : ''} · ${fdt(i.createdAt)}</div></div>${i.used ? '<span class="chip">Usado</span>' : `<button class="btn sm" data-act="copy" data-t="${esc(i.code)}">Copiar</button>`}</div>`).join('')}</div>` : `<div class="card small mut">Sin códigos.</div>`); }
+  if (t === 'bitacora') { const A = DB.all('audit').slice().sort((a, b) => b.ts - a.ts).slice(0, 200);
+    h += `<div class="small mut mt">Registro de todo lo que pasa en la plataforma. No se puede editar.</div><div class="card pad0 mt">${A.map(a => `<div class="rank" style="align-items:flex-start"><span class="chip" style="min-width:76px;justify-content:center">${esc(a.action)}</span><div class="grow"><div class="small" style="color:var(--text)">${esc(a.detail)}</div><div class="small mut2">${esc(a.actorName)} · ${fdt(a.ts)}</div></div></div>`).join('') || '<div class="empty">Sin registros</div>'}</div>`; }
+  return h;
+}
+
+/* ------------------------- UI: toasts, modal, selector de infracciones ------------------------- */
+function toast(msg, type = ''){ const box = $('#toasts'); while (box.children.length > 1) box.firstChild.remove(); const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg; box.appendChild(t); setTimeout(() => t.remove(), 3200); }
+function ask(title, text, okLabel = 'Confirmar', danger = false, withInput = false){
+  return new Promise(res => {
+    $('#modal').innerHTML = `<div class="modal"><div class="box"><div style="font-weight:800;font-size:17px">${esc(title)}</div><div class="sub" style="margin-top:6px">${esc(text)}</div>${withInput ? '<input class="in mt" id="askIn" placeholder="Motivo">' : ''}<div class="btns mt2"><button class="btn" id="askNo">Cancelar</button><button class="btn ${danger ? 'vino' : 'pri'}" id="askOk">${esc(okLabel)}</button></div></div></div>`;
+    const close = v => { $('#modal').innerHTML = ''; res(v); };
+    $('#askNo').onclick = () => close(false); $('#askOk').onclick = () => close(withInput ? ($('#askIn').value.trim() || 'Sin motivo') : true);
+    $('#modal .modal').onclick = e => { if (e.target.classList.contains('modal')) close(false); };
+  });
+}
+function infPicker(path, key){
+  const defs = DEFS(key), isEq = key.startsWith('eq:'); let q = '';
+  const draw = () => {
+    const cur = getP(State.j.d, path) || [], list = defs.filter(x => !q || norm(x[1] + ' ' + x[0]).includes(norm(q)));
+    const own = list.filter(x => !/^[ge]/.test(x[0]) || isEq && !x[0].startsWith('e')), gen = list.filter(x => !own.includes(x));
+    const item = x => { const c = cur.find(m => m.c === x[0]); return `<button class="check-it row" data-pick="${x[0]}" style="width:100%;text-align:left;background:${c ? 'rgba(239,68,68,.1)' : 'var(--bg2)'};border:1px solid ${c ? 'rgba(239,68,68,.45)' : 'var(--line2)'};border-radius:12px;padding:10px 12px;margin-top:6px;cursor:pointer"><span class="chip" style="min-width:44px;justify-content:center">${esc(x[0].replace(/^[ge]/, ''))}</span><span class="grow small" style="color:var(--text)">${esc(x[1])}</span><b style="color:#ff9a9a">−${x[2]}</b>${c ? `<span class="badge-n">${c.n}</span>` : ''}</button>`; };
+    $('#modal').innerHTML = `<div class="modal"><div class="box"><div class="row between"><div style="font-weight:800;font-size:17px">${isEq ? 'Infracción al equipo' : 'Agregar infracción'}</div><button class="btn sm" data-close="1">Listo</button></div>
+      <input class="in mt" id="pq" placeholder="Buscar…" value="${esc(q)}"><div class="small mut" style="margin-top:6px">Toca para sumar; toca de nuevo para contar otra vez.</div>
+      ${own.length ? `<div class="mini-l">${isEq ? 'De esta faena' : 'Infracciones de la faena'}</div>${own.map(item).join('')}` : ''}${gen.length ? `<div class="mini-l">Sanciones generales</div>${gen.map(item).join('')}` : ''}</div></div>`;
+    const inp = $('#pq'); inp.oninput = () => { q = inp.value; const pos = inp.selectionStart; draw(); const n = $('#pq'); n.focus(); n.setSelectionRange(pos, pos); };
+    $('#modal .modal').onclick = e => {
+      if (e.target.classList.contains('modal') || e.target.closest('[data-close]')) { $('#modal').innerHTML = ''; render(); return; }
+      const b = e.target.closest('[data-pick]'); if (!b) return;
+      const arr = getP(State.j.d, path) || []; const ex = arr.find(m => m.c === b.dataset.pick);
+      if (ex) ex.n = (ex.n || 1) + 1; else arr.push({ c: b.dataset.pick, n: 1 });
+      setP(State.j.d, path, arr); State.j.dirty = true; draw();
+    };
+  };
+  draw();
+}
+async function safe(fn, okMsg){ try { await fn(); if (okMsg) toast(okMsg, 'ok'); } catch (e) { toast(e.message || 'Ocurrió un error', 'err'); } render(); }
+
+/* ------------------------- ACCIONES ------------------------- */
+const curEv = () => DB.get('events', State.param);
+async function updEv(patch){ const ev = curEv(); await DB.put('events', { ...ev, ...patch, updatedAt: Date.now() }); }
+async function confirmDiscard(){ if (State.j && State.j.dirty) return ask('Cambios sin publicar', 'Tienes cambios sin publicar en esta faena. ¿Descartarlos?', 'Descartar', true); return true; }
+
+const ACT = {
+  reg(){ State.authMode = 'register'; State.regRole = 'lienzo'; },
+  evtab(el){ State.homeTab = el.dataset.k; render(); }, ranktab(el){ State.rankTab = el.dataset.k; render(); },
+  rankOficial(){ State.rankOficial = !State.rankOficial; render(); }, histOficial(){ State.histOficial = !State.histOficial; render(); },
+  authmode(el){ State.authMode = el.dataset.k; render(); }, regrole(el){ State.regRole = el.dataset.k; render(); }, admintab(el){ State.adminTab = el.dataset.k; render(); },
+  fit(){ State.fit = !State.fit; render(); },
+  print(){ try { window.print(); } catch (e) { toast('Tu navegador no permite imprimir desde aquí. Ábrela en el sitio publicado.', 'err'); } },
+  async demo(el){ await safe(async () => { State.user = await DB.backend.login(el.dataset.e, el.dataset.p); State.j = null; go(isSuper(State.user) ? 'admin' : 'cuenta'); }, 'Sesión iniciada'); },
+  async reset(){ if (await ask('Restablecer demo', 'Se borrarán los cambios y se cargarán los datos de ejemplo.', 'Restablecer', true)) { await DB.backend.reset(); State.user = null; State.j = null; go('inicio'); toast('Datos restablecidos', 'ok'); } },
+  async logout(){ await DB.backend.logout(); State.user = null; State.j = null; go('inicio'); },
+  async share(el){ const url = location.href.split('#')[0] + '#evento-' + el.dataset.id; try { await navigator.clipboard.writeText(url); toast('Enlace copiado', 'ok'); } catch (e) { toast(url); } },
+  async copy(el){ try { await navigator.clipboard.writeText(el.dataset.t); toast('Código copiado', 'ok'); } catch (e) { toast(el.dataset.t); } },
+  async simulate(el){
+    const ev = DB.get('events', el.dataset.id), sc = evScores(ev.id), rng = Math.random;
+    for (const fk of ev.suertes) for (const tm of ev.teams) if (!sc.some(s => s.teamId === tm.id && s.faena === fk)) {
+      if (isLocked(ev, tm.id)) continue;
+      await DB.put('scores', scoreRow(ev, tm, fk, genFaena(fk, ev, tm, rng), ['ujuez','Juez Ricardo Ponce'], Date.now()));
+      State.homeTab = 'feed'; render(); toast(`Nueva: ${FN(fk)} · ${tm.name}`, 'ok'); return;
+    }
+    toast('Ya se calificaron todas las faenas');
+  },
+  async newEvent(){
+    const u = State.user, L = myLienzo(u); if (!L) return;
+    const ev = { id: 'e' + uid(), title: 'Nueva charreada', lienzoId: L.id, date: localISO(), mode: 'equipos', category: 'Libre', status: 'borrador', official: false, requestOfficial: false, suertes: RULES.ORDER_EQ.slice(), teams: [], charros: [], streamUrl: '', videoUrl: '', createdAt: Date.now(), createdBy: u.id };
+    await safe(async () => { await DB.put('events', ev); await audit('crear', `Creó la charreada “${ev.title}” en ${L.name}`); go('panel-evento-' + ev.id); });
+  },
+  async evStatus(el){
+    const ev = curEv(), s = el.dataset.s;
+    if (s === 'programado' && !ev.teams.length) return toast('Inscribe al menos un equipo o charro', 'err');
+    if (s === 'finalizado' && !(await ask('Finalizar charreada', 'Las calificaciones quedarán cerradas. Los jueces aún podrán entregar las hojas.', 'Finalizar', true))) return;
+    if (s === 'en_vivo' && ev.status === 'programado' && !(await ask('Iniciar en vivo', 'El público verá la charreada en vivo y los jueces podrán calificar.', 'Iniciar'))) return;
+    await safe(async () => { await updEv({ status: s, ...(s === 'en_vivo' ? { startedAt: Date.now() } : {}), ...(s === 'finalizado' ? { endedAt: Date.now() } : {}) }); await audit('estado', `“${ev.title}” → ${statusLabel(s)}`); }, statusLabel(s));
+  },
+  async reqOfficial(){ const ev = curEv(); await safe(async () => { await updEv({ requestOfficial: !ev.requestOfficial }); if (!ev.requestOfficial) await audit('solicitud', `Solicitó oficializar “${ev.title}”`); }); },
+  async toggleOfficial(el){ const ev = DB.get('events', el.dataset.id); await safe(async () => { await DB.put('events', { ...ev, official: !ev.official, requestOfficial: !ev.official ? true : ev.requestOfficial, officialBy: State.user.id, updatedAt: Date.now() }); await audit('oficial', `${ev.official ? 'Quitó oficial a' : 'Marcó como oficial'}: ${ev.title}`); }, ev.official ? 'Ya no es oficial' : 'Charreada oficial'); },
+  async denyOfficial(el){ const ev = DB.get('events', el.dataset.id); await safe(async () => { await DB.put('events', { ...ev, requestOfficial: false, updatedAt: Date.now() }); await audit('oficial', `Rechazó oficializar: ${ev.title}`); }); },
+  async toggleSuerte(el){ const ev = curEv(), s = el.dataset.s, order = ev.mode === 'completo' ? RULES.ORDER_CC : RULES.ORDER_EQ; const list = ev.suertes.includes(s) ? ev.suertes.filter(x => x !== s) : order.filter(x => ev.suertes.includes(x) || x === s); await safe(() => updEv({ suertes: list })); },
+  async delTeam(el){ const ev = curEv(); if (!(await ask('Quitar', 'Se quitará del registro de la charreada.', 'Quitar', true))) return; await safe(() => updEv({ teams: ev.teams.filter(t => t.id !== el.dataset.id), charros: ev.charros.filter(c => c.teamId !== el.dataset.id) })); },
+  async delCharro(el){ const ev = curEv(); await safe(() => updEv({ charros: ev.charros.filter(c => c.id !== el.dataset.id) })); },
+  async delEvent(){ const ev = curEv(); if (!(await ask('Eliminar charreada', 'Dejará de mostrarse en la plataforma.', 'Eliminar', true))) return; await safe(async () => { await DB.put('events', { ...ev, deleted: true, updatedAt: Date.now() }); await audit('eliminar', `Eliminó “${ev.title}”`); go('panel'); }); },
+  // ---- juez ----
+  async jPublish(){
+    const j = State.j, ev = DB.get('events', j.eid), u = State.user, team = ev.teams.find(t => t.id === j.tid);
+    if (!canScore(u, ev)) return toast('La charreada no está en vivo', 'err');
+    if (isLocked(ev, team.id) && !isSuper(u)) return toast('La hoja ya fue entregada', 'err');
+    const d = j.d, r = RULES.calc(j.fk, d);
+    if (!r.parts.length) return toast('Elige al competidor de la faena', 'err');
+    const prev = evScores(ev.id).find(s => s.teamId === team.id && s.faena === j.fk);
+    const row = scoreRow(ev, team, j.fk, clone(d), [u.id, u.name], Date.now());
+    if (prev) { row.createdAt = prev.createdAt; row.history = [...(prev.history || []), { net: prev.net, at: Date.now(), by: u.name }]; }
+    await safe(async () => { await DB.put('scores', row); await audit(prev ? 'corregir' : 'calificar', `${FN(j.fk)} · ${team.name}: ${prev ? prev.net + ' → ' : ''}${row.net} pts (B ${row.buenos}, M ${row.malos}${row.eq ? ', Eq ' + row.eq : ''}) en “${ev.title}”`); j.dirty = false; }, prev ? 'Corrección publicada' : `Publicado: ${row.net} pts`);
+  },
+  async cosign(el){ const sh = DB.get('sheets', el.dataset.id), u = State.user; await safe(async () => { await DB.put('sheets', { ...sh, jueces: [...sh.jueces, { id: u.id, name: u.name, ts: Date.now() }] }); await audit('firma', `${u.name} firmó la hoja ${sh.id}`); }, 'Firma agregada'); },
+  async reopenSheet(el){ const sh = DB.get('sheets', el.dataset.id); const why = await ask('Reabrir hoja', 'Los jueces podrán corregir y deberán entregarla de nuevo.', 'Reabrir', true, true); if (!why) return; await safe(async () => { await DB.put('sheets', { ...sh, entregada: false, reopened: [...(sh.reopened || []), { by: State.user.name, at: Date.now(), why }] }); await audit('reabrir', `Reabrió la hoja ${sh.id}. Motivo: ${why}`); }, 'Hoja reabierta'); },
+  // ---- admin ----
+  async approve(el){ const p = DB.get('profiles', el.dataset.id); await safe(async () => { await DB.put('profiles', { ...p, status: 'aprobado', approvedBy: State.user.id, approvedAt: Date.now() }); if (p.role === 'lienzo') { const L = DB.get('lienzos', p.lienzoId); if (L) await DB.put('lienzos', { ...L, status: 'aprobado' }); } await audit('aprobar', `Autorizó a ${p.name} (${roleName(p.role)})`); }, 'Cuenta autorizada'); },
+  async reject(el){ const p = DB.get('profiles', el.dataset.id); const why = await ask('Rechazar solicitud', `${p.name} no podrá operar en la plataforma.`, 'Rechazar', true, true); if (!why) return;
+    await safe(async () => { await DB.put('profiles', { ...p, status: 'rechazado', reason: why }); if (p.role === 'lienzo') { const L = DB.get('lienzos', p.lienzoId); if (L) await DB.put('lienzos', { ...L, status: 'rechazado' }); } await audit('rechazar', `Rechazó a ${p.name}. Motivo: ${why}`); }, 'Solicitud rechazada'); },
+  async userSt(el){ const p = DB.get('profiles', el.dataset.id); if (!(await ask('Suspender cuenta', `${p.name} ya no podrá operar.`, 'Suspender', true))) return; await safe(async () => { await DB.put('profiles', { ...p, status: el.dataset.s }); await audit('suspender', `Suspendió a ${p.name}`); }, 'Cuenta suspendida'); },
+  async lienzoSt(el){ const L = DB.get('lienzos', el.dataset.id), s = el.dataset.s; if (s === 'suspendido' && !(await ask('Suspender lienzo', 'Sus charreadas dejarán de mostrarse en público.', 'Suspender', true))) return;
+    await safe(async () => { await DB.put('lienzos', { ...L, status: s }); const o = DB.get('profiles', L.ownerId); if (o) await DB.put('profiles', { ...o, status: s === 'aprobado' ? 'aprobado' : 'suspendido' }); await audit(s === 'aprobado' ? 'aprobar' : 'suspender', `${s === 'aprobado' ? 'Verificó' : 'Suspendió'} el lienzo ${L.name}`); }, s === 'aprobado' ? 'Lienzo verificado' : 'Lienzo suspendido'); }
+};
+
+/* ---------- eventos de la mesa del juez ---------- */
+function jMark(){ State.j.dirty = true; render(); }
+document.addEventListener('click', async e => {
+  const t = e.target;
+  const jt = t.closest('[data-jt]'); if (jt) { e.preventDefault(); setP(State.j.d, jt.dataset.jt, !getP(State.j.d, jt.dataset.jt)); return jMark(); }
+  const ja = t.closest('[data-ja]'); if (ja) { e.preventDefault(); const a = getP(State.j.d, ja.dataset.ja) || []; const v = ja.dataset.v; setP(State.j.d, ja.dataset.ja, a.includes(v) ? a.filter(x => x !== v) : [...a, v]); return jMark(); }
+  const js = t.closest('[data-js]'); if (js) { e.preventDefault(); const v = (+getP(State.j.d, js.dataset.js) || 0) + (+js.dataset.d); setP(State.j.d, js.dataset.js, Math.max(+js.dataset.min, Math.min(+js.dataset.max, v))); return jMark(); }
+  const jr = t.closest('[data-jrm]'); if (jr) { e.preventDefault(); const a = getP(State.j.d, jr.dataset.jrm) || []; const i = +jr.dataset.i; if (a[i].n > 1) a[i].n--; else a.splice(i, 1); setP(State.j.d, jr.dataset.jrm, a); return jMark(); }
+  const jd = t.closest('[data-jadd]'); if (jd) { e.preventDefault(); return infPicker(jd.dataset.jadd, jd.dataset.key); }
+  const ji = t.closest('[data-jaddint]'); if (ji) { e.preventDefault(); const d = State.j.d; const hasCab = RULES.calc('terna', d).rows.some(r => r.ok && r.tipo === 'cabeza'); d.intentos.push({ l: d.intentos.length % 3, tipo: hasCab ? 'pial' : 'cabeza', res: '', fl: [], rm: [], m: [], dq: false }); return jMark(); }
+  const jx = t.closest('[data-jdel]'); if (jx) { e.preventDefault(); State.j.d.intentos.splice(+jx.dataset.i, 1); return jMark(); }
+  const jte = t.closest('[data-jteam]'); if (jte) { e.preventDefault(); if (!(await confirmDiscard())) return; State.j.tid = jte.dataset.jteam; State.j.d = null; return render(); }
+  const jf = t.closest('[data-jfaena]'); if (jf) { e.preventDefault(); if (!(await confirmDiscard())) return; State.j.fk = jf.dataset.jfaena; State.j.d = null; render(); document.getElementById('jform') && document.getElementById('jform').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  const el = t.closest('[data-act]'); if (!el || el.disabled) return;
+  const fn = ACT[el.dataset.act]; if (!fn) return;
+  if (el.dataset.act !== 'reg') e.preventDefault();
+  fn(el);
+});
+document.addEventListener('change', async e => {
+  const el = e.target;
+  if (el.dataset.jp) { let v = el.value; if (el.dataset.num) v = +v; if (el.type === 'number') v = el.value; setP(State.j.d, el.dataset.jp, v);
+    if (el.dataset.jp.endsWith('.tipo')) { const i = el.dataset.jp.split('.')[1]; Object.assign(State.j.d.intentos[i], { res: '', fl: [], rm: [] }); }
+    if (/\.res$/.test(el.dataset.jp) && !el.value) { const base = el.dataset.jp.replace(/\.res$/, ''); ['fl','rm','es','ex'].forEach(k => { if (getP(State.j.d, base + '.' + k)) setP(State.j.d, base + '.' + k, []); }); }
+    if (el.dataset.jp === 'cls' || el.dataset.jp === 'vuelta') { /* recalcula */ }
+    return jMark(); }
+  if (el.dataset.model) { State[el.dataset.model] = el.value; render(); return; }
+  if (el.dataset.upload) { const f = el.files[0]; if (!f) return; toast('Subiendo video…'); await safe(async () => { const url = await DB.backend.uploadVideo(f, el.dataset.upload); await updEv({ videoUrl: url }); await audit('video', `Subió video a “${curEv().title}”`); }, 'Video publicado'); }
+});
+let searchT;
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.dataset.jp === 'notes') { setP(State.j.d, 'notes', el.value); State.j.dirty = true; return; }
+  if (el.dataset.model === 'histQ') { clearTimeout(searchT); searchT = setTimeout(() => { State.histQ = el.value; const pos = el.selectionStart; render(); const n = document.querySelector('[data-model="histQ"]'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 250); }
+});
+document.addEventListener('submit', async e => {
+  const f = e.target; if (!f.dataset.form) return; e.preventDefault();
+  const d = Object.fromEntries(new FormData(f).entries()), k = f.dataset.form;
+  if (k === 'login') return safe(async () => { State.user = await DB.backend.login(d.email.trim(), d.pass); State.j = null; go(isSuper(State.user) ? 'admin' : 'cuenta'); }, 'Bienvenido');
+  if (k === 'register') { const payload = { role: State.regRole, name: d.name.trim(), email: d.email.trim().toLowerCase(), phone: d.phone || '', invite: (d.invite || '').trim().toUpperCase() || null, lienzoName: d.lienzoName, city: d.city, state: d.state, lienzoId: d.lienzoId };
+    return safe(async () => { const r = await DB.backend.register(payload, d.pass); if (r.needsConfirm) { toast('Revisa tu correo para confirmar la cuenta y luego entra.', 'ok'); State.authMode = 'login'; return; } State.user = r.profile; go('cuenta'); }); }
+  if (k === 'evData') { const ev = curEv(); const patch = { title: d.title.trim(), date: d.date, category: d.category }; if (d.mode && d.mode !== (ev.mode || 'equipos')) { patch.mode = d.mode; patch.suertes = (d.mode === 'completo' ? RULES.ORDER_CC : RULES.ORDER_EQ).slice(); } return safe(() => updEv(patch), 'Datos guardados'); }
+  if (k === 'addTeam') { const ev = curEv(); const id = 't' + uid();
+    if (ev.mode === 'completo') return safe(() => updEv({ teams: [...ev.teams, { id, name: d.name.trim(), assoc: (d.assoc || '').trim(), state: d.state }], charros: [...ev.charros, { id: 'c' + uid(), name: d.name.trim(), teamId: id }] }), 'Charro inscrito');
+    return safe(() => updEv({ teams: [...ev.teams, { id, name: d.name.trim(), state: d.state, capitan: (d.capitan || '').trim() }] }), 'Equipo agregado'); }
+  if (k === 'addCharro') { const ev = curEv(), name = d.name.trim(); if (!name) return; return safe(async () => { await updEv({ charros: [...ev.charros, { id: 'c' + uid(), name, teamId: f.dataset.team }] }); setTimeout(() => { const n = document.querySelector(`form[data-team="${f.dataset.team}"] input`); if (n) n.focus(); }, 30); }); }
+  if (k === 'stream') return safe(async () => { await updEv({ streamUrl: d.url.trim() }); await audit('transmision', `Actualizó la transmisión de “${curEv().title}”`); }, 'Transmisión guardada');
+  if (k === 'video') return safe(() => updEv({ videoUrl: d.url.trim() }), 'Video guardado');
+  if (k === 'entrega') { const ev = DB.get('events', State.param), team = ev.teams.find(t => t.id === State.param2), u = State.user, id = `${ev.id}-${team.id}`, prev = DB.get('sheets', id);
+    const missing = ev.suertes.filter(fk => !evScores(ev.id).some(s => s.teamId === team.id && s.faena === fk));
+    if (missing.length && !(await ask('Faenas sin calificar', `Faltan: ${missing.map(FN).join(', ')}. Se entregarán en cero.`, 'Entregar así'))) return;
+    return safe(async () => { await DB.put('sheets', { id, eventId: ev.id, teamId: team.id, capitan: d.capitan.trim(), capitanFirma: d.capitan.trim(), hora: d.hora || '', entregada: true, entregadaAt: Date.now(), jueces: [{ id: u.id, name: u.name, ts: Date.now() }], reopened: prev ? prev.reopened : undefined, totals: { final: sum(evScores(ev.id).filter(s => s.teamId === team.id).map(s => s.net)) } });
+      await audit('entrega', `Entregó la hoja de ${team.name} en “${ev.title}”`); }, 'Hoja firmada y entregada'); }
+  if (k === 'invite') { if (d.role === 'juez' && !d.lienzoId) return toast('Elige el lienzo del juez', 'err'); const code = genCode(d.role === 'juez' ? 'JUEZ' : 'LIENZO');
+    return safe(async () => { await DB.put('invites', { id: code, code, role: d.role, lienzoId: d.role === 'juez' ? d.lienzoId : null, used: false, createdBy: State.user.id, createdAt: Date.now() }); await audit('invitacion', `Creó invitación ${code} (${roleName(d.role)})`); }, 'Código creado: ' + code); }
+});
+
+/* ------------------------- ARRANQUE ------------------------- */
+(async function boot(){
+  $('#view').innerHTML = '<div class="empty">Cargando…</div>';
+  const hasKeys = !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
+  const mode = CONFIG.MODE === 'demo' || CONFIG.MODE === 'real' ? CONFIG.MODE : (hasKeys ? 'real' : 'demo');
+  DB.backend = mode === 'real' ? Remote : Local;
+  try { if (mode === 'real' && !hasKeys) throw new Error('Faltan SUPABASE_URL y SUPABASE_ANON_KEY'); await DB.backend.init(); }
+  catch (e) {
+    if (mode === 'real') { $('#view').innerHTML = `<div class="empty">No se pudo conectar al servidor.<div class="small mut mt">${esc(e.message || e)}</div><button class="btn sm mt" onclick="location.reload()">Reintentar</button></div>`; return; }
+    throw e;
+  }
+  try { State.user = await DB.backend.restore(); } catch (e) { State.user = null; }
+  parseRoute(); render();
+})();
+</script>
+</body>
+</html>
