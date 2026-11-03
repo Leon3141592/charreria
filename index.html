@@ -24,6 +24,7 @@ a{color:var(--gold2)}button,input,select,textarea{font:inherit;color:inherit}
 .brand b{font-family:'Cinzel',serif;font-size:19px;font-weight:800;letter-spacing:.03em;white-space:nowrap}.brand b span{color:var(--gold)}
 .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(145deg,var(--vino2),#4a0d17);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(242,205,126,.35);flex:none}
 .logo svg{width:20px;height:20px;color:var(--gold2)}
+.chr{border-top:1px solid var(--line);padding:9px 0 2px;margin-top:6px}.chr .lnk{display:flex;align-items:center;gap:4px;min-width:0;background:none;border:0;padding:4px 0;color:var(--text);font:inherit;font-weight:700;text-align:left;cursor:pointer}.chr .lnk:hover .ell{color:var(--gold2)}
 .rank.tap{cursor:pointer;transition:background .15s}.rank.tap:hover,.rank.tap:focus-visible{background:var(--card2);outline:none}
 /* Tarjeta coleccionable: marco metálico por rareza, foto arriba, franja vino con el nombre, estadísticas abajo */
 .tc-wrap{perspective:1100px;display:flex;justify-content:center;padding:4px 0 6px}
@@ -916,6 +917,10 @@ function canDecide(u, r){
   const t = DB.get('teams', r.teamId); if (!t) return false;
   return t.captainId === u.id || (t.lienzoStatus === 'aprobado' && (ownsLienzo(u, t.lienzoId) || isJudgeOf(u, t.lienzoId)));
 }
+const byName = (a, b) => a.name.localeCompare(b.name);
+const regCharro = name => DB.all('charros').find(c => norm(c.name) === norm(name));
+const charroDL = () => `<datalist id="dl-charros">${DB.all('charros').slice().sort(byName).map(c => `<option value="${esc(c.name)}">${esc([c.alias ? '“' + c.alias + '”' : '', (DB.get('teams', c.teamId) || {}).name, c.state].filter(Boolean).join(' · '))}</option>`).join('')}</datalist>`;
+const horseOpts = cur => `<option value="">— Sin caballo —</option>` + DB.all('horses').slice().sort(byName).map(h => `<option value="${h.id}" ${h.id === cur ? 'selected' : ''}>${esc(h.name)} · ${esc(h.discipline || '')}</option>`).join('');
 const myRequests = u => DB.all('requests').filter(r => canDecide(u, r));
 const safeImg = s => /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s || '') || /^https:\/\/[^\s"'<>()]+$/i.test(s || '') ? s : '';
 const av = (src, name, px = 34) => safeImg(src) ? `<img class="ph" src="${esc(safeImg(src))}" alt="" style="width:${px}px;height:${px}px">` : `<div class="avatar" style="width:${px}px;height:${px}px;font-size:${Math.round(px * .36)}px">${esc(initials(name))}</div>`;
@@ -1570,11 +1575,22 @@ function vPanelEvento(){
     ${locked ? '' : '<button class="btn block mt">Guardar datos</button>'}</form>`;
   h += `<div class="h2">Faenas</div><div class="card"><div class="chips">${order.map(k => `<button class="tog ${ev.suertes.includes(k) ? 'on' : ''}" data-act="toggleSuerte" data-s="${k}" ${dis}>${esc(FN(k))}</button>`).join('')}</div><div class="small mut mt">Orden oficial de las faenas conforme al reglamento.</div></div>`;
   h += `<div class="h2">${cc ? 'Charros completos inscritos' : 'Equipos y charros'}</div>`;
-  h += ev.teams.map(t => `<div class="team"><div class="row between"><div><div style="font-weight:800">${esc(t.name)}</div><div class="small mut">${esc(cc ? (t.assoc || '') + (t.state ? ' · ' + t.state : '') : (t.state || '') + (t.capitan ? ' · Capitán: ' + t.capitan : ''))}</div></div>${locked ? '' : `<button class="btn ghost sm" data-act="delTeam" data-id="${t.id}">${I.x}</button>`}</div>
-    ${cc ? '' : `<div>${ev.charros.filter(c => c.teamId === t.id).map(c => `<span class="tag" ${c.addedBy ? `title="Agregado por ${esc(c.addedByName || 'juez')}${c.note ? ' · ' + esc(c.note) : ''}"` : ''}>${esc(c.name)}${c.addedBy ? ' <span class="chip blue" style="padding:1px 6px;font-size:10px">juez</span>' : ''}${locked ? '' : `<button data-act="delCharro" data-id="${c.id}" aria-label="Quitar">${I.x}</button>`}</span>`).join('') || '<div class="small mut mt">Sin charros todavía</div>'}</div>
-    ${locked ? '' : `<form class="row mt" data-form="addCharro" data-team="${t.id}" style="gap:8px"><input class="in" name="name" placeholder="Nombre del charro" required><button class="btn sm" style="min-height:46px">${I.plus}</button></form>`}`}</div>`).join('');
-  if (!locked) h += cc ? `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Inscribir charro completo</div><input class="in mt" name="name" placeholder="Nombre del charro" required><input class="in mt" name="assoc" placeholder="Equipo / asociación"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn block mt">${I.plus} Inscribir</button></form>`
-    : `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Agregar equipo</div><input class="in mt" name="name" placeholder="Nombre del equipo / asociación" required><input class="in mt" name="capitan" placeholder="Capitán"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn block mt">${I.plus} Agregar equipo</button></form>`;
+  const chip = (t, cls) => ` <span class="chip ${cls}" style="padding:1px 6px;font-size:10px">${t}</span>`;
+  const chRow = (c, del) => `<div class="chr"${c.addedBy ? ` title="Agregado por ${esc(c.addedByName || 'juez')}${c.note ? ' · ' + esc(c.note) : ''}"` : ''}>
+      <div class="row" style="gap:6px;align-items:center"><button class="lnk grow" data-act="card" data-n="${esc(c.name)}"><span class="ell">${esc(c.name)}</span>${c.refId ? chip('registrado', 'green') : ''}${c.addedBy ? chip('juez', 'blue') : ''}</button>
+      ${del && !locked ? `<button class="btn ghost sm" data-act="delCharro" data-id="${c.id}" aria-label="Quitar a ${esc(c.name)}">${I.x}</button>` : ''}</div>
+      <select class="in" data-horse="${c.id}" ${locked ? 'disabled' : ''} aria-label="Caballo de ${esc(c.name)}" style="min-height:40px;padding:6px 10px;font-size:13px;margin-top:6px">${horseOpts(c.horseId)}</select></div>`;
+  h += charroDL() + ev.teams.map(t => { const inEv = ev.charros.filter(c => c.teamId === t.id), avail = t.refId ? rosterOf(t.refId).filter(c => !ev.charros.some(x => x.refId === c.id)) : [];
+    return `<div class="team"><div class="row between"><div><div style="font-weight:800">${esc(t.name)}${t.refId ? chip('oficial', 'green') : ''}</div><div class="small mut">${esc(cc ? (t.assoc || '') + (t.state ? ' · ' + t.state : '') : (t.state || '') + (t.capitan ? ' · Capitán: ' + t.capitan : ''))}</div></div>${locked ? '' : `<button class="btn ghost sm" data-act="delTeam" data-id="${t.id}" aria-label="Quitar ${esc(t.name)}">${I.x}</button>`}</div>
+    ${cc ? inEv.map(c => chRow(c, false)).join('') : `${inEv.length ? `<div class="small mut mt">Charro · caballo que monta</div>${inEv.map(c => chRow(c, true)).join('')}` : '<div class="small mut mt">Sin charros todavía</div>'}
+    ${locked ? '' : `${avail.length ? `<form class="row mt" data-form="addRoster" data-team="${t.id}" style="gap:8px"><select class="in" name="charroId" required><option value="">＋ Del roster oficial (${avail.length})</option>${avail.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select><button class="btn sm" style="min-height:46px" aria-label="Agregar del roster">${I.plus}</button></form>` : ''}
+      <form class="row mt" data-form="addCharro" data-team="${t.id}" style="gap:8px"><input class="in" name="name" list="dl-charros" placeholder="Nombre del charro (registrado u otro)" autocomplete="off" required><button class="btn sm" style="min-height:46px" aria-label="Agregar charro">${I.plus}</button></form>`}`}</div>`; }).join('');
+  const offTeams = DB.all('teams').filter(t => !ev.teams.some(x => x.refId === t.id)).sort((a, b) => ((b.lienzoId === ev.lienzoId && b.lienzoStatus === 'aprobado') - (a.lienzoId === ev.lienzoId && a.lienzoStatus === 'aprobado')) || byName(a, b));
+  if (!locked && !cc && offTeams.length) h += `<form class="team" data-form="addOfficialTeam" style="border-style:dashed"><div style="font-weight:700">Agregar equipo oficial</div><div class="small mut" style="margin-top:2px">Equipos registrados en la app, con su roster aprobado.</div>
+    <select class="in mt" name="teamId" required><option value="">— Elegir equipo —</option>${offTeams.map(t => `<option value="${t.id}">${esc(t.name)} · ${rosterOf(t.id).length} charros${t.lienzoId === ev.lienzoId && t.lienzoStatus === 'aprobado' ? ' · afiliado a este lienzo' : ''}</option>`).join('')}</select>
+    <label class="row small mt" style="gap:8px"><input type="checkbox" name="all" checked> Inscribir a todo su roster</label><button class="btn pri block mt">${I.plus} Agregar equipo oficial</button></form>`;
+  if (!locked) h += cc ? `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Inscribir charro completo</div><input class="in mt" name="name" list="dl-charros" placeholder="Nombre del charro (registrado u otro)" autocomplete="off" required><input class="in mt" name="assoc" placeholder="Equipo / asociación"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><select class="in mt" name="horseId" aria-label="Caballo">${horseOpts('')}</select><button class="btn block mt">${I.plus} Inscribir</button></form>`
+    : `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">${offTeams.length ? 'Agregar otro equipo (no registrado)' : 'Agregar equipo'}</div><input class="in mt" name="name" placeholder="Nombre del equipo / asociación" required><input class="in mt" name="capitan" placeholder="Capitán"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn block mt">${I.plus} Agregar equipo</button></form>`;
   h += `<div class="h2">Transmisión en vivo</div><form class="card" data-form="stream"><div class="small mut">Transmite desde YouTube Live o Facebook Live y pega aquí el enlace.</div><input class="in mt" name="url" type="url" placeholder="https://youtube.com/live/…" value="${esc(ev.streamUrl)}"><button class="btn block mt">Guardar enlace</button></form>`;
   h += `<div class="h2">Video grabado</div><div class="card"><div class="small mut">Pega el enlace del video o sube el archivo grabado.</div><form data-form="video"><input class="in mt" name="url" type="url" placeholder="https://youtube.com/watch?v=…" value="${esc(ev.videoUrl && !ev.videoUrl.startsWith('blob:') ? ev.videoUrl : '')}"><button class="btn block mt">Guardar enlace</button></form>
     <label class="btn block mt" style="cursor:pointer">${I.upload} Subir archivo de video<input type="file" accept="video/*" data-upload="${ev.id}" style="display:none"></label>${ev.videoUrl ? `<div class="small mt" style="color:#7fdcb0">✓ Video publicado</div>` : ''}</div>`;
@@ -1596,7 +1612,7 @@ function jSelWho(path, ev, tid, label){
 function askCharro(team){
   return new Promise(res => {
     $('#modal').innerHTML = `<div class="modal"><div class="box"><div style="font-weight:800;font-size:17px">Agregar charro a ${esc(team.name)}</div><div class="sub" style="margin-top:6px">Para cambios de último momento. Quedará registrado a tu nombre y el lienzo lo verá marcado como agregado por juez.</div>
-      <label class="f">Nombre del charro</label><input class="in" id="acName" autocomplete="off"><label class="f">Motivo (opcional)</label><input class="in" id="acNote" placeholder="Ej. sustituye a Juan Pérez">
+      <label class="f">Nombre del charro</label><input class="in" id="acName" list="dl-charros" autocomplete="off" placeholder="Busca un charro registrado o escribe el nombre">${charroDL()}<label class="f">Motivo (opcional)</label><input class="in" id="acNote" placeholder="Ej. sustituye a Juan Pérez">
       <div class="btns mt2"><button class="btn" id="askNo">Cancelar</button><button class="btn pri" id="askOk">Agregar</button></div></div></div>`;
     const close = v => { $('#modal').innerHTML = ''; res(v); }, nm = $('#acName'); nm.focus();
     const ok = () => { const name = nm.value.trim().replace(/\s+/g, ' '); if (!name) { nm.focus(); return toast('Escribe el nombre del charro', 'err'); } close({ name, note: $('#acNote').value.trim() }); };
@@ -1610,7 +1626,9 @@ async function judgeAddCharro(path, tid){
   const r = await askCharro(team); if (!r) return render();
   const dup = ev.charros.find(c => c.teamId === tid && norm(c.name) === norm(r.name));
   if (dup) { setP(State.j.d, path, dup.id); toast('Ese charro ya estaba en el equipo; quedó seleccionado'); return jMark(); }
-  const u = State.user, c = { id: 'c' + uid(), name: r.name, teamId: tid, addedBy: u.id, addedByName: u.name, addedAt: Date.now(), note: r.note || '' };
+  const rc = regCharro(r.name); if (rc) r.name = rc.name;
+  if (rc && ev.charros.some(x => x.refId === rc.id)) { const ex = ev.charros.find(x => x.refId === rc.id); setP(State.j.d, path, ex.id); toast('Ese charro ya estaba inscrito; quedó seleccionado'); return jMark(); }
+  const u = State.user, c = { id: 'c' + uid(), name: r.name, teamId: tid, refId: rc ? rc.id : null, addedBy: u.id, addedByName: u.name, addedAt: Date.now(), note: r.note || '' };
   await safe(async () => {
     await DB.put('events', { ...curEv(), charros: [...curEv().charros, c] });   // sin updatedAt: el juez solo puede agregar charros
     await audit('charro_juez', `Agregó al charro ${r.name} en ${team.name} (“${ev.title}”)${r.note ? ' · ' + r.note : ''}`);
@@ -2037,6 +2055,8 @@ document.addEventListener('click', async e => {
 document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role="button"][data-act]')) { e.preventDefault(); e.target.click(); } });
 document.addEventListener('change', async e => {
   const el = e.target;
+  if (el.dataset.horse) { const ev = curEv(); if (!ev) return; const hz = DB.get('horses', el.value);
+    return safe(() => updEv({ charros: ev.charros.map(c => c.id === el.dataset.horse ? { ...c, horseId: el.value || null } : c) }), hz ? `Caballo asignado: ${hz.name}` : 'Caballo quitado'); }
   if (el.dataset.photo) { const f = el.files[0]; el.value = ''; if (!f) return; return safe(async () => savePhoto(el.dataset.photo, await readPhoto(f)), 'Foto actualizada'); }
   if (el.dataset.jp && el.value === '__nuevo') return judgeAddCharro(el.dataset.jp, el.dataset.team);
   if (el.dataset.jp) { let v = el.value; if (el.dataset.num) v = +v; if (el.type === 'number') v = el.value; setP(State.j.d, el.dataset.jp, v);
@@ -2084,9 +2104,17 @@ document.addEventListener('submit', async e => {
     return safe(async () => { const r = await DB.backend.register(payload, d.pass); if (r.needsConfirm) { toast('Revisa tu correo para confirmar la cuenta y luego entra.', 'ok'); State.authMode = 'login'; return; } State.user = r.profile; go('cuenta'); }); }
   if (k === 'evData') { const ev = curEv(); const patch = { title: d.title.trim(), date: d.date, category: d.category }; if (d.mode && d.mode !== (ev.mode || 'equipos')) { patch.mode = d.mode; patch.suertes = (d.mode === 'completo' ? RULES.ORDER_CC : RULES.ORDER_EQ).slice(); } return safe(() => updEv(patch), 'Datos guardados'); }
   if (k === 'addTeam') { const ev = curEv(); const id = 't' + uid();
-    if (ev.mode === 'completo') return safe(() => updEv({ teams: [...ev.teams, { id, name: d.name.trim(), assoc: (d.assoc || '').trim(), state: d.state }], charros: [...ev.charros, { id: 'c' + uid(), name: d.name.trim(), teamId: id }] }), 'Charro inscrito');
+    if (ev.mode === 'completo') { const rc = regCharro(d.name), name = rc ? rc.name : d.name.trim(), rt = rc && DB.get('teams', rc.teamId);
+      return safe(() => updEv({ teams: [...ev.teams, { id, name, assoc: (d.assoc || '').trim() || (rt ? rt.name : ''), state: d.state, refId: rc ? rc.id : null }], charros: [...ev.charros, { id: 'c' + uid(), name, teamId: id, refId: rc ? rc.id : null, horseId: d.horseId || null }] }), 'Charro inscrito'); }
     return safe(() => updEv({ teams: [...ev.teams, { id, name: d.name.trim(), state: d.state, capitan: (d.capitan || '').trim() }] }), 'Equipo agregado'); }
-  if (k === 'addCharro') { const ev = curEv(), name = d.name.trim(); if (!name) return; return safe(async () => { await updEv({ charros: [...ev.charros, { id: 'c' + uid(), name, teamId: f.dataset.team }] }); setTimeout(() => { const n = document.querySelector(`form[data-team="${f.dataset.team}"] input`); if (n) n.focus(); }, 30); }); }
+  if (k === 'addOfficialTeam') { const ev = curEv(), T = DB.get('teams', d.teamId); if (!T) return toast('Elige un equipo', 'err'); if (ev.teams.some(t => t.refId === T.id)) return toast('Ese equipo ya está inscrito', 'err');
+    const id = 't' + uid(), add = d.all ? rosterOf(T.id).filter(c => !ev.charros.some(x => x.refId === c.id)).map(c => ({ id: 'c' + uid(), name: c.name, teamId: id, refId: c.id, horseId: null })) : [];
+    return safe(() => updEv({ teams: [...ev.teams, { id, name: T.name, state: T.state, capitan: T.captainName || '', refId: T.id }], charros: [...ev.charros, ...add] }), `${T.name} inscrito${add.length ? ` con ${add.length} charros` : ''}`); }
+  if (k === 'addRoster') { const ev = curEv(), c = DB.get('charros', d.charroId); if (!c) return; if (ev.charros.some(x => x.refId === c.id)) return toast('Ese charro ya está inscrito', 'err');
+    return safe(() => updEv({ charros: [...ev.charros, { id: 'c' + uid(), name: c.name, teamId: f.dataset.team, refId: c.id, horseId: null }] }), 'Charro agregado'); }
+  if (k === 'addCharro') { const ev = curEv(), rc = regCharro(d.name), name = rc ? rc.name : d.name.trim(); if (!name) return;
+    if (rc && ev.charros.some(x => x.refId === rc.id)) return toast('Ese charro ya está inscrito en esta charreada', 'err');
+    return safe(async () => { await updEv({ charros: [...ev.charros, { id: 'c' + uid(), name, teamId: f.dataset.team, refId: rc ? rc.id : null, horseId: null }] }); setTimeout(() => { const n = document.querySelector(`form[data-team="${f.dataset.team}"] input`); if (n) n.focus(); }, 30); }); }
   if (k === 'stream') return safe(async () => { await updEv({ streamUrl: d.url.trim() }); await audit('transmision', `Actualizó la transmisión de “${curEv().title}”`); }, 'Transmisión guardada');
   if (k === 'video') return safe(() => updEv({ videoUrl: d.url.trim() }), 'Video guardado');
   if (k === 'entrega') { const ev = DB.get('events', State.param), team = ev.teams.find(t => t.id === State.param2), u = State.user, id = `${ev.id}-${team.id}`, prev = DB.get('sheets', id);
