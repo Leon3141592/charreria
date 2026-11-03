@@ -643,7 +643,7 @@ const DB = {
     try { await this.backend.del(t, id); } catch (e) { arr.splice(i, 0, prev); throw e; }
   }
 };
-const LS_KEY = 'charreriapro_demo_v7', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v8', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -686,6 +686,9 @@ const Local = {
     if (d === 'aprobado' && r.type === 'afiliacion') { const t = DB.get('teams', r.teamId); if (t) await DB.put('teams', { ...t, lienzoId: r.lienzoId, lienzoStatus: 'aprobado' }); }
   },
   async rosterRemove(c){ await DB.put('charros', { ...c, teamId: null }); },
+  async setVerified(kind, d, decision, note){ const u = State.user;
+    if (!canVerify(u, kind, d) || (decision === 'pendiente' && !isSuper(u))) throw new Error('No tienes permiso para verificar este registro');
+    await DB.put(VK_TABLE[kind], { ...d, verif: decision, verifKey: decision === 'pendiente' ? null : verifKeyOf(kind, d), verifiedBy: u.id, verifiedByName: u.name, verifiedAt: Date.now(), verifNote: decision === 'rechazado' ? (note || '') : '' }); },
   async claimHorse(code){
     const u = State.user, r = DB.all('requests').find(x => x.type === 'transfer' && x.status === 'pendiente' && x.code === code.trim().toUpperCase());
     if (!r) throw new Error('Código inválido o ya usado'); const h = DB.get('horses', r.horseId); if (!h) throw new Error('El caballo ya no existe');
@@ -749,6 +752,7 @@ const Remote = {
   async del(t, id){ const { error } = await this.sb.from(t).delete().eq('id', id); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
   decide(r, d){ return this.rpc('decide_request', { rid: r.id, decision: d }); },
   rosterRemove(c){ return this.rpc('roster_remove', { cid: c.id }); },
+  setVerified(kind, d, decision, note){ return this.rpc('set_verified', { kind, rid: d.id, decision, note: note || '' }); },
   claimHorse(code){ return this.rpc('claim_horse', { code: code.trim().toUpperCase() }); },
   async verifyPassword(email, pass){ const { error } = await this.sb.auth.signInWithPassword({ email, password: pass }); if (error) throw new Error('La contraseña actual no es correcta'); },
   async changePassword(pass){
@@ -898,6 +902,8 @@ function seed(){
   horse('cb6','Centella','Manganas','Hembra',5,'Azteca','Palomino','FMCH-33901','uext2','',false,false,false,{ history: [{ label: 'Rancho San Rafael', from: ago(900), to: ago(200) }] });
   horse('cb7','Diamante','Piales en el lienzo','Macho',3,'Cuarto de milla','Bayo','','udueno','Gabriel Montaño',true,true,true);
   P.forEach(x => { if (x.id === 'ucharro' || x.id === 'ucap') x.verified = true; });
+  const offc = (kind, d) => Object.assign(d, { verif: 'oficial', verifKey: verifKeyOf(kind, d), verifiedBy: 'uadmin', verifiedByName: 'Súper Usuario', verifiedAt: ago(100) });
+  CH.forEach(c => { if (c.id !== 'hfausto') offc('charro', c); }); T.forEach(t => { if (t.id !== 'q5') offc('team', t); }); HS.forEach(x => { if (!['cb3','cb7'].includes(x.id)) offc('horse', x); });
   RQ.push({ id:'rq4', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Administración Lienzo de la Villa', contact:'55 9876 5432', message:'Lo queremos para la escuela de charrería.', status:'pendiente', createdBy:'uvilla', createdAt: ago(3) });
   RQ.push({ id:'rq5', type:'interes', horseId:'cb3', ownerId:'udueno', buyerName:'Ernesto Villaseñor', contact:'capitan@demo.mx', message:'', status:'pendiente', createdBy:'ucap', createdAt: ago(5) });
   RQ.push({ id:'rq3', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Fausto Herrera', contact:'55 1234 5678', message:'Me interesa para la temporada; ¿se puede ver en Texcoco?', status:'pendiente', createdBy:'ucharro', createdAt: ago(1) });
@@ -921,6 +927,30 @@ function canDecide(u, r){
   return t.captainId === u.id || (t.lienzoStatus === 'aprobado' && (ownsLienzo(u, t.lienzoId) || isJudgeOf(u, t.lienzoId)));
 }
 const byName = (a, b) => a.name.localeCompare(b.name);
+/* ---------- VERIFICACIÓN: el sello "Oficial" queda ligado a los datos verificados; si cambian, vuelve a revisión ---------- */
+const VK_FIELDS = { charro: ['name','category'], team: ['name','state'], horse: ['name','registry','breed','training','birthYear','discipline','sex'] };
+const VK_TABLE = { charro: 'charros', team: 'teams', horse: 'horses' };
+const VK_LABEL = { charro: 'Charro', team: 'Equipo', horse: 'Caballo' };
+const verifKeyOf = (kind, d) => VK_FIELDS[kind].map(k => String(d[k] ?? '').trim().toLowerCase()).join('|');   // igual que verif_key() en la base
+const isOfficial = (kind, d) => !!d && d.verif === 'oficial' && d.verifKey === verifKeyOf(kind, d);
+const verifState = (kind, d) => isOfficial(kind, d) ? 'oficial' : d.verif === 'rechazado' && d.verifKey === verifKeyOf(kind, d) ? 'rechazado' : d.verif === 'oficial' ? 'cambios' : 'pendiente';
+const verifChip = (kind, d) => ({ oficial: `<span class="chip green">${I.check}Oficial</span>`, rechazado: '<span class="chip red">Rechazado</span>', cambios: '<span class="chip blue">Cambios por verificar</span>', pendiente: '<span class="chip blue">Pendiente de verificación</span>' })[verifState(kind, d)];
+function verifNote(kind, d, what){
+  const st = verifState(kind, d);
+  if (st === 'oficial') return `<div class="row mt" style="gap:8px;flex-wrap:wrap">${verifChip(kind, d)}<span class="small mut">Verificado por ${esc(d.verifiedByName || 'la administración')}</span></div>`;
+  return `<div class="banner ${st === 'rechazado' ? 'err' : 'warn'} mt">${I.info}<span>${st === 'rechazado' ? `Verificación rechazada${d.verifNote && d.verifNote !== 'Sin motivo' ? ': “' + esc(d.verifNote) + '”' : ''}. Corrige los datos y volverá a revisión.` : st === 'cambios' ? 'Cambiaste datos después de verificarse; está otra vez en revisión.' : 'Pendiente de verificación.'} ${what}</span></div>`;
+}
+function canVerify(u, kind, d){
+  if (!d || !isApproved(u)) return false; if (isSuper(u)) return true;
+  if (u.role !== 'lienzo' || !ownsLienzo(u, u.lienzoId)) return false; const L = u.lienzoId, aff = t => !!t && t.lienzoId === L && t.lienzoStatus === 'aprobado';
+  if (kind === 'team') return aff(d);
+  if (kind === 'charro') return aff(DB.get('teams', d.teamId));
+  if (kind === 'horse') return DB.all('events').some(e => e.lienzoId === L && e.charros.some(c => c.horseId === d.id));
+  return false;
+}
+function verifQueue(u){ const out = []; if (!u) return out;
+  Object.entries(VK_TABLE).forEach(([k, t]) => DB.all(t).forEach(d => { const st = verifState(k, d); if ((st === 'pendiente' || st === 'cambios') && canVerify(u, k, d)) out.push({ kind: k, d, st }); }));
+  return out.sort((a, b) => (b.d.createdAt || 0) - (a.d.createdAt || 0)); }
 const regCharro = name => DB.all('charros').find(c => norm(c.name) === norm(name));
 const charroDL = () => `<datalist id="dl-charros">${DB.all('charros').slice().sort(byName).map(c => `<option value="${esc(c.name)}">${esc([c.alias ? '“' + c.alias + '”' : '', (DB.get('teams', c.teamId) || {}).name, c.state].filter(Boolean).join(' · '))}</option>`).join('')}</datalist>`;
 const horseOpts = cur => `<option value="">— Sin caballo —</option>` + DB.all('horses').slice().sort(byName).map(h => `<option value="${h.id}" ${h.id === cur ? 'selected' : ''}>${esc(h.name)} · ${esc(h.discipline || '')}</option>`).join('');
@@ -1158,10 +1188,10 @@ function vHistorial(){
 /* ---------- RANKING ---------- */
 const rankingEvents = ({ year, oficial, estado, mode }) => publicEvents().filter(e => e.status === 'finalizado' && (!oficial || e.official) && (!year || e.date.startsWith(year)) && (!estado || lienzo(e.lienzoId).state === estado) && (!mode || (e.mode || 'equipos') === mode));
 function rankingCharros(opt){
-  const ids = new Set(rankingEvents(opt).map(e => e.id)), m = {};
-  DB.all('scores').filter(s => ids.has(s.eventId) && (!opt.suerte || s.faena === opt.suerte)).forEach(s => s.parts.forEach(p => {
-    const k = norm(p.name); const r = m[k] = m[k] || { name: p.name, team: s.teamName, pts: 0, n: 0, best: -99, evs: new Set() };
-    r.pts += p.pts; r.n++; r.best = Math.max(r.best, p.pts); r.evs.add(s.eventId); r.team = s.teamName;
+  const evm = new Map(rankingEvents(opt).map(e => [e.id, e])), m = {};
+  DB.all('scores').filter(s => evm.has(s.eventId) && (!opt.suerte || s.faena === opt.suerte)).forEach(s => s.parts.forEach(p => {
+    const k = norm(p.name); const r = m[k] = m[k] || { name: p.name, team: s.teamName, pts: 0, n: 0, best: -99, evs: new Set(), off: false };
+    r.pts += p.pts; r.n++; r.best = Math.max(r.best, p.pts); r.evs.add(s.eventId); r.team = s.teamName; if (evm.get(s.eventId).official) r.off = true;
   }));
   return Object.values(m).sort((a, b) => b.pts - a.pts || b.best - a.best);
 }
@@ -1204,7 +1234,7 @@ const mxnK = v => v >= 1e6 ? '$' + (v / 1e6).toFixed(1).replace('.0', '') + ' M'
 const horseAge = h => h.birthYear ? new Date().getFullYear() - h.birthYear : null;
 const isHorseOwner = (u, h) => !!(u && h && h.ownerId === u.id);
 const ownerLabel = (h, u) => isHorseOwner(u, h) ? 'Tú' + (h.ownerPublic ? '' : ' (privado)') : h.ownerPublic && h.ownerName ? h.ownerName : 'Dueño privado';
-const canSeePrice = (h, u) => h.pricePublic || isHorseOwner(u, h) || isSuper(u);
+const canSeePrice = (h, u) => (h.pricePublic && isOfficial('horse', h)) || isHorseOwner(u, h) || isSuper(u);   // sin verificar, el precio no es público
 let horseCache = null;
 function horseTable(){   // faenas de cada caballo: las del charro que lo montó en cada charreada
   const key = DB.all('scores').length + ':' + DB.all('events').length + ':' + DB.all('horses').length;
@@ -1264,6 +1294,7 @@ function horseCardHTML(h, R){
   const sub = [h.discipline, age != null ? age + ' años' : '', h.breed].filter(Boolean).join(' · ');
   const top = Object.entries(R.suertes).sort((a, b) => b[1] - a[1]).slice(0, 3), mx = Math.max(1, ...top.map(x => Math.abs(x[1])));
   const rk = horseRanking(), idx = rk.findIndex(x => x.h.id === h.id), badges = [];
+  if (isOfficial('horse', h)) badges.push('Oficial');
   if (h.forSale) badges.push('En venta');
   if (idx >= 0 && idx < 3) badges.push('Top ' + (idx + 1) + ' caballos');
   if (R.wins) badges.push('Campeón' + (R.wins > 1 ? ' ×' + R.wins : ''));
@@ -1280,7 +1311,7 @@ function horseCardHTML(h, R){
     <div class="bd">${badges.slice(0, 4).map(b => `<span>${esc(b)}</span>`).join('')}<span>${esc(h.sex || 'Caballo')}</span></div>
     <div class="ft"><span>Dueño: ${esc(ownerLabel(h, u))}</span><span>${esc(h.coat || CONFIG.APP_NAME)}</span></div></div></div></div>`;
 }
-function horseRanking(){ return DB.all('horses').map(h => ({ h, R: horseTable().M[h.id] })).filter(x => x.R && x.R.n).sort((a, b) => b.R.pts - a.R.pts); }
+function horseRanking(){ return DB.all('horses').filter(h => isOfficial('horse', h)).map(h => ({ h, R: horseTable().M[h.id] })).filter(x => x.R && x.R.n).sort((a, b) => b.R.pts - a.R.pts); }
 function valBox(h, R){
   const v = R.val;
   return `<div class="card"><div class="small mut">${v.override ? 'Precio fijado por la administración' : 'Valuación estimada de mercado'}</div><div style="font-family:'Cinzel',serif;font-size:28px;color:var(--gold2);line-height:1.1;margin-top:4px">${mxn(v.value)}</div>
@@ -1298,7 +1329,7 @@ function openHorse(id){
     ${horseCardHTML(h, R)}
     ${own ? `<a class="btn pri block mt" href="#caballo-${h.id}" data-close="1">${I.edit} Administrar mi caballo</a>` : h.forSale ? (iInt ? `<div class="banner ok mt">${I.check}<span>Ya enviaste tu interés. El dueño tiene tu contacto.</span></div>` : `<button class="btn pri block mt" data-act="interes" data-id="${h.id}">Me interesa este caballo</button>`) : ''}
     ${R.live ? `<a class="btn vino block mt" href="#evento-${R.live.id}" data-close="1">${I.live} Verlo en vivo: ${esc(R.live.title)}</a>` : ''}
-    <div class="h2">Ficha</div><div class="card small">${[['Disciplina', h.discipline], ['Sexo', h.sex], ['Raza', h.breed], ['Pelaje', h.coat], ['Registro', h.registry || 'Sin registro'], ['Dueño', ownerLabel(h, u)]].map(([k, v]) => `<div class="row between" style="padding:3px 0"><span class="mut">${k}</span><b>${esc(v || '—')}</b></div>`).join('')}</div>
+    <div class="h2">Ficha</div><div class="card small">${[['Disciplina', h.discipline], ['Sexo', h.sex], ['Raza', h.breed], ['Pelaje', h.coat], ['Registro', h.registry || 'Sin registro'], ['Dueño', ownerLabel(h, u)], ['Verificación', { oficial: 'Oficial', rechazado: 'Rechazada', cambios: 'Cambios por verificar', pendiente: 'Pendiente' }[verifState('horse', h)]]].map(([k, v]) => `<div class="row between" style="padding:3px 0"><span class="mut">${k}</span><b>${esc(v || '—')}</b></div>`).join('')}</div>
     ${canSeePrice(h, u) ? `<div class="h2">Valuación</div>${valBox(h, R)}` : ''}
     <div class="h2">Torneos</div>${list.length ? `<div class="card pad0">${list.slice(0, 12).map(e => `<a class="rank" href="#evento-${e.ev.id}" data-close="1" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:700">${esc(e.ev.title)}</div><div class="small mut ell">${fdate(e.ev.date)} · Montado por ${esc([...e.riders].join(', '))}</div></div><div class="pts">${e.pts}<small>pts</small></div></a>`).join('')}</div>` : '<div class="card small mut">Todavía no tiene faenas calificadas. Se suman cuando un charro lo monta en una charreada.</div>'}
     ${(h.history || []).length ? `<div class="h2">Dueños anteriores</div><div class="card small">${h.history.slice().reverse().map(x => `<div class="row between" style="padding:3px 0"><b>${esc(x.label)}</b><span class="mut">${fdate(localISO(x.from))} – ${fdate(localISO(x.to))}</span></div>`).join('')}</div>` : ''}</div></div>`;
@@ -1316,14 +1347,16 @@ function wireCardModal(){
   }
 }
 function horseRow(h){ const u = State.user, age = horseAge(h), R = horseStats(h);
-  return `<div class="rank tap" data-act="hcard" data-id="${h.id}" role="button" tabindex="0">${av(h.photo, h.name, 44)}<div class="grow"><div class="ell" style="font-weight:700">${esc(h.name)} ${h.forSale ? '<span class="chip gold" style="padding:1px 7px;font-size:10px">En venta</span>' : ''}</div><div class="small mut ell">${esc([h.discipline, age != null ? age + ' años' : '', ownerLabel(h, u)].filter(Boolean).join(' · '))}</div></div><div class="pts" style="font-size:15px">${canSeePrice(h, u) ? mxnK(R.val.value) : '<small>Privado</small>'}</div></div>`; }
+  return `<div class="rank tap" data-act="hcard" data-id="${h.id}" role="button" tabindex="0">${av(h.photo, h.name, 44)}<div class="grow"><div class="ell" style="font-weight:700">${esc(h.name)} ${h.forSale ? '<span class="chip gold" style="padding:1px 7px;font-size:10px">En venta</span>' : ''}${isOfficial('horse', h) ? '' : ' <span class="chip blue" style="padding:1px 7px;font-size:10px">Por verificar</span>'}</div><div class="small mut ell">${esc([h.discipline, age != null ? age + ' años' : '', ownerLabel(h, u)].filter(Boolean).join(' · '))}</div></div><div class="pts" style="font-size:15px">${canSeePrice(h, u) ? mxnK(R.val.value) : '<small>Privado</small>'}</div></div>`; }
 function vCaballos(){
   const f = State.hFilter || 'todos', d = State.hDisc || '';
-  const list = DB.all('horses').filter(h => (f !== 'venta' || h.forSale) && (!d || h.discipline === d)).map(h => ({ h, v: canSeePrice(h, State.user) ? horseStats(h).val.value : 0 })).sort((a, b) => (b.h.forSale - a.h.forSale) || b.v - a.v).map(x => x.h);
+  const nPend = DB.all('horses').filter(h => !isOfficial('horse', h)).length;
+  const list = DB.all('horses').filter(h => isOfficial('horse', h) && (f !== 'venta' || h.forSale) && (!d || h.discipline === d)).map(h => ({ h, v: canSeePrice(h, State.user) ? horseStats(h).val.value : 0 })).sort((a, b) => (b.h.forSale - a.h.forSale) || b.v - a.v).map(x => x.h);
   let h = `<div class="h1">Caballos</div><div class="sub" style="margin-top:4px">Ejemplares registrados, su desempeño en charreadas y la vitrina de venta. La app no interviene en pagos.</div>
     <div class="seg mt">${[['todos','Todos'],['venta','En venta']].map(([k, l]) => `<button class="${f === k ? 'on' : ''}" data-act="hfilter" data-k="${k}">${l}</button>`).join('')}</div>
     <select class="in mt" data-model="hDisc"><option value="">Todas las disciplinas</option>${DISCIPLINAS.map(x => `<option ${x === d ? 'selected' : ''}>${x}</option>`).join('')}</select>`;
   h += list.length ? `<div class="card pad0 mt">${list.map(horseRow).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin caballos para este filtro', 'Los dueños registran sus caballos desde Mi cuenta.')}</div>`;
+  if (nPend) h += `<div class="small mut mt">${nPend} ${nPend === 1 ? 'caballo espera' : 'caballos esperan'} verificación; aparecerán aquí cuando el súper usuario o un lienzo los verifique.</div>`;
   return h + (State.user ? `<a class="btn block mt2" href="#cuenta">${I.plus} Registrar mi caballo</a>` : '');
 }
 function horseFields(h = {}){
@@ -1358,7 +1391,7 @@ function vCaballo(){
   const ints = DB.all('requests').filter(r => r.type === 'interes' && r.horseId === h.id).sort((a, b) => b.createdAt - a.createdAt);
   const tg = (k, on, l, d) => `<button class="tog ${on ? 'on' : ''}" data-act="horseFlag" data-id="${h.id}" data-k="${k}" style="text-align:left;width:100%;display:flex;justify-content:space-between;gap:10px;align-items:center"><span><b>${l}</b><br><span class="small mut">${d}</span></span><span>${on ? 'Sí' : 'No'}</span></button>`;
   let o = `<a class="back" href="#cuenta">${I.arrow} Mi cuenta</a><div class="row between"><div class="h1">${esc(h.name)}</div><button class="btn sm" data-act="hcard" data-id="${h.id}">${I.trophy} Ver tarjeta</button></div>`;
-  o += `<div class="card mt">${photoBox('horse', h.id, h.photo, h.name)}<form data-form="horseEdit" data-id="${h.id}" class="mt">${horseFields(h)}<button class="btn block mt2">Guardar ficha</button></form></div>`;
+  o += `<div class="card mt">${photoBox('horse', h.id, h.photo, h.name)}${verifNote('horse', h, 'Mientras no esté verificado no aparece en la vitrina ni en los rankings, y su valuación no es pública. Lo verifica el súper usuario o un lienzo donde haya corrido.')}<form data-form="horseEdit" data-id="${h.id}" class="mt">${horseFields(h)}<button class="btn block mt2">Guardar ficha</button></form></div>`;
   o += `<div class="h2">Privacidad y venta</div><div class="list">${tg('ownerPublic', h.ownerPublic, 'Mostrar mi nombre como dueño', 'Si está apagado, el público ve “Dueño privado”.')}${tg('pricePublic', h.pricePublic, 'Mostrar valuación', 'Si está apagado, solo tú ves el precio estimado.')}${tg('forSale', h.forSale, 'En venta (vitrina)', 'Aparece en la vitrina y los interesados te dejan su contacto.')}</div>`;
   o += `<div class="h2">Valuación</div>${valBox(h, R)}`;
   if (ints.length) o += `<div class="h2">Interesados</div><div class="list">${ints.map(r => reqCard(r, canDecide(u, r))).join('')}</div>`;
@@ -1390,6 +1423,7 @@ function cardHTML(R){
   if (R.evs.size >= 5) badges.push(['Veterano']);
   if (R.n >= 5 && R.eff >= 75) badges.push(['Efectividad élite']);
   if (R.official) badges.push(['Roster oficial']);
+  if (P && isOfficial('charro', P)) badges.unshift(['Oficial']);
   return `<div class="tc-wrap"><div class="tc ${R.tier}" id="tcard"><div class="in">
     <div class="pic">${photo ? `<img src="${esc(photo)}" alt="">` : `<span class="ini">${esc(initials(R.name))}</span>`}
       <div class="ovr"><b>${R.ovr}</b><span>Media</span></div><span class="tier">${TIER_LBL[R.tier]}</span>${R.live ? '<span class="live">● EN VIVO</span>' : ''}</div>
@@ -1417,12 +1451,13 @@ function openCard(name){
     card.onpointerleave = () => { card.style.transform = ''; };
   }
 }
+const unverMark = on => on ? ' · <span class="chip" style="padding:1px 6px;font-size:10px">Sin verificar</span>' : '';
 function rankingEquipos(opt, mode){
   const m = {};
   rankingEvents({ ...opt, mode }).forEach(ev => teamStandings(ev).forEach((t, i) => {
     const pts = opt.suerte ? sum(evScores(ev.id).filter(s => s.teamId === t.id && s.faena === opt.suerte).map(s => s.net)) : t.pts;
-    const k = norm(t.name); const r = m[k] = m[k] || { name: t.name, state: t.assoc || t.state, pts: 0, wins: 0, evs: 0, best: -99 };
-    r.pts += pts; r.evs++; r.best = Math.max(r.best, pts); if (i === 0 && !opt.suerte && t.n) r.wins++;
+    const k = norm(t.name); const r = m[k] = m[k] || { name: t.name, state: t.assoc || t.state, pts: 0, wins: 0, evs: 0, best: -99, off: false };
+    if (ev.official) r.off = true; r.pts += pts; r.evs++; r.best = Math.max(r.best, pts); if (i === 0 && !opt.suerte && t.n) r.wins++;
   }));
   return Object.values(m).sort((a, b) => b.pts - a.pts);
 }
@@ -1435,13 +1470,13 @@ function vRanking(){
     <select class="in" data-model="rankSuerte"><option value="">Todas las faenas</option>${RULES.ORDER_EQ.map(k => `<option value="${k}" ${k === State.rankSuerte ? 'selected' : ''}>${esc(FN(k))}</option>`).join('')}</select></div>
     <div class="row mt" style="gap:8px"><select class="in" data-model="rankEstado"><option value="">Todo México</option>${estados.map(s => `<option ${s === State.rankEstado ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
     <button class="tog ${State.rankOficial ? 'on' : ''}" data-act="rankOficial" style="white-space:nowrap">Solo oficiales</button></div>`;
-  if (State.rankTab === 'charros') { const r = rankingCharros(opt); h += r.length ? `<div class="card pad0 mt">${r.slice(0, 100).map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.evs.size} charreadas · mejor ${c.best}`, c.pts, 'pts', true)).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
+  if (State.rankTab === 'charros') { const r = rankingCharros(opt); h += r.length ? `<div class="card pad0 mt">${r.slice(0, 100).map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.evs.size} charreadas · mejor ${c.best}${unverMark(!c.off && !isOfficial('charro', regCharro(c.name)))}`, c.pts, 'pts', true)).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
   else if (State.rankTab === 'caballos') { const by = State.hRankBy || 'puntos';
     h += `<div class="seg mt">${[['puntos','Por puntos'],['valor','Por valor']].map(([k, l]) => `<button class="${by === k ? 'on' : ''}" data-act="hrankby" data-k="${k}">${l}</button>`).join('')}</div>`;
-    if (by === 'valor') { const r = DB.all('horses').filter(x => x.pricePublic).map(x => ({ h: x, S: horseStats(x) })).sort((a, b) => b.S.val.value - a.S.val.value);
+    if (by === 'valor') { const r = DB.all('horses').filter(x => x.pricePublic && isOfficial('horse', x)).map(x => ({ h: x, S: horseStats(x) })).sort((a, b) => b.S.val.value - a.S.val.value);
       h += r.length ? `<div class="small mut mt">Valuación de cada caballo con valor público. Sube con su desempeño, sus campeonatos y el interés de compradores verificados.</div><div class="card pad0 mt">${r.map((x, i) => rankRow(i, x.h.name, `${esc(x.h.discipline || '')} · ${x.S.val.k ? x.S.val.k + ' interesados verificados' : 'sin interesados'}${x.S.val.override ? ' · precio fijado' : ''}`, mxnK(x.S.val.value).replace('$', ''), '', 'h:' + x.h.id)).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin caballos con valor público', 'Cada dueño decide si muestra la valuación de su caballo.')}</div>`; }
     else { const r = horseRanking(); h += r.length ? `<div class="small mut mt">Puntos de las faenas hechas por el charro que lo montó (todas las charreadas). <a href="#caballos" style="color:var(--gold2)">Vitrina</a></div><div class="card pad0 mt">${r.map((x, i) => rankRow(i, x.h.name, `${esc(x.h.discipline || '')} · ${x.R.evs.size} charreadas · ${esc(ownerLabel(x.h, State.user))}`, x.R.pts, 'pts', 'h:' + x.h.id)).join('')}</div>` : `<div class="mt">${emptyState(I.horse, 'Sin caballos con faenas', 'Se suman cuando un charro monta un caballo registrado en una charreada.')}</div>`; } }
-  else { const r = rankingEquipos(opt, State.rankTab === 'completo' ? 'completo' : 'equipos'); h += r.length ? `<div class="card pad0 mt">${r.map((t, i) => rankRow(i, t.name, `${esc(t.state || '')} · ${t.evs} charreadas${t.wins ? ` · ${t.wins} 🏆` : ''}`, t.pts, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
+  else { const r = rankingEquipos(opt, State.rankTab === 'completo' ? 'completo' : 'equipos'); h += r.length ? `<div class="card pad0 mt">${r.map((t, i) => rankRow(i, t.name, `${esc(t.state || '')} · ${t.evs} charreadas${t.wins ? ` · ${t.wins} 🏆` : ''}${unverMark(!t.off)}`, t.pts, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
   return h;
 }
 
@@ -1456,11 +1491,11 @@ function vCuenta(){
   if (u.status === 'pendiente') h += `<div class="banner warn mt">${I.info}<span>Tu cuenta está en revisión. El administrador la verificará para que puedas ${u.role === 'juez' ? 'calificar' : 'publicar charreadas'}.</span></div>`;
   if (u.status === 'rechazado' || u.status === 'suspendido') h += `<div class="banner err mt">${I.info}<span>Tu cuenta está ${esc(u.status)}. Contacta al administrador.</span></div>`;
   if (isApproved(u)) {
-    const staff = ['superadmin','lienzo','juez'].includes(u.role), nReq = myRequests(u).length; let tools = '';
+    const staff = ['superadmin','lienzo','juez'].includes(u.role), nReq = myRequests(u).length + verifQueue(u).length; let tools = '';
     if (u.role === 'superadmin') tools += menuItem('#admin', I.shield, 'Panel de súper usuario', `${pendingCount()} pendientes por autorizar`);
     if (u.role === 'lienzo' || u.role === 'superadmin') tools += menuItem('#panel', I.horse, u.role === 'superadmin' ? 'Charreadas (todas)' : 'Mis charreadas', 'Crear, transmitir, subir video');
     if (staff) tools += menuItem('#juez', I.gavel, 'Mesa del juez', 'Calificar por faena y entregar la hoja oficial');
-    if (staff || u.role === 'equipo') tools += menuItem('#solicitudes', I.check, 'Solicitudes', nReq ? `${nReq} por revisar` : 'Rosters de equipos y afiliaciones');
+    if (staff || u.role === 'equipo') tools += menuItem('#solicitudes', I.check, 'Solicitudes', nReq ? `${nReq} por revisar` : 'Rosters, afiliaciones y verificaciones');
     if (tools) h += `<div class="h2">Herramientas</div><div class="list">${tools}</div>`;
     if (u.role === 'charro') h += charroSection(u);
     if (u.role === 'equipo') h += teamSection(u);
@@ -1482,7 +1517,7 @@ function charroSection(u){
   const C = myCharro(u); if (!C) return `<div class="h2">Mi perfil de charro</div><div class="card small mut">No encontramos tu perfil de charro. Contacta al administrador.</div>`;
   const T = C.teamId && DB.get('teams', C.teamId), pend = DB.all('requests').find(r => r.type === 'roster' && r.charroId === C.id && r.status === 'pendiente');
   const teams = DB.all('teams').filter(t => t.id !== C.teamId).sort((a, b) => a.name.localeCompare(b.name));
-  let h = `<div class="h2">Mi perfil de charro</div><div class="card">${photoBox('charro', C.id, C.photo, C.name)}
+  let h = `<div class="h2">Mi perfil de charro</div><div class="card">${photoBox('charro', C.id, C.photo, C.name)}${verifNote('charro', C, 'Lo verifica el súper usuario o el lienzo al que está afiliado tu equipo.')}
     <form data-form="charroEdit" class="mt"><label class="f">Nombre</label><input class="in" name="name" value="${esc(C.name)}" required><label class="f">Apodo (opcional)</label><input class="in" name="alias" value="${esc(C.alias || '')}">
     <div class="grid2"><div><label class="f">Estado</label>${selState(C.state)}</div><div><label class="f">Categoría</label><select class="in" name="category">${CATEGORIAS.map(x => `<option ${x === C.category ? 'selected' : ''}>${x}</option>`).join('')}</select></div></div>
     <button class="btn block mt">Guardar perfil</button></form><button class="btn ghost block mt" data-act="card" data-n="${esc(C.name)}">${I.trophy} Ver mi tarjeta</button></div><div class="h2">Mi equipo</div><div class="card">`;
@@ -1496,7 +1531,7 @@ function teamSection(u){
   const T = myTeam(u); if (!T) return `<div class="h2">Mi equipo</div><div class="card small mut">No encontramos tu equipo. Contacta al administrador.</div>`;
   const R = DB.all('requests'), afil = R.find(r => r.type === 'afiliacion' && r.teamId === T.id && r.status === 'pendiente'), roster = rosterOf(T.id);
   const nPend = R.filter(r => r.type === 'roster' && r.teamId === T.id && r.status === 'pendiente').length, Ls = DB.all('lienzos').filter(l => l.status === 'aprobado' && l.id !== T.lienzoId), L = T.lienzoStatus === 'aprobado' && lienzo(T.lienzoId);
-  let h = `<div class="h2">Mi equipo</div><div class="card">${photoBox('team', T.id, T.photo, T.name)}
+  let h = `<div class="h2">Mi equipo</div><div class="card">${photoBox('team', T.id, T.photo, T.name)}${verifNote('team', T, 'Lo verifica el súper usuario o el lienzo al que te afilias.')}
     <form data-form="teamEdit" class="mt"><label class="f">Nombre del equipo</label><input class="in" name="name" value="${esc(T.name)}" required><label class="f">Asociación (opcional)</label><input class="in" name="assoc" value="${esc(T.assoc || '')}"><label class="f">Estado</label>${selState(T.state)}<button class="btn block mt">Guardar equipo</button></form></div>`;
   h += `<div class="h2">Lienzo</div><div class="card">` + (L ? `<div style="font-weight:800">${esc(L.name)} ${verifiedMark(L)}</div><div class="small mut">Afiliación aprobada. El lienzo y sus jueces también pueden aprobar charros para tu roster.</div>` : `<div class="small mut">Tu equipo aún no está afiliado a un lienzo.</div>`);
   if (afil) h += `<div class="banner warn mt">${I.clock}<span>Solicitud de afiliación a <b>${esc(lienzo(afil.lienzoId).name)}</b> en revisión.</span></div><button class="btn ghost sm block mt" data-act="decideReq" data-id="${afil.id}" data-d="cancelado">Cancelar solicitud</button>`;
@@ -1523,10 +1558,21 @@ function reqCard(r, canAct){
     ${canAct ? `<div class="btns mt"><button class="btn pri sm" data-act="decideReq" data-id="${r.id}" data-d="aprobado">${I.check} Aprobar</button><button class="btn sm" data-act="decideReq" data-id="${r.id}" data-d="rechazado">${I.x} Rechazar</button></div>`
       : r.status === 'pendiente' && State.user && r.createdBy === State.user.id ? `<button class="btn ghost sm mt" data-act="decideReq" data-id="${r.id}" data-d="cancelado">Cancelar solicitud</button>` : ''}</div>`;
 }
+function verifCard({ kind, d, st }){
+  const t = kind === 'charro' ? DB.get('teams', d.teamId) : null, age = kind === 'horse' ? horseAge(d) : null;
+  const sub = kind === 'charro' ? [d.alias ? '“' + d.alias + '”' : '', d.state, d.category, t ? 'Equipo: ' + t.name : 'Sin equipo'] : kind === 'team' ? [d.state, d.captainName ? 'Capitán: ' + d.captainName : '', rosterOf(d.id).length + ' charros', d.lienzoStatus === 'aprobado' ? lienzo(d.lienzoId).name : 'Sin lienzo']
+    : [d.discipline, d.breed, d.registry ? 'Registro ' + d.registry : 'Sin registro', d.training, age != null ? age + ' años' : '', d.sex];
+  return `<div class="card"><div class="row" style="gap:10px">${av(d.photo, d.name, 44)}<div class="grow"><div style="font-weight:800">${esc(d.name)} <span class="small mut">· ${VK_LABEL[kind]}</span></div><div class="small mut">${esc(sub.filter(Boolean).join(' · '))}</div><div style="margin-top:5px">${verifChip(kind, d)}</div></div></div>
+    ${st === 'cambios' ? '<div class="small mut2" style="margin-top:6px">Estaba verificado y su dueño cambió datos clave.</div>' : ''}
+    <div class="btns mt"><button class="btn pri sm" data-act="verify" data-k="${kind}" data-id="${d.id}" data-d="oficial">${I.check} Verificar</button><button class="btn sm" data-act="verify" data-k="${kind}" data-id="${d.id}" data-d="rechazado">${I.x} Rechazar</button>
+    ${kind === 'horse' ? `<button class="btn ghost sm" data-act="hcard" data-id="${d.id}">Ver tarjeta</button>` : kind === 'charro' ? `<button class="btn ghost sm" data-act="card" data-n="${esc(d.name)}">Ver tarjeta</button>` : ''}</div></div>`;
+}
 function vSolicitudes(){
   const u = State.user; if (!u) return needLogin();
   const R = DB.all('requests').slice().sort((a, b) => b.createdAt - a.createdAt), dec = R.filter(r => canDecide(u, r)), mine = R.filter(r => r.createdBy === u.id && r.type !== 'transfer'), done = R.filter(r => r.status !== 'pendiente' && r.decidedBy === u.id && r.createdBy !== u.id).slice(0, 20);
+  const VQ = verifQueue(u);
   let h = `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="h1">Solicitudes</div><div class="sub" style="margin-top:4px">Rosters de equipos, afiliaciones a lienzos e interesados en tus caballos.</div>`;
+  if (VQ.length || isSuper(u) || u.role === 'lienzo') h += `<div class="h2">Verificaciones</div>` + (VQ.length ? `<div class="small mut" style="margin-bottom:8px">Solo lo verificado aparece en rankings, vitrina y precios públicos. Revisa que los datos sean reales.</div><div class="list">${VQ.map(verifCard).join('')}</div>` : `<div class="card small mut">No hay registros por verificar. ✓</div>`);
   h += `<div class="h2">Por revisar</div>` + (dec.length ? `<div class="list">${dec.map(r => reqCard(r, true)).join('')}</div>` : `<div class="card small mut">No hay solicitudes pendientes. ✓</div>`);
   if (mine.length) h += `<div class="h2">Enviadas por mí</div><div class="list">${mine.map(r => reqCard(r, false)).join('')}</div>`;
   if (done.length) h += `<div class="h2">Resueltas por mí</div><div class="list">${done.map(r => reqCard(r, false)).join('')}</div>`;
@@ -1906,7 +1952,7 @@ function vHoja(){
 }
 
 /* ---------- SÚPER USUARIO ---------- */
-function pendingCount(){ return DB.all('profiles').filter(p => p.status === 'pendiente').length + DB.all('requests').filter(r => r.status === 'pendiente').length + DB.all('events').filter(e => e.requestOfficial && !e.official && e.status !== 'borrador').length; }
+function pendingCount(){ return DB.all('profiles').filter(p => p.status === 'pendiente').length + verifQueue(State.user).length + DB.all('requests').filter(r => r.status === 'pendiente').length + DB.all('events').filter(e => e.requestOfficial && !e.official && e.status !== 'borrador').length; }
 const statusLabel = s => ({ borrador:'Borrador', programado:'Programada', en_vivo:'En vivo', finalizado:'Finalizada' }[s] || s);
 const stChip = s => s === 'aprobado' ? `<span class="chip green">${I.check}Verificado</span>` : s === 'pendiente' ? '<span class="chip blue">Pendiente</span>' : `<span class="chip red">${esc(s)}</span>`;
 function vAdmin(){
@@ -1915,9 +1961,9 @@ function vAdmin(){
   const P = DB.all('profiles'), Ls = DB.all('lienzos'), Es = DB.all('events'), pend = P.filter(p => p.status === 'pendiente'), offReq = Es.filter(e => e.requestOfficial && !e.official && e.status !== 'borrador'), t = State.adminTab;
   let h = `<div class="row between"><div><div class="h1">Súper usuario</div><div class="sub" style="margin-top:3px">Control y credibilidad de la plataforma</div></div><a class="btn sm" href="#cuenta">${I.key} Mi cuenta</a></div>
     <div class="kpis mt"><div class="kpi"><b>${Ls.filter(l => l.status === 'aprobado').length}</b><span>Lienzos verificados</span></div><div class="kpi"><b>${P.filter(p => p.role === 'juez' && p.status === 'aprobado').length}</b><span>Jueces activos</span></div><div class="kpi"><b>${DB.all('sheets').filter(s => s.entregada).length}</b><span>Hojas entregadas</span></div></div>
-    <div class="scroller mt">${[['solicitudes','Solicitudes',pend.length + offReq.length + DB.all('requests').filter(r => r.status === 'pendiente').length],['lienzos','Lienzos'],['usuarios','Usuarios'],['eventos','Charreadas'],['invitaciones','Invitaciones'],['valuacion','Valuación'],['bitacora','Bitácora']].map(([k, l, n]) => `<button class="tog ${t === k ? 'on' : ''}" data-act="admintab" data-k="${k}">${l}${n ? ` <span class="badge-n">${n}</span>` : ''}</button>`).join('')}</div>`;
-  if (t === 'solicitudes') { const nr = DB.all('requests').filter(r => r.status === 'pendiente').length;
-    h += `<div class="h2">Rosters y afiliaciones</div><div class="list">${menuItem('#solicitudes', I.check, 'Solicitudes de equipos', nr ? `${nr} pendientes` : 'Sin pendientes')}</div>`;
+    <div class="scroller mt">${[['solicitudes','Solicitudes',pend.length + offReq.length + DB.all('requests').filter(r => r.status === 'pendiente' && r.type !== 'transfer' && r.type !== 'interes').length + verifQueue(u).length],['lienzos','Lienzos'],['usuarios','Usuarios'],['eventos','Charreadas'],['invitaciones','Invitaciones'],['valuacion','Valuación'],['bitacora','Bitácora']].map(([k, l, n]) => `<button class="tog ${t === k ? 'on' : ''}" data-act="admintab" data-k="${k}">${l}${n ? ` <span class="badge-n">${n}</span>` : ''}</button>`).join('')}</div>`;
+  if (t === 'solicitudes') { const nr = DB.all('requests').filter(r => r.status === 'pendiente' && r.type !== 'transfer' && r.type !== 'interes').length, nv = verifQueue(u).length;
+    h += `<div class="h2">Verificaciones y equipos</div><div class="list">${menuItem('#solicitudes', I.check, 'Verificar charros, equipos y caballos', nv ? `${nv} por verificar` : 'Sin pendientes')}${menuItem('#solicitudes', I.user, 'Rosters y afiliaciones', nr ? `${nr} pendientes` : 'Sin pendientes')}</div>`;
     h += `<div class="h2">Cuentas por autorizar</div>` + (pend.length ? `<div class="list">${pend.map(p => { const L = p.role === 'lienzo' ? DB.get('lienzos', p.lienzoId) : lienzo(p.lienzoId); return `<div class="card"><div class="row"><div class="avatar">${esc(initials(p.name))}</div><div class="grow"><div style="font-weight:800">${esc(p.name)}</div><div class="small mut">${roleName(p.role)} · ${esc(p.email)}${p.phone ? ' · ' + esc(p.phone) : ''}</div></div></div>
       <div class="small" style="margin-top:8px">${p.role === 'lienzo' ? `Lienzo: <b>${esc(L && L.name)}</b> · ${esc(L && L.city)}, ${esc(L && L.state)}` : `Juez en: <b>${esc(L.name)}</b>`}</div><div class="small mut2" style="margin-top:2px">Solicitado ${fdt(p.createdAt)}</div>
       <div class="btns mt"><button class="btn pri sm" data-act="approve" data-id="${p.id}">${I.check} Autorizar</button><button class="btn sm" data-act="reject" data-id="${p.id}">${I.x} Rechazar</button></div></div>`; }).join('')}</div>` : `<div class="card small mut">No hay cuentas pendientes. ✓</div>`);
@@ -1942,9 +1988,9 @@ function vAdmin(){
       Luego sube sin límite con el desempeño en charreadas (hasta ×5 para los mejores con 12+ faenas), +8% por campeonato y la demanda de compradores verificados. El mínimo es <b>${mxn(VAL_MIN)}</b>.
       Puedes fijar el precio de cualquier caballo a mano; mientras esté fijado, se usa ese precio en la vitrina y el ranking.</div></div>
       <div class="small mut mt">Para que el interés de un charro o equipo cuente como demanda, verifícalo en la pestaña Usuarios. Los lienzos autorizados cuentan siempre.</div>
-      <div class="h2">Caballos</div>${HZ.length ? `<div class="list">${HZ.map(({ h: x, S }) => `<div class="card"><div class="row" style="gap:10px">${av(x.photo, x.name, 44)}<div class="grow"><div style="font-weight:800">${esc(x.name)}</div><div class="small mut">${esc([x.discipline, x.training, x.registry ? 'Registrado' : 'Sin registro'].filter(Boolean).join(' · '))}</div></div><div class="pts" style="font-size:16px">${mxnK(S.val.value)}</div></div>
+      <div class="h2">Caballos</div>${HZ.length ? `<div class="list">${HZ.map(({ h: x, S }) => `<div class="card"><div class="row" style="gap:10px">${av(x.photo, x.name, 44)}<div class="grow"><div style="font-weight:800">${esc(x.name)} ${verifChip('horse', x)}</div><div class="small mut">${esc([x.discipline, x.training, x.registry ? 'Registrado' : 'Sin registro'].filter(Boolean).join(' · '))}</div></div><div class="pts" style="font-size:16px">${mxnK(S.val.value)}</div></div>
         <div class="small mut" style="margin-top:6px">Modelo: ${mxn(S.val.model)} · ${S.n} faenas · ${S.val.k} compradores verificados${S.val.override ? ` · <b style="color:var(--gold2)">Precio fijado: ${mxn(S.val.value)}</b>` : ''}</div>
-        <div class="btns mt"><button class="btn sm" data-act="priceSet" data-id="${x.id}">${I.edit} Fijar precio</button>${S.val.override ? `<button class="btn ghost sm" data-act="priceClear" data-id="${x.id}">Volver al modelo</button>` : ''}<button class="btn ghost sm" data-act="hcard" data-id="${x.id}">Ver tarjeta</button></div></div>`).join('')}</div>` : '<div class="card small mut">Aún no hay caballos.</div>'}`; }
+        <div class="btns mt"><button class="btn sm" data-act="priceSet" data-id="${x.id}">${I.edit} Fijar precio</button>${S.val.override ? `<button class="btn ghost sm" data-act="priceClear" data-id="${x.id}">Volver al modelo</button>` : ''}<button class="btn ghost sm" data-act="hcard" data-id="${x.id}">Ver tarjeta</button>${isOfficial('horse', x) ? `<button class="btn ghost sm" data-act="verify" data-k="horse" data-id="${x.id}" data-d="pendiente">Quitar sello oficial</button>` : `<button class="btn sm" data-act="verify" data-k="horse" data-id="${x.id}" data-d="oficial">${I.check} Verificar</button>`}</div></div>`).join('')}</div>` : '<div class="card small mut">Aún no hay caballos.</div>'}`; }
   if (t === 'bitacora') { const A = DB.all('audit').slice().sort((a, b) => b.ts - a.ts).slice(0, 200);
     h += `<div class="small mut mt">Registro de todo lo que pasa en la plataforma. No se puede editar.</div><div class="card pad0 mt">${A.map(a => `<div class="rank" style="align-items:flex-start"><span class="chip" style="min-width:76px;justify-content:center">${esc(a.action)}</span><div class="grow"><div class="small" style="color:var(--text)">${esc(a.detail)}</div><div class="small mut2">${esc(a.actorName)} · ${fdt(a.ts)}</div></div></div>`).join('') || '<div class="empty">Sin registros</div>'}</div>`; }
   return h;
@@ -1993,7 +2039,12 @@ const ACT = {
   rankOficial(){ State.rankOficial = !State.rankOficial; render(); }, histOficial(){ State.histOficial = !State.histOficial; render(); },
   authmode(el){ State.authMode = el.dataset.k; render(); },
   card(el){ openCard(el.dataset.n); },
-  hcard(el){ openHorse(el.dataset.id); }, hrankby(el){ State.hRankBy = el.dataset.k; render(); },
+  hcard(el){ openHorse(el.dataset.id); },
+  async verify(el){ const kind = el.dataset.k, d = DB.get(VK_TABLE[kind], el.dataset.id), dec = el.dataset.d; if (!d) return; let note = '';
+    if (dec === 'rechazado') { note = await ask(`Rechazar ${VK_LABEL[kind].toLowerCase()}`, `${d.name} seguirá fuera de rankings y precios públicos. El dueño verá el motivo.`, 'Rechazar', true, true); if (!note) return; }
+    if (dec === 'pendiente' && !(await ask('Quitar sello oficial', `${d.name} dejará de aparecer en rankings, vitrina y precios públicos hasta que se verifique otra vez.`, 'Quitar sello', true))) return;
+    await safe(async () => { await DB.backend.setVerified(kind, d, dec, note); await audit('verificacion', `${{ oficial: 'Verificó como oficial', rechazado: 'Rechazó la verificación de', pendiente: 'Quitó el sello oficial a' }[dec]} ${VK_LABEL[kind].toLowerCase()} ${d.name}${note ? ' · ' + note : ''}`); },
+      { oficial: 'Verificado como oficial', rechazado: 'Verificación rechazada', pendiente: 'Sello oficial retirado' }[dec]); }, hrankby(el){ State.hRankBy = el.dataset.k; render(); },
   async userVerify(el){ const p = DB.get('profiles', el.dataset.id); if (!p) return;
     await safe(async () => { await DB.put('profiles', { ...p, verified: !p.verified }); await audit('verificacion', `${p.verified ? 'Quitó la verificación de comprador a' : 'Verificó como comprador a'} ${p.name}`); }, p.verified ? 'Verificación quitada' : 'Comprador verificado'); },
   async priceSet(el){ const h = DB.get('horses', el.dataset.id); if (!h) return;
