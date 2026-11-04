@@ -672,7 +672,7 @@ const DB = {
   }
 };
 const fotoMem = {};
-const LS_KEY = 'charreriapro_demo_v16', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v17', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -729,6 +729,8 @@ const Local = {
   async validateChip(kind, x, ok){ if (!isSuper(State.user)) throw new Error('Solo el súper usuario valida chips');
     await DB.put(kind === 'horse' ? 'horses' : 'stock', { ...x, chipStatus: ok ? 'validado' : 'rechazado', chipValidatedBy: State.user.name, chipAt: Date.now() }); },
   async putFoto(id, eventId, img){ fotoMem[id] = img; try { localStorage.setItem('cp_foto_' + id, img); } catch (e) {} },
+  async putDib(){},
+  async getDib(id){ const c = DB.get('croquis', id); if (!c) return null; const foto = c.hasPhoto ? await this.getFoto(id) : null; return { ej: c.ej.map(e => ({ draw: e.draw || null })), cells: foto ? await photoCellUrls(foto) : null }; },
   async getFoto(id){ if (fotoMem[id]) return fotoMem[id]; try { return localStorage.getItem('cp_foto_' + id); } catch (e) { return null; } },
   async claimHorse(code){
     const u = State.user, r = DB.all('requests').find(x => x.type === 'transfer' && x.status === 'pendiente' && x.code === code.trim().toUpperCase());
@@ -795,6 +797,8 @@ const Remote = {
   rosterRemove(c){ return this.rpc('roster_remove', { cid: c.id }); },
   setVerified(kind, d, decision, note){ return this.rpc('set_verified', { kind, rid: d.id, decision, note: note || '' }); },
   async putFoto(id, eventId, img){ const { error } = await this.sb.from('croquis_foto').upsert({ id, data: { id, eventId, img } }); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
+  async putDib(row){ const { error } = await this.sb.from('croquis_dib').upsert({ id: row.id, data: row }); if (error) throw new Error(error.message); },
+  async getDib(id){ const { data, error } = await this.sb.from('croquis_dib').select('data').eq('id', id).maybeSingle(); if (error) throw new Error(error.message); return data ? data.data : null; },
   async getFoto(id){ const { data, error } = await this.sb.from('croquis_foto').select('data').eq('id', id).maybeSingle(); if (error) throw new Error(error.message); return data ? data.data.img : null; },
   claimHorse(code){ return this.rpc('claim_horse', { code: code.trim().toUpperCase() }); },
   async readNotifs(){ const { error } = await this.sb.rpc('notifs_read'); if (error) throw new Error(error.message); },
@@ -934,7 +938,7 @@ function seed(){
   mkEsc('eesc2', 'Copa de Escaramuzas de la Villa', 'lvilla', day(-18), 'finalizado', true, [0, 1, 2, 3], () => JZ);
   mkEsc('eescv', 'Torneo de Escaramuzas Bicentenario', 'lvilla', day(0), 'en_vivo', true, [0, 1, 2], ti => ti === 0 ? JZ.slice(0, 3) : ti === 1 ? JZ.slice(0, 1) : [], { startedAt: Date.now() - 40 * 60000 });
   const CR = [], ring = (n, r) => Array.from({ length: n }, (_, k) => { const a = k / n * 6.283 + r, x = Math.round(500 + 300 * Math.cos(a)), y = Math.round(500 + 300 * Math.sin(a)); return { c: 'k', p: [x, y, Math.round(x + 70 * Math.cos(a + 1.6)), Math.round(y + 70 * Math.sin(a + 1.6))] }; });
-  E.filter(e => e.mode === 'escaramuza').forEach(e => e.teams.forEach(t => { const c = croBlank(e, t); c.via = 'dibujo'; c.instructor = 'Rosa Medina'; c.lugar = t.state; c.musica = 'Mariachi'; c.ej.forEach((x, i) => { x.draw = ring(8, i * .4); x.ad = (escAdicOpts(x.c, x.v).slice(-1)[0] || 0); }); c.puntas = [{ name: 'Valeria Pérez', caballo: 'Lucero' }, { name: 'Ximena Ortiz', caballo: 'Canela' }]; c.integrantes = c.integrantes.map((m, i) => ({ name: ['Valeria Pérez','Ximena Ortiz','Regina Luna','Camila Soto','Paola García','Andrea Ruiz','Sofía Díaz','Lucía Mora'][i], cred: 'FM' + (2100 + i) })); CR.push(c); }));
+  E.filter(e => e.mode === 'escaramuza').forEach(e => e.teams.forEach(t => { const c = croBlank(e, t); c.via = 'dibujo'; c.instructor = 'Rosa Medina'; c.lugar = t.state; c.musica = 'Mariachi'; c.ej.forEach((x, i) => { x.draw = demoDraw(x.c); x.ad = (escAdicOpts(x.c, x.v).slice(-1)[0] || 0); }); c.puntas = [{ name: 'Valeria Pérez', caballo: 'Lucero' }, { name: 'Ximena Ortiz', caballo: 'Canela' }]; c.integrantes = c.integrantes.map((m, i) => ({ name: ['Valeria Pérez','Ximena Ortiz','Regina Luna','Camila Soto','Paola García','Andrea Ruiz','Sofía Díaz','Lucía Mora'][i], cred: 'FM' + (2100 + i) })); CR.push(c); }));
   const live = mkEvent('elive','Torneo Nacional Charro Bicentenario','lvilla',day(0),[0,1,2],'en_vivo',true,{ startedAt: Date.now() - 70*60000 });
   scoreAll(live, 3, false);
   S.filter(x => x.eventId === 'elive').forEach((x, i) => { x.createdAt = x.updatedAt = Date.now() - (60 - i * 6) * 60000; });
@@ -2354,7 +2358,7 @@ async function fillOfficialForms(PDFLib, calBytes, croBytes, F){
     return { H, put, wrap }; };
   const chm = !!F.chm, dy = chm ? -13 : 0;   // en Charra Mayor la cuadrícula de la página 2 está 13 px más arriba
   const strokes = (page, list, x, y, w, h) => { const s = Math.min(w, h) * FORM_K / 1000, ox = (x + (w - Math.min(w, h)) / 2) * FORM_K, oy = page.getHeight() - (y + (h - Math.min(w, h)) / 2) * FORM_K;
-    (list || []).forEach(st => { if (!st.p || st.p.length < 4) return; let d = `M ${st.p[0]} ${st.p[1]}`; for (let i = 2; i < st.p.length; i += 2) d += ` L ${st.p[i]} ${st.p[i + 1]}`;
+    (list || []).forEach(st => { if (st.t) { page.drawText(pdfSafe(st.t), { x: ox + st.p[0] * s, y: oy - st.p[1] * s, size: Math.max(4, 90 * s), font: bold, color: ink }); return; } if (!st.p || st.p.length < 4) return; let d = `M ${st.p[0]} ${st.p[1]}`; for (let i = 2; i < st.p.length; i += 2) d += ` L ${st.p[i]} ${st.p[i + 1]}`;
       page.drawSvgPath(d, { x: ox, y: oy, scale: s, borderColor: st.c === 'r' ? rgb(.85, .1, .1) : st.c === 'g' ? rgb(.05, .55, .2) : ink, borderWidth: .9 / s }); }); };
   const C = F.croquis || {}, E = C.ej || [];
   // Croquis: la foto de la hoja si existe; si no, el formato oficial relleno
@@ -2405,7 +2409,7 @@ const croBlank = (ev, team) => ({ id: croId(ev.id, team.id), eventId: ev.id, tea
   ej: escBlank().ej.map(e => ({ nombre: '', c: e.c, v: e.v, ad: 0, draw: null })), integrantes: Array.from({ length: 8 }, (_, i) => ({ name: (team.members || [])[i] || '', cred: '' })), suplente: { name: (team.members || [])[8] || '', cred: '' }, puntas: [{ name: '', caballo: '' }, { name: '', caballo: '' }] });
 const croDone = c => !!c && (c.hasPhoto || c.ej.some(e => (e.draw || []).length));
 const strokePath = st => { let d = `M${st.p[0]} ${st.p[1]}`; for (let i = 2; i < st.p.length; i += 2) d += `L${st.p[i]} ${st.p[i + 1]}`; return d; };
-const drawThumb = (list, cls = 'thumb') => `<svg class="${cls}" viewBox="0 0 1000 1000" aria-hidden="true"><circle cx="500" cy="500" r="440" fill="none" stroke="#ddd" stroke-width="10"/>${(list || []).map(st => `<path d="${strokePath(st)}" fill="none" stroke="${st.c === 'r' ? '#d91a1a' : st.c === 'g' ? '#0d8c33' : '#111'}" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>`).join('')}</svg>`;
+const drawThumb = (list, cls = 'thumb') => `<svg class="${cls}" viewBox="0 0 1000 1000" aria-hidden="true"><circle cx="500" cy="500" r="440" fill="none" stroke="#ddd" stroke-width="10"/>${(list || []).map(st => st.t ? `<text x="${st.p[0]}" y="${st.p[1]}" font-size="90" font-weight="700" fill="#111">${esc(st.t)}</text>` : `<path d="${strokePath(st)}" fill="none" stroke="${st.c === 'r' ? '#d91a1a' : st.c === 'g' ? '#0d8c33' : '#111'}" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>`).join('')}</svg>`;
 function vCroquis(){
   const u = State.user, ev = DB.get('events', State.param), team = ev && ev.teams.find(t => t.id === State.param2);
   if (!ev || !team) return emptyState(I.doc, 'Croquis no encontrado', ''); if (!u) return needLogin();
@@ -2431,21 +2435,49 @@ function vCroquis(){
       <div class="bignav"><button class="btn" data-act="cqGo" data-k="1">Atrás</button><button class="btn pri" data-act="cqSave">${I.check} Guardar croquis</button></div>`; }
   return h;
 }
-async function cqPersist(){ const Q = State.cq; Q.d.updatedAt = Date.now(); Q.d.updatedBy = State.user.name; await DB.put('croquis', clone(Q.d)); }
+async function cqPersist(){ const Q = State.cq; Q.d.updatedAt = Date.now(); Q.d.updatedBy = State.user.name; await DB.put('croquis', clone(Q.d)); await croPublish(Q.d); }
+async function croPublish(d){   // copia pública: solo los dibujos, sin nombres ni credenciales
+  try { const foto = d.hasPhoto ? await DB.backend.getFoto(d.id) : null; await DB.backend.putDib({ id: d.id, eventId: d.eventId, teamId: d.teamId, ej: d.ej.map(e => ({ draw: e.draw || null })), cells: foto ? await photoCellUrls(foto) : null, updatedAt: Date.now() }); }
+  catch (e) { toast('El croquis se guardó, pero sus dibujos no se publicaron: ' + (e.message || e), 'err'); }
+}
+function arrowHead(p){   // convierte un trazo en flecha: agrega la punta al final, en la dirección del último tramo
+  const n = p.length, x = p[n - 2], y = p[n - 1]; let i = n - 4; while (i > 0 && Math.hypot(x - p[i], y - p[i + 1]) < 40) i -= 2;
+  const a = Math.atan2(y - p[i + 1], x - p[i]), L = 60, w = .5, q = s => [Math.round(x - L * Math.cos(a + s * w)), Math.round(y - L * Math.sin(a + s * w))];
+  return [...p, ...q(1), x, y, ...q(-1)];
+}
+function demoDraw(c){   // dibujos de ejemplo para la demo
+  const A = (...p) => ({ c: 'k', p: arrowHead(p) }), arc = (cx, cy, r, a0, a1) => { const p = []; for (let i = 0; i <= 12; i++) { const a = a0 + (a1 - a0) * i / 12; p.push(Math.round(cx + r * Math.cos(a)), Math.round(cy + r * Math.sin(a))); } return { c: 'k', p: arrowHead(p) }; }, P = Math.PI;
+  const giros = () => [[300, 300], [700, 300], [300, 700], [700, 700]].map(([x, y], i) => arc(x, y, 110, i * P / 2, i * P / 2 + 1.7 * P));
+  const M = {
+    'Agrupación': () => [230, 410, 590, 770].map(x => A(x, 180, x, 820)),
+    'Escalera': () => [0, 1, 2, 3].flatMap(k => [A(150 + k * 180, 170 + k * 170, 320 + k * 180, 170 + k * 170), A(320 + k * 180, 180 + k * 170, 320 + k * 180, 320 + k * 170)]),
+    'Abanico': () => [0, 1, 2, 3, 4, 5].map(k => A(130 + k * 30, 170 + k * 25, 480 + k * 80, 240 + k * 110)),
+    'Cruce': () => [A(120, 400, 880, 400), A(880, 600, 120, 600), A(400, 120, 400, 880), A(600, 880, 600, 120)],
+    'Coladera': () => [0, 1, 2, 3].map(k => arc(500, 500, 340, k * P / 2 + .15, k * P / 2 + 1.4)),
+    'Flor': () => [0, 1, 2, 3].map(k => arc(500 + 200 * Math.cos(k * P / 2), 500 + 200 * Math.sin(k * P / 2), 170, k * P / 2 + P, k * P / 2 + 2.6 * P)),
+    'Libre': () => [A(500, 120, 500, 420), A(500, 880, 500, 580), A(880, 500, 150, 500), { c: 'k', t: '2T', p: [650, 820] }],
+    'Compuesto': () => [A(180, 200, 180, 800), A(820, 800, 820, 200), arc(500, 330, 130, 0, 1.7 * P), arc(500, 670, 130, P, 2.7 * P), { c: 'k', t: '270°', p: [420, 950] }],
+    'Giro': giros, 'Combinado · giro': giros,
+    'Combinado · complementario': () => [0, 1, 2, 3].map(k => A(140 + k * 190, 760 - k * 170, 300 + k * 190, 620 - k * 170))
+  };
+  return (M[c] || M['Agrupación'])();
+}
 function openDraw(i){
-  const Q = State.cq, e = Q.d.ej[i]; let list = clone(e.draw || []), col = 'k', cur = null;
+  const Q = State.cq, e = Q.d.ej[i]; let list = clone(e.draw || []), col = 'k', cur = null, tool = 'flecha';
   $('#modal').innerHTML = `<div class="modal" style="align-items:center"><div class="box" style="max-height:97vh;padding:12px"><div class="row between"><b style="font-size:17px">Ejercicio ${i + 1} · ${esc(e.c)}</b><button class="btn sm" id="dpX">Cerrar</button></div>
     <canvas id="dp" width="900" height="900" style="width:100%;max-width:58vh;display:block;margin:10px auto;background:#fff;border-radius:12px;touch-action:none"></canvas>
-    <div class="btns">${[['k','Negro'],['r','Rojo'],['g','Verde']].map(([k, l]) => `<button class="tog ${k === 'k' ? 'on' : ''}" data-col="${k}">${l}</button>`).join('')}<button class="btn sm" id="dpU">Deshacer</button><button class="btn sm" id="dpC">Borrar todo</button></div>
-    <div class="small mut" style="margin-top:6px">Dibuja el momento del cuaje, en negro. Rojo y verde solo para lo que pide la hoja.</div>
+    <div class="btns">${[['flecha','Flecha'],['trazo','Trazo'],['texto','Texto']].map(([k, l]) => `<button class="tog ${k === 'flecha' ? 'on' : ''}" data-tool="${k}">${l}</button>`).join('')}</div>
+    <div class="btns mt">${[['k','Negro'],['r','Rojo'],['g','Verde']].map(([k, l]) => `<button class="tog ${k === 'k' ? 'on' : ''}" data-col="${k}">${l}</button>`).join('')}<button class="btn sm" id="dpU">Deshacer</button><button class="btn sm" id="dpC">Borrar todo</button></div>
+    <div class="small mut" style="margin-top:6px">Flecha: recta o curva, la punta sale donde levantas el dedo. Texto: toca el lugar y escribe, por ejemplo 2T o 270°. Rojo y verde solo para lo que pide la hoja.</div>
     <div class="bignav"><button class="btn pri" id="dpS">${i < 11 ? 'Guardar y siguiente' : 'Guardar'}</button></div></div></div>`;
   const cv = $('#dp'), g = cv.getContext('2d'), C = { k: '#111', r: '#d91a1a', g: '#0d8c33' };
   const paint = () => { g.clearRect(0, 0, 900, 900); g.strokeStyle = '#ccc'; g.lineWidth = 3; g.beginPath(); g.arc(450, 450, 400, 0, 7); g.stroke(); g.fillStyle = '#999'; g.font = '30px sans-serif'; g.textAlign = 'center'; g.fillText('Manga', 450, 36); g.fillText('Ruedo', 450, 888);
-    g.lineCap = g.lineJoin = 'round'; g.lineWidth = 8; [...list, ...(cur ? [cur] : [])].forEach(st => { g.strokeStyle = C[st.c]; g.beginPath(); st.p.forEach((v, n) => { if (n % 2) (n === 1 ? g.moveTo : g.lineTo).call(g, st.p[n - 1] * .9, v * .9); }); g.stroke(); }); };
+    g.lineCap = g.lineJoin = 'round'; g.lineWidth = 8; [...list, ...(cur ? [cur] : [])].forEach(st => { if (st.t) { g.fillStyle = C[st.c]; g.font = '700 80px sans-serif'; g.textAlign = 'left'; g.fillText(st.t, st.p[0] * .9, st.p[1] * .9); return; } g.strokeStyle = C[st.c]; g.beginPath(); st.p.forEach((v, n) => { if (n % 2) (n === 1 ? g.moveTo : g.lineTo).call(g, st.p[n - 1] * .9, v * .9); }); g.stroke(); }); };
   const at = ev => { const r = cv.getBoundingClientRect(); return [Math.round((ev.clientX - r.left) / r.width * 1000), Math.round((ev.clientY - r.top) / r.height * 1000)]; };
-  cv.onpointerdown = ev => { cv.setPointerCapture(ev.pointerId); cur = { c: col, p: at(ev) }; }; cv.onpointermove = ev => { if (!cur) return; const [x, y] = at(ev), n = cur.p.length; if (Math.abs(x - cur.p[n - 2]) + Math.abs(y - cur.p[n - 1]) > 7) { cur.p.push(x, y); paint(); } };
-  cv.onpointerup = () => { if (cur) { if (cur.p.length === 2) cur.p.push(cur.p[0] + 1, cur.p[1] + 1); list.push(cur); cur = null; paint(); } };
+  cv.onpointerdown = ev => { if (tool === 'texto') { const p = at(ev), t = (window.prompt('Texto para el dibujo (por ejemplo 2T o 270°)') || '').trim().slice(0, 10); if (t) { list.push({ c: col, t, p }); paint(); } return; } cv.setPointerCapture(ev.pointerId); cur = { c: col, p: at(ev) }; }; cv.onpointermove = ev => { if (!cur) return; const [x, y] = at(ev), n = cur.p.length; if (Math.abs(x - cur.p[n - 2]) + Math.abs(y - cur.p[n - 1]) > 7) { cur.p.push(x, y); paint(); } };
+  cv.onpointerup = () => { if (cur) { if (cur.p.length === 2) cur.p.push(cur.p[0] + 1, cur.p[1] + 1); else if (tool === 'flecha') cur.p = arrowHead(cur.p); list.push(cur); cur = null; paint(); } };
   const close = () => { $('#modal').innerHTML = ''; render(); }; $('#dpX').onclick = close; $('#dpU').onclick = () => { list.pop(); paint(); }; $('#dpC').onclick = () => { list = []; paint(); };
+  document.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => { tool = b.dataset.tool; document.querySelectorAll('[data-tool]').forEach(x => x.classList.toggle('on', x === b)); });
   document.querySelectorAll('[data-col]').forEach(b => b.onclick = () => { col = b.dataset.col; document.querySelectorAll('[data-col]').forEach(x => x.classList.toggle('on', x === b)); });
   $('#dpS').onclick = async () => { e.draw = list; try { await cqPersist(); } catch (err) { toast(err.message, 'err'); } if (i < 11) openDraw(i + 1); else close(); }; paint();
 }
@@ -2470,9 +2502,9 @@ function openCorners(file){
   img.src = url;
 }
 const dataUrlBytes = u => Uint8Array.from(atob(u.split(',')[1]), c => c.charCodeAt(0));
-async function photoCells(jpg){   // recorta de la foto enderezada los 12 dibujos para la hoja de calificación
+async function photoCellUrls(jpg){   // recorta de la foto enderezada los 12 dibujos para la hoja de calificación
   const img = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = jpg; }), k = img.naturalWidth / 935.5, out = [];
-  for (let i = 0; i < 12; i++) { const c = document.createElement('canvas'), L = 89 + 197 * (i % 4), T = 356 + 228 * Math.floor(i / 4); c.width = 340; c.height = 272; c.getContext('2d').drawImage(img, L * k, T * k, 170 * k, 136 * k, 0, 0, 340, 272); out.push(dataUrlBytes(c.toDataURL('image/jpeg', .8))); }
+  for (let i = 0; i < 12; i++) { const c = document.createElement('canvas'), L = 89 + 197 * (i % 4), T = 356 + 228 * Math.floor(i / 4); c.width = 340; c.height = 272; c.getContext('2d').drawImage(img, L * k, T * k, 170 * k, 136 * k, 0, 0, 340, 272); out.push(c.toDataURL('image/jpeg', .8)); }
   return out;
 }
 let pdfLibP = null;
@@ -2484,8 +2516,10 @@ async function escPdfBytes(ev, team){
   const [cal, cro] = await Promise.all([`hoja-calificacion-${fmt}.pdf`, `hoja-croquis-${fmt}.pdf`].map(f => fetch(FORM_BASE + f).then(r => { if (!r.ok) throw new Error('No se encontró el formato oficial'); return r.arrayBuffer(); })));
   const f = escFinal(ev, team.id), C = (staff && croOf(ev.id, team.id)) || croBlank(ev, team), L = lienzo(ev.lienzoId), rows = f.rows.slice().sort((a, b) => a.createdAt - b.createdAt), used = rows.filter(s => f.used.includes(s));
   const first = rows[0] ? calcEsc(rows[0].input) : null, foto = staff && C.hasPhoto ? await DB.backend.getFoto(C.id) : null;
+  let cellUrls = foto ? await photoCellUrls(foto) : null;
+  if (!staff) { const dib = await DB.backend.getDib(croId(ev.id, team.id)).catch(() => null); if (dib) { C.ej.forEach((e, i) => { e.draw = (dib.ej[i] || {}).draw || null; }); cellUrls = dib.cells || null; } }
   const F = { chm: isChm(ev), conCroquis: staff, adEdad: first ? first.adEdad : 0, evento: ev.title, estado: L.state, sede: L.name, fecha: fdate(ev.date), escaramuza: team.name, capitana: team.capitan, asociacion: team.assoc, instructor: C.instructor, lugar: C.lugar || team.state, base: first ? first.base : C.ej.reduce((a, e) => a + +e.v, 0), adic: first ? first.adic : C.ej.reduce((a, e) => a + (+e.ad || 0), 0), final: f.n ? f.score : '', croquis: C,
-    photo: foto ? dataUrlBytes(foto) : null, cells: foto ? await photoCells(foto) : null, vaciado: used.slice(0, 3).map(s => ({ name: s.judgeName, c: calcEsc(s.input), total: s.total })), jueces: rows.map(s => ({ name: s.judgeName, d: s.input, c: calcEsc(s.input), total: s.total })) };
+    photo: foto ? dataUrlBytes(foto) : null, cells: cellUrls ? cellUrls.map(dataUrlBytes) : null, vaciado: used.slice(0, 3).map(s => ({ name: s.judgeName, c: calcEsc(s.input), total: s.total })), jueces: rows.map(s => ({ name: s.judgeName, d: s.input, c: calcEsc(s.input), total: s.total })) };
   return fillOfficialForms(window.PDFLib, cal, cro, F);
 }
 async function escPdf(ev, team){
