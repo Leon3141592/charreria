@@ -25,3 +25,8 @@ create policy "croquis acceso" on public.croquis for all
 drop policy if exists "croquis_foto acceso" on public.croquis_foto;
 create policy "croquis_foto acceso" on public.croquis_foto for all
   using (public.can_croquis(croquis_foto.data->>'eventId')) with check (public.can_croquis(croquis_foto.data->>'eventId'));
+
+grant select, insert, update, delete on public.croquis, public.croquis_foto to authenticated;
+
+-- Comprobación: debe mostrar una fila que diga "croquis listo"
+select 'croquis listo' as resultado, count(*) as tablas from information_schema.tables where table_schema = 'public' and table_name in ('croquis', 'croquis_foto');
