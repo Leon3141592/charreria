@@ -1059,6 +1059,7 @@ create table if not exists public.tcg_cards (id text primary key, data jsonb not
 alter table public.tcg_cards enable row level security;
 drop policy if exists "tcg_cards lectura" on public.tcg_cards;
 create policy "tcg_cards lectura" on public.tcg_cards for select using (true);
+grant select on public.tcg_cards to anon, authenticated;   -- solo lectura: Supabase ya no da acceso automático a las tablas nuevas
 
 -- Debe coincidir con tcgSyncLocal() de la app
 create or replace function public.tcg_sync(kind text, rid text) returns void
