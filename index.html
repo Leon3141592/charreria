@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0a08">
+<meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,6 +16,8 @@
 <style>
 :root{--bg:#0e0a08;--bg2:#15100c;--card:#1c1510;--card2:#251b14;--line:#3a2b20;--line2:#4d3a2b;--gold:#d9a84e;--gold2:#f2cd7e;--vino:#8e1b2c;--vino2:#b02a3e;--red:#ef4444;--green:#3fb37f;--blue:#5b9bd5;--text:#f4ece1;--mut:#a8988a;--mut2:#76685c;--r:16px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* La app ya es oscura: sin esto, el modo oscuro forzado de algunos navegadores vuelve negro el fondo blanco de los dibujos */
+:root{color-scheme:dark}.thumb,.ref,.refstrip .mini,#dp{color-scheme:only light}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.4}
 body{padding-bottom:calc(78px + env(safe-area-inset-bottom));min-height:100vh;background:radial-gradient(1200px 500px at 50% -200px,rgba(142,27,44,.28),transparent 70%),var(--bg)}
 a{color:var(--gold2)}button,input,select,textarea{font:inherit;color:inherit}
@@ -55,7 +58,7 @@ a{color:var(--gold2)}button,input,select,textarea{font:inherit;color:inherit}
 .upg-badge svg{width:14px;height:14px;flex:none}
 .upg-li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;font-size:14px}.upg-li svg{width:18px;height:18px;flex:none;color:var(--gold2);margin-top:2px}
 .lock{position:relative;filter:blur(3px);opacity:.5;pointer-events:none;user-select:none}
-.refgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.refgrid .card{margin:0}.ref{display:block;width:100%;height:auto;background:#fff;border-radius:10px}.ref.big{width:min(100%,300px);margin:0 auto 12px}
+.refgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.refgrid .card,.refgrid .card+.card{margin:0}.ref{display:block;width:100%;height:auto;background:#fff;border-radius:10px}.ref.big{width:min(100%,300px);margin:0 auto 12px}
 .refstrip{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}.refstrip button{flex:none;width:58px;padding:3px;background:var(--card);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:11px;cursor:pointer}.refstrip button.on{border-color:var(--gold)}.refstrip .mini{display:block;width:100%;height:auto;background:#fff;border-radius:6px}
 .tcg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px}.tcg-grid a{display:block;text-decoration:none;color:inherit}.tcg-grid .tc-wrap{zoom:.5;padding:0}
 .lp-hero{text-align:center;padding:26px 16px}.lp-price{font-family:'Cinzel',serif;font-size:38px;color:var(--gold2);line-height:1.1;margin-top:10px}.lp-steps{counter-reset:p;display:grid;gap:10px;margin-top:10px}.lp-steps div{counter-increment:p;display:flex;gap:12px;align-items:flex-start}.lp-steps div::before{content:counter(p);flex:none;width:30px;height:30px;border-radius:50%;background:var(--vino2);color:#fff;font-weight:800;display:grid;place-items:center}.lp-q summary{cursor:pointer;font-weight:700;padding:10px 0}.lp-q{border-top:1px solid var(--line)}.lp-q:first-child{border-top:0}
@@ -213,6 +216,7 @@ textarea.in{min-height:64px;resize:vertical}
 .sheet .foot{margin-top:12px;font-size:8.5px;color:#555;display:flex;justify-content:space-between;gap:10px}
 .sheet .stamp{color:#1f6b2d;font-weight:800}
 @media print{
+:root{color-scheme:light}
   body{background:#fff!important;padding:0}
   .top,.nav,.noprint,.toasts,#modal,#pdfv,.nodl{display:none!important}
   .wrap{max-width:none;padding:0}.sheet-wrap{overflow:visible;margin:0;padding:0}
