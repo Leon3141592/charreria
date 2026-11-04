@@ -211,7 +211,7 @@ textarea.in{min-height:64px;resize:vertical}
 .sheet .stamp{color:#1f6b2d;font-weight:800}
 @media print{
   body{background:#fff!important;padding:0}
-  .top,.nav,.noprint,.toasts,#modal{display:none!important}
+  .top,.nav,.noprint,.toasts,#modal,#pdfv,.nodl{display:none!important}
   .wrap{max-width:none;padding:0}.sheet-wrap{overflow:visible;margin:0;padding:0}
   .sheet{zoom:1!important;width:100%;border-radius:0;padding:0}
   @page{size:letter portrait;margin:8mm}
@@ -602,7 +602,7 @@ const CONFIG = { MODE: 'auto', SUPABASE_URL: '', SUPABASE_ANON_KEY: '', APP_NAME
 const TCG = CONFIG.SITE === 'tcg';   // el mismo código sirve Charrería Pro y su sitio satélite CharreríaTCG
 const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
 const CATEGORIAS = ['Libre','Juvenil'];
-const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust','tcg_cards','croquis'];
+const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust','tcg_cards','notifs','croquis'];
 RULES.F.escaramuza = { name: 'Rutina de escaramuza', short: 'Escaramuza', inf: [], eq: [] };
 const FN = k => RULES.F[k].name;
 
@@ -629,6 +629,7 @@ const I = {
   search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
   upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>',
   logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 6 2 7 2 8H4c0-1 2-2 2-8Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>',
   doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>',
   print:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7Z"/></svg>'
 };
@@ -671,7 +672,7 @@ const DB = {
   }
 };
 const fotoMem = {};
-const LS_KEY = 'charreriapro_demo_v15', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v16', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -685,7 +686,7 @@ const Local = {
   },
   reload(){ try { const r = localStorage.getItem(LS_KEY); if (r) DB.data = JSON.parse(r); } catch(e){} onRemoteChange(); },
   persist(){ try { localStorage.setItem(LS_KEY, JSON.stringify(DB.data)); } catch(e){} },
-  async put(){ tcgSyncLocal(); this.persist(); if (this.bc) this.bc.postMessage('sync'); },
+  async put(t, row){ if (t === 'scores') notifLocal(row); tcgSyncLocal(); this.persist(); if (this.bc) this.bc.postMessage('sync'); },
   async del(){ tcgSyncLocal(); this.persist(); if (this.bc) this.bc.postMessage('sync'); },
   sessionGet(){ try { return localStorage.getItem(SS_KEY); } catch(e){ return memSession; } },
   sessionSet(v){ memSession = v; try { v ? localStorage.setItem(SS_KEY, v) : localStorage.removeItem(SS_KEY); } catch(e){} },
@@ -718,6 +719,7 @@ const Local = {
     if (!canVerify(u, kind, d) || (decision === 'pendiente' && !isSuper(u))) throw new Error('No tienes permiso para verificar este registro');
     await DB.put(VK_TABLE[kind], { ...d, verif: decision, verifKey: decision === 'pendiente' ? null : verifKeyOf(kind, d), verifiedBy: u.id, verifiedByName: u.name, verifiedAt: Date.now(), verifNote: decision === 'rechazado' ? (note || '') : '' }); },
   async activatePro(){ const u = State.user, p = DB.get('profiles', u.id); State.user = await DB.put('profiles', { ...p, subscriptionStatus: 'pro', proUntil: Math.max(+p.proUntil || 0, Date.now()) + 30 * 864e5, proRef: 'SIMULADO' }); },
+  async readNotifs(){ this.persist(); if (this.bc) this.bc.postMessage('sync'); },
   async registerChip(kind, x, uid){ const u = State.user, id = normUid(uid);
     if (id.length < 8 || id.length > 32) throw new Error('El UID debe tener entre 8 y 32 caracteres hexadecimales'); if (x.ownerId !== u.id) throw new Error('Solo el dueño registra el chip');
     if (x.chipStatus === 'validado') throw new Error('Este ejemplar ya tiene un chip validado');
@@ -795,6 +797,7 @@ const Remote = {
   async putFoto(id, eventId, img){ const { error } = await this.sb.from('croquis_foto').upsert({ id, data: { id, eventId, img } }); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
   async getFoto(id){ const { data, error } = await this.sb.from('croquis_foto').select('data').eq('id', id).maybeSingle(); if (error) throw new Error(error.message); return data ? data.data.img : null; },
   claimHorse(code){ return this.rpc('claim_horse', { code: code.trim().toUpperCase() }); },
+  async readNotifs(){ const { error } = await this.sb.rpc('notifs_read'); if (error) throw new Error(error.message); },
   async activatePro(){ await this.rpc('activate_pro', {}); State.user = DB.get('profiles', State.user.id) || State.user; },
   registerChip(kind, x, uid){ return this.rpc('register_chip', { kind, rid: x.id, uid: normUid(uid) }); },
   validateChip(kind, x, ok){ return this.rpc('validate_chip', { kind, rid: x.id, ok: !!ok }); },
@@ -925,9 +928,9 @@ function seed(){
   const mkEsc = (id, title, lienzoId, date, status, official, idxs, judges, extra = {}) => { const ev = { id, title, lienzoId, date, mode: 'escaramuza', category: 'Libre', status, official, requestOfficial: official, suertes: [], charros: [], streamUrl: '', videoUrl: '', createdAt: Date.now(), ...extra,
       teams: idxs.map(i => ({ id: 'z' + i, name: ESCS[i][0], state: ESCS[i][1], assoc: 'Asociación de Charros de ' + ESCS[i][1], capitan: ESCS[i][2], members: [] })) };
     E.push(ev); const t0 = new Date(date + 'T12:00:00').getTime();
-    ev.teams.forEach((t, ti) => { const lvl = [.9, .6, .45, .25][+t.id.slice(1)] || .4; judges(ti).forEach(([jid, jn], k) => { const d = escSheet(lvl + (rng() - .5) * .15), r = calcEsc(d);
-      S.push({ id: `${id}-${t.id}-esc-${jid}`, eventId: id, teamId: t.id, teamName: t.name, faena: 'escaramuza', input: d, buenos: r.ejVal + r.adic + r.puntas, malos: r.infTot, total: r.total, eq: 0, net: r.total, parts: [], judgeId: jid, judgeName: jn, createdAt: t0 + (ti * 5 + k) * 60000, updatedAt: t0 + (ti * 5 + k) * 60000 }); }); }); };
-  mkEsc('eesc1', 'Campeonato Estatal de Escaramuzas · Etapa 1', 'lstm', day(-55), 'finalizado', true, [0, 1, 2, 3], () => JZ);
+    ev.teams.forEach((t, ti) => { const lvl = [.9, .6, .45, .25][+t.id.slice(1)] || .4; judges(ti).forEach(([jid, jn], k) => { const d = escSheet(lvl + (rng() - .5) * .15); if (ev.category === ESC_CHM) d.adEdad = 4 + Math.floor(rng() * 5); const r = calcEsc(d);
+      S.push({ id: `${id}-${t.id}-esc-${jid}`, eventId: id, teamId: t.id, teamName: t.name, faena: 'escaramuza', input: d, buenos: r.ejVal + r.adic + r.adEdad + r.puntas, malos: r.infTot, total: r.total, eq: 0, net: r.total, parts: [], judgeId: jid, judgeName: jn, createdAt: t0 + (ti * 5 + k) * 60000, updatedAt: t0 + (ti * 5 + k) * 60000 }); }); }); };
+  mkEsc('eesc1', 'Campeonato Estatal de Escaramuzas · Etapa 1', 'lstm', day(-55), 'finalizado', true, [0, 1, 2, 3], () => JZ, { category: ESC_CHM });
   mkEsc('eesc2', 'Copa de Escaramuzas de la Villa', 'lvilla', day(-18), 'finalizado', true, [0, 1, 2, 3], () => JZ);
   mkEsc('eescv', 'Torneo de Escaramuzas Bicentenario', 'lvilla', day(0), 'en_vivo', true, [0, 1, 2], ti => ti === 0 ? JZ.slice(0, 3) : ti === 1 ? JZ.slice(0, 1) : [], { startedAt: Date.now() - 40 * 60000 });
   const CR = [], ring = (n, r) => Array.from({ length: n }, (_, k) => { const a = k / n * 6.283 + r, x = Math.round(500 + 300 * Math.cos(a)), y = Math.round(500 + 300 * Math.sin(a)); return { c: 'k', p: [x, y, Math.round(x + 70 * Math.cos(a + 1.6)), Math.round(y + 70 * Math.sin(a + 1.6))] }; });
@@ -991,6 +994,7 @@ function seed(){
   RQ.push({ id:'rq5', type:'interes', horseId:'cb3', ownerId:'udueno', buyerName:'Ernesto Villaseñor', contact:'capitan@demo.mx', message:'', status:'pendiente', createdBy:'ucap', createdAt: ago(5) });
   RQ.push({ id:'rq3', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Fausto Herrera', contact:'55 1234 5678', message:'Me interesa para la temporada; ¿se puede ver en Texcoco?', status:'pendiente', createdBy:'ucharro', createdAt: ago(1) });
   RQ.push({ id:'rq2', type:'afiliacion', teamId:'q5', lienzoId:'lvilla', status:'pendiente', createdBy:'ucap2', createdAt: Date.now()-2*864e5 });
+  E.forEach(e => { if (e.mode === 'equipos') e.teams.forEach(x => { const o = T.find(y => y.name === x.name); if (o) x.refId = o.id; }); (e.charros || []).forEach(c => { const o = CH.find(y => y.name === c.name); if (o) c.refId = o.id; }); });
   return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, croquis:CR, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }] };
 }
 
@@ -1161,6 +1165,7 @@ const isLocked = (ev, tid) => { const sh = sheetOf(ev.id, tid); return !!(sh && 
 const teamLabel = ev => ev.mode === 'completo' ? 'Charro' : ev.mode === 'escaramuza' ? 'Escaramuza' : 'Equipo';
 /* ---------- ESCARAMUZAS (Reglamento FMCH y Hoja de Calificación Libre 2025–2028) ---------- */
 const ESC_CONC = ['Agrupación','Flor','Abanico','Cruce','Escalera','Coladera','Giro','Combinado · giro','Combinado · complementario','Libre','Compuesto'];
+const ESC_CHM = 'Charra Mayor', ESC_CATS = ['Libre', ESC_CHM], isChm = ev => !!ev && ev.category === ESC_CHM;
 const ESC_MAX = 304, ESC_ADIC_MAX = 42;
 const PUNTA_ADIC = [['mano','Poner en mano'],['recta','Línea recta'],['vel','Velocidad'],['rect','Dentro del rectángulo'],['una','Una mano'],['saludo','Saludo charro']];
 const PUNTA_TIEMPOS = [[4,'4 tiempos (+0)',0],[3,'3 tiempos (+3)',3],[2,'2 tiempos (+4)',4],[1,'1 tiempo (+5)',5]];
@@ -1194,8 +1199,8 @@ function calcEsc(d){
   if (cnt(16) !== 1 || cnt(20) !== 2 || cnt(26) !== 2 || cnt(28) !== 7) warn.push('Valores esperados: 1 de 16, 2 de 20, 2 de 26 (uno abanico) y 7 de 28 (incluye el combinado).');
   [['Coladera'],['Cruce'],['Giro','Combinado · giro'],['Escalera'],['Abanico'],['Libre'],['Compuesto'],['Combinado · giro'],['Combinado · complementario']].forEach(cs => { if (!d.ej.some(e => cs.includes(e.c))) warn.push(`Falta el concepto obligatorio: ${cs[0]}.`); });
   ['Giro','Coladera','Cruce','Escalera','Flor'].forEach(c => { const n = d.ej.filter(e => e.c === c || (c === 'Giro' && e.c.startsWith('Combinado · giro'))).length; if (n > 3) warn.push(`${c} aparece ${n} veces; el máximo es 3.`); });
-  const total = d.disq ? 0 : Math.round((ejVal + adic + puntas - infTot) * 100) / 100;
-  return { P, puntas, base, ejVal, adic, infRut, infPres, infVar, noRut, infTot, total, warn, overMax };
+  const adEdad = +d.adEdad || 0, total = d.disq ? 0 : Math.round((ejVal + adic + adEdad + puntas - infTot) * 100) / 100;
+  return { P, puntas, base, ejVal, adic, adEdad, infRut, infPres, infVar, noRut, infTot, total, warn, overMax };
 }
 function escFinal(ev, tid){
   const rows = evScores(ev.id).filter(s => s.teamId === tid && s.faena === 'escaramuza').sort((a, b) => a.total - b.total), n = rows.length;
@@ -1229,7 +1234,7 @@ const State = { user: null, route: 'inicio', param: null, param2: null,
 function go(h){ if (location.hash.slice(1) === h) render(); else location.hash = h; }
 function parseRoute(){
   const h = location.hash.slice(1) || (TCG ? 'tienda' : 'inicio');
-  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo|ganaderia|res|carnet|carta|croquis)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
+  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo|ganaderia|res|carnet|carta|croquis|pdf)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
   if (m) { State.route = m[1]; State.param = m[2]; State.param2 = m[3] || null; } else { State.route = h; State.param = State.param2 = null; }
 }
 window.addEventListener('hashchange', () => { parseRoute(); render(); window.scrollTo(0, 0); });
@@ -1238,14 +1243,16 @@ window.addEventListener('hashchange', () => { parseRoute(); render(); window.scr
 function render(){
   State.pendingRender = false; const u = State.user;
   if (TCG) return renderTcg();
+  checkNotifs();
   $('#top').innerHTML = `<a class="brand" href="#inicio"><span class="logo">${I.horse}</span><b>Charrería <span>Pro</span></b></a>
     ${DB.backend.mode === 'demo' ? '<span class="chip blue">DEMO</span>' : ''}
+    ${u ? `<a class="avatar" href="#avisos" aria-label="Avisos" style="position:relative"><span style="width:18px;height:18px;display:block">${I.bell}</span>${myNotifs().some(n => !n.read) ? `<span class="badge-n" style="position:absolute;top:-6px;right:-6px">${myNotifs().filter(n => !n.read).length}</span>` : ''}</a>` : ''}
     <a class="avatar" href="#cuenta" aria-label="Cuenta" style="overflow:hidden">${u ? (safeImg(u.photo || (myCharro(u) || {}).photo) ? `<img class="ph" src="${esc(safeImg(u.photo || myCharro(u).photo))}" alt="" style="width:100%;height:100%;border:0">` : esc(initials(u.name))) : '<span style="width:18px;height:18px;display:block">' + I.user + '</span>'}</a>`;
   const liveN = publicEvents().filter(e => e.status === 'en_vivo').length, pend = isSuper(u) ? pendingCount() : 0;
   const tabs = [['inicio','Inicio',I.home],['vivo','En vivo',I.live,liveN],['historial','Historial',I.clock],['ranking','Ranking',I.trophy],['cuenta', u ? (isSuper(u) ? 'Admin' : 'Mi panel') : 'Entrar', isSuper(u) ? I.shield : I.user, 0, pend]];
   const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta', solicitudes:'cuenta', caballos:'ranking', caballo:'cuenta', ganado:'inicio', ganaderia:'inicio', res:'cuenta' }[State.route] || State.route;
   $('#nav').innerHTML = tabs.map(([k, l, ic, dot, badge]) => `<a href="#${k === 'cuenta' && isSuper(u) ? 'admin' : k}" class="${active === k ? 'on' : ''}">${ic}${dot ? '<span class="dot"></span>' : ''}${badge ? `<span class="badge-n" style="position:absolute;top:0;right:calc(50% - 22px)">${badge}</span>` : ''}<span>${l}</span></a>`).join('');
-  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes, carnet: vCarnet, croquis: vCroquis };
+  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes, avisos: vAvisos, pdf: vPdf, carnet: vCarnet, croquis: vCroquis };
   $('#view').className = 'wrap' + (State.route === 'hoja' ? ' wide' : '');
   $('#view').innerHTML = State.recovery ? vNewPass() : (views[State.route] || vInicio)();
   fitSheet();
@@ -1364,7 +1371,7 @@ function vEvento(){
   h += `<div class="seg mt2">${[['marcador','Marcador'],['feed','Calificaciones'],...(ev.mode === 'escaramuza' ? [] : [['charros','Charros']])].map(([k, l]) => `<button class="${State.homeTab === k ? 'on' : ''}" data-act="evtab" data-k="${k}">${l}</button>`).join('')}</div>`;
   if (State.homeTab === 'marcador') {
     h += `<div class="card pad0 mt">${st.map((t, i) => `<div class="rank" style="display:block"><div class="row"><div class="pos ${i < 3 && t.n ? 'p' + (i + 1) : ''}">${i + 1}</div><div class="grow"><div style="font-weight:700" class="ell">${esc(t.name)}</div><div class="small mut">${ev.mode === 'escaramuza' ? `${t.n}/5 juezas · ${t.malos} infracciones` : `${t.n}/${ev.suertes.length} faenas · ${t.malos} puntos malos`}</div></div><div class="pts">${t.pts}<small>pts</small></div></div><div class="bar"><i style="width:${Math.max(0, Math.round(t.pts / max * 100))}%"></i></div>
-      <div class="row" style="justify-content:flex-end;margin-top:6px"><a class="small" href="#hoja-${ev.id}-${t.id}">${I.doc.replace('<svg', '<svg style="width:13px;height:13px;vertical-align:-2px"')} Hoja de calificación${sheetOf(ev.id, t.id) && sheetOf(ev.id, t.id).entregada ? ' · entregada ✓' : ''}</a></div></div>`).join('')}</div>`;
+      <div class="row" style="justify-content:flex-end;margin-top:6px"><a class="small" href="#hoja-${ev.id}-${t.id}">${I.doc.replace('<svg', '<svg style="width:13px;height:13px;vertical-align:-2px"')} Hoja de calificación${sheetOf(ev.id, t.id) && sheetOf(ev.id, t.id).entregada ? ' · entregada ✓' : ''}</a>${ev.mode === 'escaramuza' && t.n ? `<a class="small" style="margin-left:12px" href="#pdf-${ev.id}-${t.id}">Ver PDF${ev.status === 'en_vivo' ? ' en vivo' : ''}</a>${canPdfDl(State.user, ev) ? `<button class="lnk small" style="margin-left:12px;color:var(--gold2)" data-act="escPdfBtn" data-e="${ev.id}" data-t="${t.id}">Descargar</button>` : ''}` : ''}</div></div>`).join('')}</div>`;
     const done = ev.suertes.filter(fk => sc.some(s => s.faena === fk));
     if (done.length) h += `<div class="h2">Por faena</div><div class="card pad0" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:${130 + st.length * 74}px">
       <tr style="color:var(--mut);font-size:11.5px"><th style="text-align:left;padding:10px 12px">Faena</th>${st.map(t => `<th style="padding:10px 6px;text-align:right">${esc(t.name.length > 11 ? t.name.slice(0, 10) + '…' : t.name)}</th>`).join('')}</tr>
@@ -2165,8 +2172,8 @@ function vPanelEvento(){
   h += `<div class="sep"></div><div class="row between"><div><div style="font-weight:700">Charreada oficial</div><div class="small mut">${ev.official ? 'Cuenta para el ranking nacional.' : ev.requestOfficial ? 'Solicitud enviada al administrador.' : 'Solicita que cuente para el ranking.'}</div></div>
     ${isSuper(u) ? `<button class="tog ${ev.official ? 'on' : ''}" data-act="toggleOfficial" data-id="${ev.id}">${ev.official ? 'Oficial' : 'Hacer oficial'}</button>` : ev.official ? `<span class="chip gold">${I.shield}Oficial</span>` : `<button class="tog ${ev.requestOfficial ? 'on' : ''}" data-act="reqOfficial">${ev.requestOfficial ? 'Solicitado' : 'Solicitar'}</button>`}</div></div>`;
   h += `<div class="h2">Datos</div><form class="card" data-form="evData"><label class="f" style="margin-top:0">Nombre de la charreada</label><input class="in" name="title" value="${esc(ev.title)}" required ${dis}>
-    <div class="row" style="gap:8px"><div class="grow"><label class="f">Fecha</label><input class="in" type="date" name="date" value="${esc(ev.date)}" required ${dis}></div><div class="grow"><label class="f">Categoría</label><select class="in" name="category" ${dis}>${CATEGORIAS.map(c => `<option ${c === ev.category ? 'selected' : ''}>${c}</option>`).join('')}</select></div></div>
-    <label class="f">Modalidad</label><select class="in" name="mode" ${dis || hasScores || ev.teams.length ? 'disabled' : ''}><option value="equipos" ${!cc ? 'selected' : ''}>Charreada por equipos</option><option value="escaramuza" ${ev.mode === 'escaramuza' ? 'selected' : ''}>Escaramuzas (categoría libre)</option><option value="completo" ${cc ? 'selected' : ''}>Charro completo</option></select>
+    <div class="row" style="gap:8px"><div class="grow"><label class="f">Fecha</label><input class="in" type="date" name="date" value="${esc(ev.date)}" required ${dis}></div><div class="grow"><label class="f">Categoría</label><select class="in" name="category" ${dis}>${(ev.mode === 'escaramuza' ? ESC_CATS : CATEGORIAS).map(c => `<option ${c === ev.category ? 'selected' : ''}>${c}</option>`).join('')}</select></div></div>
+    <label class="f">Modalidad</label><select class="in" name="mode" ${dis || hasScores || ev.teams.length ? 'disabled' : ''}><option value="equipos" ${!cc ? 'selected' : ''}>Charreada por equipos</option><option value="escaramuza" ${ev.mode === 'escaramuza' ? 'selected' : ''}>Escaramuzas</option><option value="completo" ${cc ? 'selected' : ''}>Charro completo</option></select>
     ${locked ? '' : '<button class="btn block mt">Guardar datos</button>'}</form>`;
   const esz = ev.mode === 'escaramuza';
   if (!esz) h += `<div class="h2">Faenas</div><div class="card"><div class="chips">${order.map(k => `<button class="tog ${ev.suertes.includes(k) ? 'on' : ''}" data-act="toggleSuerte" data-s="${k}" ${dis}>${esc(FN(k))}</button>`).join('')}</div><div class="small mut mt">Orden oficial de las faenas conforme al reglamento.</div></div>`;
@@ -2182,7 +2189,7 @@ function vPanelEvento(){
     ${locked ? '' : `${avail.length ? `<form class="row mt" data-form="addRoster" data-team="${t.id}" style="gap:8px"><select class="in" name="charroId" required><option value="">＋ Del roster oficial (${avail.length})</option>${avail.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select><button class="btn sm" style="min-height:46px" aria-label="Agregar del roster">${I.plus}</button></form>` : ''}
       <form class="row mt" data-form="addCharro" data-team="${t.id}" style="gap:8px"><input class="in" name="name" list="dl-charros" placeholder="Nombre del charro (registrado u otro)" autocomplete="off" required><button class="btn sm" style="min-height:46px" aria-label="Agregar charro">${I.plus}</button></form>`}`}</div>`; }).join('');
   const offTeams = DB.all('teams').filter(t => !ev.teams.some(x => x.refId === t.id)).sort((a, b) => ((b.lienzoId === ev.lienzoId && b.lienzoStatus === 'aprobado') - (a.lienzoId === ev.lienzoId && a.lienzoStatus === 'aprobado')) || byName(a, b));
-  if (!locked && !cc && !esz && offTeams.length) h += `<form class="team" data-form="addOfficialTeam" style="border-style:dashed"><div style="font-weight:700">Agregar equipo oficial</div><div class="small mut" style="margin-top:2px">Equipos registrados en la app, con su roster aprobado.</div>
+  if (!locked && !cc && offTeams.length) h += `<form class="team" data-form="addOfficialTeam" style="border-style:dashed"><div style="font-weight:700">${esz ? 'Inscribir escaramuza registrada' : 'Agregar equipo oficial'}</div><div class="small mut" style="margin-top:2px">${esz ? 'Su capitana e integrantes con cuenta reciben los avisos de calificación.' : 'Equipos registrados en la app, con su roster aprobado.'}</div>
     <select class="in mt" name="teamId" required><option value="">— Elegir equipo —</option>${offTeams.map(t => `<option value="${t.id}">${esc(t.name)} · ${rosterOf(t.id).length} charros${t.lienzoId === ev.lienzoId && t.lienzoStatus === 'aprobado' ? ' · afiliado a este lienzo' : ''}</option>`).join('')}</select>
     <label class="row small mt" style="gap:8px"><input type="checkbox" name="all" checked> Inscribir a todo su roster</label><button class="btn pri block mt">${I.plus} Agregar equipo oficial</button></form>`;
   if (!locked && esz) h += `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">Inscribir escaramuza</div><input class="in mt" name="name" placeholder="Nombre de la escaramuza" required><input class="in mt" name="assoc" placeholder="Asociación"><input class="in mt" name="capitan" placeholder="Capitana"><select class="in mt" name="state">${ESTADOS.map(x => `<option ${x === lienzo(ev.lienzoId).state ? 'selected' : ''}>${x}</option>`).join('')}</select>
@@ -2345,45 +2352,48 @@ async function fillOfficialForms(PDFLib, calBytes, croBytes, F){
       const w = f.widthOfTextAtSize(s, z), px = x * FORM_K - (o.center ? w / 2 : 0); page.drawText(s, { x: px, y: H - y * FORM_K, size: z, font: f, color: ink }); };
     const wrap = (x, y, t, maxW, lh = 11, lines = 6, size = 8) => { const words = pdfSafe(t).split(/\s+/); let l = '', n = 0; words.forEach(w => { const c = l ? l + ' ' + w : w; if (reg.widthOfTextAtSize(c, size) > maxW * FORM_K && l) { if (n < lines) put(x, y + n * lh * 1.5, l, { size }); n++; l = w; } else l = c; }); if (n < lines) put(x, y + n * lh * 1.5, l, { size }); };
     return { H, put, wrap }; };
+  const chm = !!F.chm, dy = chm ? -13 : 0;   // en Charra Mayor la cuadrícula de la página 2 está 13 px más arriba
   const strokes = (page, list, x, y, w, h) => { const s = Math.min(w, h) * FORM_K / 1000, ox = (x + (w - Math.min(w, h)) / 2) * FORM_K, oy = page.getHeight() - (y + (h - Math.min(w, h)) / 2) * FORM_K;
     (list || []).forEach(st => { if (!st.p || st.p.length < 4) return; let d = `M ${st.p[0]} ${st.p[1]}`; for (let i = 2; i < st.p.length; i += 2) d += ` L ${st.p[i]} ${st.p[i + 1]}`;
       page.drawSvgPath(d, { x: ox, y: oy, scale: s, borderColor: st.c === 'r' ? rgb(.85, .1, .1) : st.c === 'g' ? rgb(.05, .55, .2) : ink, borderWidth: .9 / s }); }); };
   const C = F.croquis || {}, E = C.ej || [];
   // Croquis: la foto de la hoja si existe; si no, el formato oficial relleno
-  if (F.photo) { const img = await out.embedJpg(F.photo), page = out.addPage([612, 1008]); page.drawImage(img, { x: 0, y: 0, width: 612, height: 1008 }); }
+  if (!F.conCroquis) { /* el croquis trae datos privados: solo lo reciben el lienzo y sus jueces */ }
+  else if (F.photo) { const img = await out.embedJpg(F.photo), page = out.addPage([612, 1008]); page.drawImage(img, { x: 0, y: 0, width: 612, height: 1008 }); }
   else { const src = await PDFDocument.load(croBytes), [page] = await out.copyPages(src, [0]); out.addPage(page); const { put } = pen(page);
     put(270, 189, F.evento, { max: 350 }); put(270, 214, F.estado, { max: 350 }); put(770, 138, C.noPart, { max: 80 }); put(715, 163, C.horario, { max: 135 }); put(715, 189, C.musica, { max: 135 }); put(710, 214, F.fecha, { max: 140 });
     put(165, 259, F.escaramuza, { max: 325, bold: true }); put(146, 285, F.capitana, { max: 345 }); put(156, 311, F.asociacion, { max: 335 }); put(604, 259, F.instructor, { max: 250 }); put(640, 285, F.lugar, { max: 215 }); put(610, 311, F.sede, { max: 245 });
     E.forEach((e, i) => { const L = 85 + 197 * (i % 4), T = 340 + 228 * Math.floor(i / 4); strokes(page, e.draw, L + 4, T + 16, 170, 136); put(L + 37, T + 176, e.nombre, { max: 140, size: 7.5 }); put(L + 44, T + 193, e.c, { max: 132, size: 7.5 }); put(L + 32, T + 209, e.v, { size: 8, bold: true }); if (+e.ad) put(L + 96, T + 209, e.ad, { size: 8, bold: true }); });
-    (C.integrantes || []).slice(0, 8).forEach((m, i) => { const y = 1075 + i * 20.3; put(105, y, m.name, { max: 355 }); put(498, y, m.cred, { max: 50, center: true, size: 7 }); });
-    if (C.suplente) { put(150, 1237, C.suplente.name, { max: 310 }); put(498, 1237, C.suplente.cred, { max: 50, center: true, size: 7 }); } put(190, 1257, F.instructor, { max: 270 });
+    (C.integrantes || []).slice(0, 8).forEach((m, i) => { const y = 1075 + i * 20.3; put(105, y, m.name, { max: chm ? 285 : 355 }); put(chm ? 427 : 498, y, m.cred, { max: 46, center: true, size: 7 }); if (chm) put(477, y, m.edad, { max: 44, center: true, size: 7 }); });
+    if (C.suplente) { put(150, 1237, C.suplente.name, { max: chm ? 240 : 310 }); put(chm ? 427 : 498, 1237, C.suplente.cred, { max: 46, center: true, size: 7 }); if (chm) put(477, 1237, C.suplente.edad, { max: 44, center: true, size: 7 }); } put(190, 1257, F.instructor, { max: chm ? 200 : 270 }); if (chm && F.adEdad) put(537, 1272, F.adEdad, { center: true, bold: true });
     put(760, 1046, F.base, { bold: true }); put(760, 1065, F.adic, { bold: true }); put(760, 1085, F.base + F.adic, { bold: true });
-    (C.puntas || []).slice(0, 2).forEach((p, i) => { put(585, 1143 + i * 38, p.name, { max: 270 }); put(620, 1162 + i * 38, p.caballo, { max: 235 }); }); }
+    (C.puntas || []).slice(0, 2).forEach((p, i) => { put(chm ? 610 : 585, 1143 + i * 38, p.name, { max: 245 }); put(chm ? 668 : 620, 1162 + i * 38, p.caballo, { max: 190 }); }); }
   // Una hoja de calificación por jueza
   for (let j = 0; j < F.jueces.length; j++) { const J = F.jueces[j], c = J.c, d = J.d, src = await PDFDocument.load(calBytes), [p1, p2] = await out.copyPages(src, [0, 1]); out.addPage(p1); out.addPage(p2);
-    const A = pen(p1), B = pen(p2), put = A.put, num = (x, y, v, o = {}) => { if (+v) put(x, y, v, { center: true, ...o }); };
+    const A = pen(p1), B0 = pen(p2), B = { ...B0, put: (x, y, t, o) => B0.put(x, y + dy, t, o) }, put = A.put, num = (x, y, v, o = {}) => { if (+v) put(x, y, v, { center: true, ...o }); };
     put(330, 99, d.times && d.times.puntas, { max: 110 }); put(330, 122, d.times && d.times.rutina, { max: 110 }); put(1140, 90, C.noPart, { max: 85 }); put(1090, 111, C.horario, { max: 135 }); put(1075, 132, F.fecha, { max: 150 }); put(1358, 124, F.final, { center: true, size: 15, bold: true });
     put(150, 192, F.evento, { max: 525 }); put(790, 192, F.sede, { max: 355 }); put(1210, 192, F.estado, { max: 235 }); put(180, 223, F.escaramuza, { max: 425, bold: true }); put(690, 223, F.asociacion, { max: 330 }); put(1160, 223, F.lugar, { max: 285 }); put(160, 254, F.capitana, { max: 585 }); put(190, 285, F.instructor, { max: 420 });
     ['arreos','atuendo','crin','otros'].forEach((k, i) => num(441, [353, 373, 393, 414][i], (+d.pres[k] || 0) * (k === 'otros' ? 1 : 2))); put(441, 433, c.infPres, { center: true, bold: true });
     const V = [['horario',6],['minuto',2],['tiempo',5],['arreos',6],['musica',6],['medica',6],['desfile',6],['papeleria',6],['convoc',6],['otros',1]], VY = [347, 367, 388, 408, 428, 448, 468, 489, 509, 529];
     V.forEach(([k, v], i) => { num(886, VY[i], (+d.var[k] || 0) * v); if (k === 'tiempo') num(824, VY[i], d.var[k]); }); put(855, 549, c.infVar, { center: true, bold: true });
     if (d.disq) put(285, ESC_DQ_Y(d.disq), 'Descalificada', { bold: true });
-    F.vaciado.forEach((v, i) => { const x = [1218, 1311, 1404][i], cc = v.c; put(x, 382, v.name, { center: true, max: 90, size: 6 }); [cc.ejVal, cc.adic, cc.puntas, cc.infRut, cc.infPres, cc.infVar, cc.noRut].forEach((n, r) => put(x, [402, 422, 442, 462, 483, 503, 523][r], n, { center: true })); put(x, 547, v.total, { center: true, bold: true, size: 10 }); });
+    F.vaciado.forEach((v, i) => { const x = [1218, 1311, 1404][i], cc = v.c; put(x, chm ? 367 : 382, v.name, { center: true, max: 90, size: 6 }); (chm ? [cc.ejVal, cc.adic, cc.adEdad, cc.puntas, cc.infRut, cc.infPres, cc.infVar, cc.noRut] : [cc.ejVal, cc.adic, cc.puntas, cc.infRut, cc.infPres, cc.infVar, cc.noRut]).forEach((n, r) => put(x, (chm ? [387, 407, 427, 447, 467, 487, 507, 527] : [402, 422, 442, 462, 483, 503, 523])[r], n, { center: true })); put(x, chm ? 549 : 547, v.total, { center: true, bold: true, size: 10 }); });
     d.puntas.forEach((p, i) => { const y = 655 + i * 20, r = c.P[i], X = (x, on) => { if (on) put(x, y, 'X', { center: true, bold: true }); }; put(100, y, p.name, { max: 250 }); ['mano','recta','vel','rect','una','saludo'].forEach((k, n) => X([450, 512, 573, 635, 696, 757][n], p.adic[k]));
       if (+p.metros >= 6) X({ 4: 802, 3: 832, 2: 862, 1: 891 }[+p.tiempos], true); put(937, y, p.metros, { center: true }); if (r.mt === 1) X(990, true); if (r.mt === 2) X(1035, true); num(1088, y, r.inf); put(1150, y, r.total, { center: true, bold: true });
       if (p.desc) put(145, 750 + i * 52, p.motivo || 'Descalificada', { max: 410 }); });
     A.wrap(590, 745, d.notes, 450, 10, 5); put(1118, 750, c.puntas, { center: true, bold: true, size: 11 }); put(1323, 620, F.final, { center: true, bold: true, size: 13 }); put(1323, 674, J.name, { center: true, max: 240, size: 7.5 }); put(1385, 740, J.total, { center: true, bold: true, size: 11 });
     // Rutina
     B.put(690, 127, F.escaramuza, { max: 370, bold: true, size: 10 });
-    for (let i = 0; i < d.ej.length; i++) { const e = d.ej[i], x = 318 + 87.3 * i; B.put(x, 209, e.c, { center: true, max: 83, size: 6 }); B.put(x, 225, e.v, { center: true, bold: true }); if (+e.ad && !e.lost) B.put(x, 240, e.ad, { center: true, bold: true }); const dr = E[i] && E[i].draw; if (dr) strokes(p2, dr, x - 41, 258, 82, 130); if (F.cells && F.cells[i]) { const img = await out.embedJpg(F.cells[i]); p2.drawImage(img, { x: (x - 41) * FORM_K, y: B.H - 356 * FORM_K, width: 82 * FORM_K, height: 66 * FORM_K }); } }
+    for (let i = 0; i < d.ej.length; i++) { const e = d.ej[i], x = 318 + 87.3 * i; B.put(x, 209, e.c, { center: true, max: 83, size: 6 }); B.put(x, 225, e.v, { center: true, bold: true }); if (+e.ad && !e.lost) B.put(x, 240, e.ad, { center: true, bold: true }); const dr = E[i] && E[i].draw; if (dr) strokes(p2, dr, x - 41, 258 + dy, 82, 130); if (F.cells && F.cells[i]) { const img = await out.embedJpg(F.cells[i]); p2.drawImage(img, { x: (x - 41) * FORM_K, y: B.H - (356 + dy) * FORM_K, width: 82 * FORM_K, height: 66 * FORM_K }); } }
     const cols = [[266, d.es.e.inf], ...d.ej.map((e, i) => [318 + 87.3 * i, e.inf]), [1331, d.es.s.inf]], badge = new Set(['defg','def','tpvr','cd']);
     FORM_ROWS.forEach((k, r) => { const y = FORM_ROW_Y[r], v = ESC_RINF.find(x => x[0] === k)[2]; let sum = 0; cols.forEach(([x, inf]) => { const n = +(inf || {})[k] || 0; if (!n) return; sum += n * v;
-        if (badge.has(k)) { p2.drawRectangle({ x: x * FORM_K - 6, y: B.H - y * FORM_K - 2, width: 12, height: 9, color: ink }); p2.drawText(String(n * v), { x: x * FORM_K - reg.widthOfTextAtSize(String(n * v), 7) / 2, y: B.H - y * FORM_K, size: 7, font: bold, color: rgb(1, 1, 1) }); } else B.put(x, y, n * v, { center: true, size: 7.5, bold: true }); });
+        if (badge.has(k)) { p2.drawRectangle({ x: x * FORM_K - 6, y: B.H - (y + dy) * FORM_K - 2, width: 12, height: 9, color: ink }); p2.drawText(String(n * v), { x: x * FORM_K - reg.widthOfTextAtSize(String(n * v), 7) / 2, y: B.H - (y + dy) * FORM_K, size: 7, font: bold, color: rgb(1, 1, 1) }); } else B.put(x, y, n * v, { center: true, size: 7.5, bold: true }); });
       if (sum) B.put(1378, y, sum, { center: true, size: 7.5 }); });
     d.ej.forEach((e, i) => { const x = 318 + 87.3 * i; if (e.lost) B.put(x, 758, 'X', { center: true, bold: true }); if (e.desc) B.put(x, 774, 'X', { center: true, bold: true }); });
     B.put(1407, 200, c.base, { center: true, bold: true, size: 12 }); B.put(1407, 256, c.adic, { center: true, bold: true, size: 12 }); B.put(1407, 313, c.ejVal + c.adic, { center: true, bold: true, size: 12 });
     const sub = c.infRut + c.infPres + c.infVar; [c.infRut, c.infPres, c.infVar, sub].forEach((n, i) => B.put(1088, [797, 813, 828, 843][i], n, { center: true })); if (c.noRut) B.put(1088, 859, c.noRut, { center: true }); B.put(1088, 875, c.infTot, { center: true, bold: true });
-    [c.infRut, c.ejVal + c.adic, c.puntas, c.ejVal + c.adic + c.puntas, c.infTot].forEach((n, i) => B.put(1378, [797, 813, 828, 843, 859][i], n, { center: true })); B.put(1378, 875, J.total, { center: true, bold: true, size: 10 }); }
+    if (chm) { [c.infRut, c.ejVal + c.adic, c.adEdad, c.puntas, c.ejVal + c.adic + c.adEdad + c.puntas, c.infTot].forEach((n, i) => B0.put(1378, [784, 799, 814, 830, 846, 862][i], n, { center: true })); B0.put(1378, 877, J.total, { center: true, bold: true, size: 10 }); }
+    else { [c.infRut, c.ejVal + c.adic, c.puntas, c.ejVal + c.adic + c.puntas, c.infTot].forEach((n, i) => B.put(1378, [797, 813, 828, 843, 859][i], n, { center: true })); B.put(1378, 875, J.total, { center: true, bold: true, size: 10 }); } }
   return out.save();
 }
 
@@ -2416,8 +2426,8 @@ function vCroquis(){
     h += `<div class="h2">Paso 3 de 3 · Datos de la hoja</div><div class="small mut" style="margin-bottom:6px">Todo es opcional y se puede llenar después.</div>
       <div class="card">${inp('instructor', 'Instructor(a)', d.instructor)}${inp('lugar', 'Lugar de procedencia', d.lugar)}<div class="grid2"><div>${inp('noPart', 'No. de participación', d.noPart)}</div><div>${inp('horario', 'Horario', d.horario)}</div></div>${inp('musica', 'Música', d.musica)}</div>
       <div class="card mt"><b>Orden de puntas</b>${d.puntas.map((p, i) => inp(`puntas.${i}.name`, `Punta ${i + 1}: competidora`, p.name) + inp(`puntas.${i}.caballo`, 'Caballo', p.caballo)).join('')}</div>
-      <div class="card mt"><b>Integrantes</b>${d.integrantes.map((m, i) => `<div class="row" style="gap:8px"><div class="grow">${inp(`integrantes.${i}.name`, `Integrante ${i + 1}`, m.name)}</div><div style="flex:0 0 96px">${inp(`integrantes.${i}.cred`, 'Credencial', m.cred)}</div></div>`).join('')}
-      <div class="row" style="gap:8px"><div class="grow">${inp('suplente.name', 'Suplente', d.suplente.name)}</div><div style="flex:0 0 96px">${inp('suplente.cred', 'Credencial', d.suplente.cred)}</div></div></div>
+      <div class="card mt"><b>Integrantes</b>${d.integrantes.map((m, i) => `<div class="row" style="gap:8px"><div class="grow">${inp(`integrantes.${i}.name`, `Integrante ${i + 1}`, m.name)}</div><div style="flex:0 0 96px">${inp(`integrantes.${i}.cred`, 'Credencial', m.cred)}</div>${isChm(ev) ? `<div style="flex:0 0 64px">${inp(`integrantes.${i}.edad`, 'Edad', m.edad || '')}</div>` : ''}</div>`).join('')}
+      <div class="row" style="gap:8px"><div class="grow">${inp('suplente.name', 'Suplente', d.suplente.name)}</div><div style="flex:0 0 96px">${inp('suplente.cred', 'Credencial', d.suplente.cred)}</div>${isChm(ev) ? `<div style="flex:0 0 64px">${inp('suplente.edad', 'Edad', d.suplente.edad || '')}</div>` : ''}</div></div>
       <div class="bignav"><button class="btn" data-act="cqGo" data-k="1">Atrás</button><button class="btn pri" data-act="cqSave">${I.check} Guardar croquis</button></div>`; }
   return h;
 }
@@ -2468,14 +2478,70 @@ async function photoCells(jpg){   // recorta de la foto enderezada los 12 dibujo
 let pdfLibP = null;
 const loadPdfLib = () => pdfLibP || (pdfLibP = window.PDFLib ? Promise.resolve() : loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'));
 const FORM_BASE = CONFIG.MODE === 'demo' ? '../formatos/' : 'formatos/';
-async function escPdf(ev, team){
-  toast('Preparando el PDF, espera un momento…'); await loadPdfLib();
-  const [cal, cro] = await Promise.all(['hoja-calificacion-libre.pdf', 'hoja-croquis-libre.pdf'].map(f => fetch(FORM_BASE + f).then(r => { if (!r.ok) throw new Error('No se encontró el formato oficial'); return r.arrayBuffer(); })));
-  const f = escFinal(ev, team.id), C = croOf(ev.id, team.id) || croBlank(ev, team), L = lienzo(ev.lienzoId), rows = f.rows.slice().sort((a, b) => a.createdAt - b.createdAt), used = rows.filter(s => f.used.includes(s));
-  const first = rows[0] ? calcEsc(rows[0].input) : null, foto = C.hasPhoto ? await DB.backend.getFoto(C.id) : null;
-  const F = { evento: ev.title, estado: L.state, sede: L.name, fecha: fdate(ev.date), escaramuza: team.name, capitana: team.capitan, asociacion: team.assoc, instructor: C.instructor, lugar: C.lugar || team.state, base: first ? first.base : C.ej.reduce((a, e) => a + +e.v, 0), adic: first ? first.adic : C.ej.reduce((a, e) => a + (+e.ad || 0), 0), final: f.n ? f.score : '', croquis: C,
+const canPdfDl = (u, ev) => !!ev && (ev.status === 'finalizado' || canCro(u, ev));   // en vivo solo se ve; se descarga al finalizar
+async function escPdfBytes(ev, team){
+  await loadPdfLib(); const staff = canCro(State.user, ev), fmt = isChm(ev) ? 'chm' : 'libre';
+  const [cal, cro] = await Promise.all([`hoja-calificacion-${fmt}.pdf`, `hoja-croquis-${fmt}.pdf`].map(f => fetch(FORM_BASE + f).then(r => { if (!r.ok) throw new Error('No se encontró el formato oficial'); return r.arrayBuffer(); })));
+  const f = escFinal(ev, team.id), C = (staff && croOf(ev.id, team.id)) || croBlank(ev, team), L = lienzo(ev.lienzoId), rows = f.rows.slice().sort((a, b) => a.createdAt - b.createdAt), used = rows.filter(s => f.used.includes(s));
+  const first = rows[0] ? calcEsc(rows[0].input) : null, foto = staff && C.hasPhoto ? await DB.backend.getFoto(C.id) : null;
+  const F = { chm: isChm(ev), conCroquis: staff, adEdad: first ? first.adEdad : 0, evento: ev.title, estado: L.state, sede: L.name, fecha: fdate(ev.date), escaramuza: team.name, capitana: team.capitan, asociacion: team.assoc, instructor: C.instructor, lugar: C.lugar || team.state, base: first ? first.base : C.ej.reduce((a, e) => a + +e.v, 0), adic: first ? first.adic : C.ej.reduce((a, e) => a + (+e.ad || 0), 0), final: f.n ? f.score : '', croquis: C,
     photo: foto ? dataUrlBytes(foto) : null, cells: foto ? await photoCells(foto) : null, vaciado: used.slice(0, 3).map(s => ({ name: s.judgeName, c: calcEsc(s.input), total: s.total })), jueces: rows.map(s => ({ name: s.judgeName, d: s.input, c: calcEsc(s.input), total: s.total })) };
-  const bytes = await fillOfficialForms(window.PDFLib, cal, cro, F), a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); a.download = `hojas-${slug(team.name)}.pdf`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  return fillOfficialForms(window.PDFLib, cal, cro, F);
+}
+async function escPdf(ev, team){
+  if (!canPdfDl(State.user, ev)) throw new Error('La hoja se podrá descargar cuando termine la charreada');
+  toast('Preparando el PDF, espera un momento…'); const bytes = await escPdfBytes(ev, team), a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); a.download = `hojas-${slug(team.name)}.pdf`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+/* Vista de la hoja oficial: se dibuja en pantalla sin entregar el archivo, y se actualiza con cada calificación */
+let pdfJsP = null;
+const loadPdfJs = () => pdfJsP || (pdfJsP = loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js').then(() => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }));
+const pdfKey = (ev, team) => [ev.id, team.id, ev.status, ev.category, ...evScores(ev.id).filter(s => s.teamId === team.id).map(s => s.id + s.updatedAt)].join('|');
+function vPdf(){
+  const ev = DB.get('events', State.param), team = ev && ev.teams.find(t => t.id === State.param2), u = State.user;
+  if (!ev || !team || ev.mode !== 'escaramuza') return emptyState(I.doc, 'Hoja no encontrada', '');
+  const dl = canPdfDl(u, ev), rows = escFinal(ev, team.id).n;
+  setTimeout(() => pdfPreview(ev, team), 0);
+  return `<a class="back" href="#evento-${ev.id}">${I.arrow} Charreada</a><div style="font-weight:800;font-size:17px">Hoja oficial de ${esc(team.name)}</div><div class="small mut">${esc(ev.title)} · Categoría ${esc(ev.category || 'Libre')}</div>
+    ${ev.status === 'en_vivo' ? `<div class="banner warn mt">${I.live}<span>En vivo: se actualiza con cada calificación. ${dl ? '' : 'La descarga se habilita al finalizar la charreada.'}</span></div>` : ''}
+    ${dl ? `<button class="btn pri block mt" data-act="escPdfBtn" data-e="${ev.id}" data-t="${team.id}">${I.doc} Descargar PDF</button>` : ''}
+    ${rows ? '<div id="pdfv" class="mt"><div class="empty">Dibujando la hoja…</div></div>' : `<div class="mt">${emptyState(I.doc, 'Aún sin hojas de juezas', 'Aquí aparecerá la hoja en cuanto la primera jueza califique.')}</div>`}`;
+}
+async function pdfPreview(ev, team){
+  const box = $('#pdfv'); if (!box) return; const key = pdfKey(ev, team), P = State.pv;
+  if (P && P.key === key) { if (P.pages) box.replaceChildren(...P.pages); return; }
+  const me = State.pv = { key, pages: P && P.pages };
+  if (P && P.pages && P.key.split('|').slice(0, 2).join() === key.split('|').slice(0, 2).join()) box.replaceChildren(...P.pages);   // conserva la anterior mientras dibuja la nueva
+  try { await loadPdfJs(); const doc = await window.pdfjsLib.getDocument({ data: await escPdfBytes(ev, team) }).promise, pages = [];
+    for (let i = 1; i <= doc.numPages; i++) { const pg = await doc.getPage(i), vp = pg.getViewport({ scale: 1.7 }), c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height; c.style.cssText = 'width:100%;height:auto;display:block;margin-bottom:10px;border-radius:6px;background:#fff'; await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      if (ev.status === 'en_vivo') { const g = c.getContext('2d'); g.save(); g.translate(c.width / 2, c.height / 2); g.rotate(-.42); g.font = `800 ${Math.round(c.width / 11)}px sans-serif`; g.textAlign = 'center'; g.fillStyle = 'rgba(142,27,44,.13)'; g.fillText('EN VIVO · SIN VALOR OFICIAL', 0, 0); g.restore(); }
+      c.oncontextmenu = e => e.preventDefault(); pages.push(c); }
+    if (State.pv !== me) return; me.pages = pages; const b = $('#pdfv'); if (b) b.replaceChildren(...pages);
+  } catch (e) { if (State.pv === me) { State.pv = null; const b = $('#pdfv'); if (b) b.innerHTML = `<div class="empty">No se pudo dibujar la hoja.<div class="small mut mt">${esc(e.message || e)}</div></div>`; } }
+}
+/* ---------- AVISOS DE CALIFICACIÓN ---------- */
+function scoreAudience(s){   // igual que trg_notif_score() en la base
+  const ev = DB.get('events', s.eventId); if (!ev) return []; const t = (ev.teams || []).find(x => x.id === s.teamId) || {}, out = new Set(), add = id => { if (id && id !== s.judgeId) out.add(id); }, L = DB.get('lienzos', ev.lienzoId);
+  add(L && L.ownerId);
+  if (ev.mode === 'completo') add((DB.get('charros', t.refId) || {}).userId);
+  else if (t.refId) { add((DB.get('teams', t.refId) || {}).captainId); if (ev.mode === 'escaramuza') DB.all('charros').filter(c => c.teamId === t.refId).forEach(c => add(c.userId)); }
+  (s.parts || []).forEach(p => { const c = (ev.charros || []).find(x => x.id === p.id); if (c) add((DB.get('charros', c.refId) || {}).userId); });
+  return [...out];
+}
+function notifLocal(s){ const ev = DB.get('events', s.eventId), L = DB.data.notifs || (DB.data.notifs = []);
+  scoreAudience(s).forEach(uid_ => { const id = `${s.id}~${uid_}`, row = { id, userId: uid_, scoreId: s.id, eventId: s.eventId, teamId: s.teamId, faena: s.faena, teamName: s.teamName, net: s.net, judgeName: s.judgeName, evTitle: ev ? ev.title : '', at: Date.now(), read: false }, i = L.findIndex(n => n.id === id); if (i >= 0) L[i] = row; else L.push(row); }); }
+const myNotifs = () => State.user ? DB.all('notifs').filter(n => n.userId === State.user.id).sort((a, b) => b.at - a.at) : [];
+const notifText = n => `${n.teamName}: ${FN(n.faena)}, ${n.net} pts`;
+const notifLink = n => { const ev = DB.get('events', n.eventId); return ev && ev.mode === 'escaramuza' ? `#pdf-${n.eventId}-${n.teamId}` : `#hoja-${n.eventId}-${n.teamId}`; };
+function checkNotifs(){ const seen = State.notifSeen || (State.notifSeen = new Set());
+  myNotifs().filter(n => !n.read).forEach(n => { const k = n.id + n.at; if (seen.has(k)) return; seen.add(k); if (!State.notifInit) return; toast('Ya calificó el juez · ' + notifText(n), 'ok');
+    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') { try { new Notification('Ya calificó el juez', { body: notifText(n) }); } catch (e) {} } });
+  if (State.user) State.notifInit = true; }
+function vAvisos(){
+  const u = State.user; if (!u) return needLogin(); const L = myNotifs(), perm = 'Notification' in window ? Notification.permission : 'na';
+  if (L.some(n => !n.read)) setTimeout(async () => { L.forEach(n => { n.read = true; }); try { await DB.backend.readNotifs(); } catch (e) {} render(); }, 1500);
+  return `<div class="h1">Avisos</div><div class="sub" style="margin-top:4px">Te avisamos cuando un juez califica tu lienzo, tu equipo o tu faena.</div>
+    ${perm === 'default' ? `<button class="btn block mt" data-act="notifPerm">${I.bell} Avisarme también en este navegador</button>` : ''}
+    ${L.length ? `<div class="card pad0 mt">${L.map(n => `<a class="rank" href="${notifLink(n)}" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:${n.read ? 600 : 800}">${esc(notifText(n))}</div><div class="small mut ell">${esc(n.evTitle)} · ${esc(n.judgeName || 'Juez')} · ${new Date(n.at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</div></div>${n.read ? '' : '<span class="badge-n">Nuevo</span>'}</a>`).join('')}</div>` : `<div class="mt">${emptyState(I.bell, 'Sin avisos', 'Aquí aparecerán las calificaciones en cuanto el juez las publique.')}</div>`}`;
 }
 const escDraftKey = id => 'cp_hoja_' + id;
 function escDraftGet(id){ try { const r = localStorage.getItem(escDraftKey(id)); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
@@ -2509,6 +2575,7 @@ function vJuezEsc(ev){
       <div class="card mt">${common.map(([k, l, v]) => cnt(`${colPath(col)}.${k}`, l, v)).join('')}${(J.more ? rest : used).map(([k, l, v]) => cnt(`${colPath(col)}.${k}`, l, v)).join('')}
       <button class="btn ghost block mt" data-act="escMore">${J.more ? 'Ver menos' : 'Ver todas las infracciones'}</button></div>
       ${isE ? `<div class="chips mt">${chk(`ej.${col}.lost`, 'Pierde adicionales', !!e.lost)}${chk(`ej.${col}.desc`, 'Descalificado', !!e.desc)}</div><details class="mt"><summary style="cursor:pointer;padding:8px 0">Corregir concepto, valor o adicionales</summary><div class="card"><label class="f" style="margin-top:0">Concepto</label>${sel(`ej.${col}.c`, ESC_CONC, e.c)}<div class="grid2"><div><label class="f">Valor</label>${sel(`ej.${col}.v`, [16, 20, 26, 28], e.v, true)}</div><div><label class="f">Adicionales</label>${sel(`ej.${col}.ad`, escAdicOpts(e.c, e.v).map(x => [x, '+' + x]), e.ad, true)}</div></div></div></details>` : ''}`; }
+  if (J.step === 2 && isChm(ev)) h += `<div class="card mt"><b>Adicionales por edad</b><div class="small mut">Suma de lo que corresponde a las integrantes, según el reglamento de Charra Mayor.</div><input class="in mt" type="number" inputmode="decimal" min="0" step="0.5" data-ep="adEdad" data-num="1" value="${esc(d.adEdad || '')}" placeholder="0" ${dis}></div>`;
   if (J.step === 2) h += `<div class="card mt"><b>Presentación</b>${ESC_PRES.map(([k, l, v]) => cnt(`pres.${k}`, l, v)).join('')}</div><div class="card mt"><b>Varias</b>${ESC_VAR.map(([k, l, v]) => cnt(`var.${k}`, l, v)).join('')}</div>
     <div class="card mt">${cnt('noRut', 'No rutina obligatoria', 25)}<label class="f">Descalificación del equipo</label>${sel('disq', ESC_DQ.map(x => [x, x || 'Ninguna']), d.disq)}<div class="grid2"><div><label class="f">Tiempo puntas</label><input class="in" data-ep="times.puntas" value="${esc(d.times.puntas)}" placeholder="min:seg" ${dis}></div><div><label class="f">Tiempo rutina</label><input class="in" data-ep="times.rutina" value="${esc(d.times.rutina)}" placeholder="min:seg" ${dis}></div></div></div>`;
   if (J.step === 3) { h += `<div class="card mt" style="text-align:center"><div class="small mut">${esc(team.name)}</div><div style="font-family:'Cinzel',serif;font-size:44px;color:var(--gold2);line-height:1.1">${r.total}</div><div class="small mut">puntos de esta hoja</div></div>
@@ -2521,9 +2588,9 @@ function vJuezEsc(ev){
 }
 function escSheetHTML(ev, team){
   const f = escFinal(ev, team.id), J = f.rows.slice().sort((a, b) => a.createdAt - b.createdAt), C = J.map(s => ({ s, c: calcEsc(s.input) }));
-  const used = new Set(f.used.map(s => s.id)), R = [['Nombre de cada juez', x => esc(x.s.judgeName)], ['Rutina base', x => x.c.ejVal], ['Adicionales', x => x.c.adic], ['Total de puntas', x => x.c.puntas], ['Infracciones en rutina', x => '−' + x.c.infRut], ['Infracciones en presentación', x => '−' + x.c.infPres], ['Infracciones varias', x => '−' + x.c.infVar], ['Rutina no obligatoria', x => x.c.noRut ? '−' + x.c.noRut : '0'], ['Total de cada juez', x => `<b>${x.s.total}</b>`]];
+  const used = new Set(f.used.map(s => s.id)), R = [['Nombre de cada juez', x => esc(x.s.judgeName)], ['Rutina base', x => x.c.ejVal], ['Adicionales', x => x.c.adic], ...(isChm(ev) ? [['Adicionales por edad', x => x.c.adEdad]] : []), ['Total de puntas', x => x.c.puntas], ['Infracciones en rutina', x => '−' + x.c.infRut], ['Infracciones en presentación', x => '−' + x.c.infPres], ['Infracciones varias', x => '−' + x.c.infVar], ['Rutina no obligatoria', x => x.c.noRut ? '−' + x.c.noRut : '0'], ['Total de cada juez', x => `<b>${x.s.total}</b>`]];
   const pn = C[0] ? C[0].s.input.puntas.map(p => p.name).filter(Boolean) : [];
-  return `<div class="card"><div class="row between wrapf" style="gap:8px"><div><div class="small mut">Hoja de calificación · Escaramuzas · Categoría Libre</div><div style="font-weight:800;font-size:17px">${esc(team.name)}</div><div class="small mut">${esc([team.assoc, team.state, team.capitan ? 'Capitana: ' + team.capitan : ''].filter(Boolean).join(' · '))}</div></div>
+  return `<div class="card"><div class="row between wrapf" style="gap:8px"><div><div class="small mut">Hoja de calificación · Escaramuzas · Categoría ${esc(ev.category || 'Libre')}</div><div style="font-weight:800;font-size:17px">${esc(team.name)}</div><div class="small mut">${esc([team.assoc, team.state, team.capitan ? 'Capitana: ' + team.capitan : ''].filter(Boolean).join(' · '))}</div></div>
     <div style="text-align:right"><div class="small mut">Calificación oficial</div><div style="font-family:'Cinzel',serif;font-size:28px;color:var(--gold2);line-height:1">${f.n ? f.score : '—'}</div></div></div>
     ${pn.length ? `<div class="small mt">Puntas: ${pn.map(esc).join(' · ')}</div>` : ''}${(team.members || []).length ? `<div class="small mut mt">Integrantes: ${team.members.map(esc).join(', ')}</div>` : ''}</div>
     <div class="h2">Vaciado general de jueces</div>${C.length ? `<div class="card" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;min-width:${160 + C.length * 90}px">
@@ -2660,7 +2727,7 @@ function vHoja(){
   const missing = ev.suertes.filter(fk => !sc.some(s => s.faena === fk));
   let h = `<div class="noprint"><a class="back" href="#${can ? 'juez-' + ev.id : 'evento-' + ev.id}">${I.arrow} ${can ? 'Mesa del juez' : 'Charreada'}</a>
     <div class="row between wrapf" style="gap:8px"><div><div style="font-weight:800;font-size:17px">Hoja de ${esc(team.name)}</div><div class="small mut">${esc(ev.title)}</div></div>${sh && sh.entregada ? `<span class="chip green">${I.check}Entregada</span>` : '<span class="chip">Borrador</span>'}</div>
-    <div class="btns mt"><button class="btn sm" data-act="print">${I.print} Imprimir / PDF</button><button class="btn sm" data-act="fit">${State.fit ? 'Tamaño real' : 'Ajustar a pantalla'}</button></div>`;
+    <div class="btns mt">${canPdfDl(u, ev) ? `<button class="btn sm" data-act="print">${I.print} Imprimir / PDF</button>` : ''}<button class="btn sm" data-act="fit">${State.fit ? 'Tamaño real' : 'Ajustar a pantalla'}</button></div>`;
   if (can && !(sh && sh.entregada)) h += `<div class="card mt">${missing.length ? `<div class="banner warn">${I.info}<span>Faltan por calificar: ${missing.map(FN).join(', ')}.</span></div>` : '<div class="banner ok">' + I.check + '<span>Todas las faenas están calificadas.</span></div>'}
     <form data-form="entrega" class="mt"><div class="grid2"><div><label class="f" style="margin-top:0">${ev.mode === 'completo' ? 'Firma del charro' : 'Capitán que firma'}</label><input class="in" name="capitan" value="${esc((sh && sh.capitan) || team.capitan || (ev.mode === 'completo' ? team.name : ''))}" required></div>
     <div><label class="f" style="margin-top:0">Hora</label><input class="in" name="hora" type="time" value="${esc((sh && sh.hora) || '')}"></div></div>
@@ -2668,7 +2735,8 @@ function vHoja(){
     <button class="btn pri block mt">${I.check} Firmar y entregar hoja</button></form></div>`;
   if (can && sh && sh.entregada && !sh.jueces.some(x => x.id === u.id) && sh.jueces.length < 3 && u.role !== 'lienzo') h += `<button class="btn block mt" data-act="cosign" data-id="${sh.id}">${I.gavel} Firmar también como juez</button>`;
   if (isSuper(u) && sh && sh.entregada) h += `<button class="btn ghost block mt" data-act="reopenSheet" data-id="${sh.id}">Reabrir hoja (súper usuario)</button>`;
-  h += ev.mode === 'escaramuza' ? `${canCro(u, ev) ? `<button class="btn pri block mt" style="min-height:58px;font-size:17px" data-act="escPdfBtn" data-e="${ev.id}" data-t="${team.id}">${I.doc} Descargar hojas oficiales (PDF)</button><a class="btn block mt" href="#croquis-${ev.id}-${team.id}">${I.edit} ${croDone(croOf(ev.id, team.id)) ? 'Ver o cambiar croquis' : 'Capturar croquis'}</a>` : ''}</div><div class="mt">${escSheetHTML(ev, team)}</div>` : `</div><div class="sheet-wrap mt">${sheetHTML(ev, team)}</div>`;
+  const nodl = canPdfDl(u, ev) ? '' : ' nodl';
+  h += ev.mode === 'escaramuza' ? `${canPdfDl(u, ev) ? `<button class="btn pri block mt" style="min-height:58px;font-size:17px" data-act="escPdfBtn" data-e="${ev.id}" data-t="${team.id}">${I.doc} Descargar hojas oficiales (PDF)</button>` : ''}<a class="btn block mt" href="#pdf-${ev.id}-${team.id}">${I.doc} Ver hoja oficial${ev.status === 'en_vivo' ? ' en vivo' : ''}</a>${canCro(u, ev) ? `<a class="btn block mt" href="#croquis-${ev.id}-${team.id}">${I.edit} ${croDone(croOf(ev.id, team.id)) ? 'Ver o cambiar croquis' : 'Capturar croquis'}</a>` : ''}</div><div class="mt${nodl}">${escSheetHTML(ev, team)}</div>` : `</div><div class="sheet-wrap mt${nodl}">${sheetHTML(ev, team)}</div>`;
   return h;
 }
 
@@ -2796,7 +2864,7 @@ const ACT = {
   escNav(el){ const J = State.ej, dir = +el.dataset.d, cols = ['e', ...J.d.ej.map((e, i) => String(i)), 's'], ci = cols.indexOf(J.col || 'e'); J.more = false;
     if (J.step === 1 && cols[ci + dir]) J.col = cols[ci + dir]; else { J.step = Math.max(0, Math.min(3, J.step + dir)); if (J.step === 1) J.col = dir > 0 ? 'e' : 's'; } render(); window.scrollTo(0, 0); }, grank(el){ State.gRank = el.dataset.k; render(); },
   async escSave(){ const ev = curEv(), J = State.ej, u = State.user; if (!ev || !J) return; const team = ev.teams.find(t => t.id === J.tid), r = calcEsc(J.d), id = `${ev.id}-${team.id}-esc-${u.id}`, prev = DB.get('scores', id);
-    await safe(async () => { await DB.put('scores', { id, eventId: ev.id, teamId: team.id, teamName: team.name, faena: 'escaramuza', input: clone(J.d), buenos: r.ejVal + r.adic + r.puntas + r.infTot - r.infTot, malos: r.infTot, total: r.total, eq: 0, net: r.total, parts: [], judgeId: u.id, judgeName: u.name, createdAt: prev ? prev.createdAt : Date.now(), updatedAt: Date.now(), history: prev ? [...(prev.history || []), { total: prev.total, ts: prev.updatedAt }] : [] });
+    await safe(async () => { await DB.put('scores', { id, eventId: ev.id, teamId: team.id, teamName: team.name, faena: 'escaramuza', input: clone(J.d), buenos: r.ejVal + r.adic + r.adEdad + r.puntas, malos: r.infTot, total: r.total, eq: 0, net: r.total, parts: [], judgeId: u.id, judgeName: u.name, createdAt: prev ? prev.createdAt : Date.now(), updatedAt: Date.now(), history: prev ? [...(prev.history || []), { total: prev.total, ts: prev.updatedAt }] : [] });
       await audit(prev ? 'corrige' : 'califica', `${prev ? 'Corrigió' : 'Calificó'} a ${team.name} en “${ev.title}”: ${r.total} pts`); J.dirty = false; }, prev ? 'Corrección publicada' : 'Calificación publicada'); escDraftDel(`${ev.id}-${team.id}-${u.id}`); },
   upgrade(el){ openUpgrade(el.dataset.why || ''); },
   async cardHD(el){ if (needPro('La tarjeta en alta resolución es una función Pro.')) return; await safe(() => downloadNode($('#tcard'), `tarjeta-${slug(el.dataset.n)}.png`), 'Tarjeta descargada'); },
@@ -2818,6 +2886,7 @@ const ACT = {
     await safe(async () => { await DB.del('adjust', a.id); await audit('ajuste', `Quitó el ajuste de ${VK_LABEL[a.kind].toLowerCase()} ${a.label}`); }, 'Ajuste quitado'); },
   async tcgToggle(){ const on = !State.user.tcgConsent; if (on && !(await ask('Autorización CharreríaTCG', TCG_CONSENT, 'Autorizo'))) return; await safe(() => tcgConsent(on), on ? 'Tu carta ya está en CharreríaTCG' : 'Tu carta salió de CharreríaTCG'); },
   tcgTab(el){ State.tcgTab = el.dataset.k; render(); },
+  async notifPerm(){ try { await Notification.requestPermission(); } catch (e) {} render(); },
   scard(el){ openStock(el.dataset.id); }, rateStock(el){ openRateStock(el.dataset.id); },
   async evStockDel(el){ const ev = curEv(), x = DB.get('stock', el.dataset.id); await safe(() => updEv({ stock: (ev.stock || []).filter(y => y.stockId !== el.dataset.id) }), x ? `Se quitó ${x.name}` : 'Quitado'); }, smanage(el){ go('res-' + el.dataset.id); }, gtab(el){ State.gTab = el.dataset.k; render(); },
   newRanch(){ State.newRanch = !State.newRanch; render(); }, newStock(){ State.newStock = !State.newStock; render(); },
@@ -3017,6 +3086,7 @@ document.addEventListener('submit', async e => {
       return safe(() => updEv({ teams: [...ev.teams, { id, name, assoc: (d.assoc || '').trim() || (rt ? rt.name : ''), state: d.state, refId: rc ? rc.id : null }], charros: [...ev.charros, { id: 'c' + uid(), name, teamId: id, refId: rc ? rc.id : null, horseId: d.horseId || null }] }), 'Charro inscrito'); }
     return safe(() => updEv({ teams: [...ev.teams, { id, name: d.name.trim(), state: d.state, capitan: (d.capitan || '').trim() }] }), 'Equipo agregado'); }
   if (k === 'addOfficialTeam') { const ev = curEv(), T = DB.get('teams', d.teamId); if (!T) return toast('Elige un equipo', 'err'); if (ev.teams.some(t => t.refId === T.id)) return toast('Ese equipo ya está inscrito', 'err');
+    if (ev.mode === 'escaramuza') return safe(() => updEv({ teams: [...ev.teams, { id: 't' + uid(), name: T.name, state: T.state, assoc: '', capitan: T.captainName || '', refId: T.id, members: rosterOf(T.id).map(c => c.name).slice(0, 10) }] }), `${T.name} inscrita`);
     const id = 't' + uid(), add = d.all ? rosterOf(T.id).filter(c => !ev.charros.some(x => x.refId === c.id)).map(c => ({ id: 'c' + uid(), name: c.name, teamId: id, refId: c.id, horseId: null })) : [];
     return safe(() => updEv({ teams: [...ev.teams, { id, name: T.name, state: T.state, capitan: T.captainName || '', refId: T.id }], charros: [...ev.charros, ...add] }), `${T.name} inscrito${add.length ? ` con ${add.length} charros` : ''}`); }
   if (k === 'addRoster') { const ev = curEv(), c = DB.get('charros', d.charroId); if (!c) return; if (ev.charros.some(x => x.refId === c.id)) return toast('Ese charro ya está inscrito', 'err');
