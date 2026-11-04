@@ -55,6 +55,8 @@ a{color:var(--gold2)}button,input,select,textarea{font:inherit;color:inherit}
 .upg-badge svg{width:14px;height:14px;flex:none}
 .upg-li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;font-size:14px}.upg-li svg{width:18px;height:18px;flex:none;color:var(--gold2);margin-top:2px}
 .lock{position:relative;filter:blur(3px);opacity:.5;pointer-events:none;user-select:none}
+.refgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.refgrid .card{margin:0}.ref{display:block;width:100%;height:auto;background:#fff;border-radius:10px}.ref.big{width:min(100%,300px);margin:0 auto 12px}
+.refstrip{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}.refstrip button{flex:none;width:58px;padding:3px;background:var(--card);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:11px;cursor:pointer}.refstrip button.on{border-color:var(--gold)}.refstrip .mini{display:block;width:100%;height:auto;background:#fff;border-radius:6px}
 .tcg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px}.tcg-grid a{display:block;text-decoration:none;color:inherit}.tcg-grid .tc-wrap{zoom:.5;padding:0}
 .tcg-ban{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;margin-top:12px;background:linear-gradient(120deg,#5c1220,#1c1510 70%);border-color:var(--gold)}
 /* Carnet: proporción de credencial (85.6 × 54 mm) */
@@ -672,7 +674,7 @@ const DB = {
   }
 };
 const fotoMem = {};
-const LS_KEY = 'charreriapro_demo_v17', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v18', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -686,7 +688,7 @@ const Local = {
   },
   reload(){ try { const r = localStorage.getItem(LS_KEY); if (r) DB.data = JSON.parse(r); } catch(e){} onRemoteChange(); },
   persist(){ try { localStorage.setItem(LS_KEY, JSON.stringify(DB.data)); } catch(e){} },
-  async put(t, row){ if (t === 'scores') notifLocal(row); tcgSyncLocal(); this.persist(); if (this.bc) this.bc.postMessage('sync'); },
+  async put(t, row){ if (t === 'scores') notifLocal(row); if (t === 'croquis') notifCroLocal(row); tcgSyncLocal(); this.persist(); if (this.bc) this.bc.postMessage('sync'); },
   async del(){ tcgSyncLocal(); this.persist(); if (this.bc) this.bc.postMessage('sync'); },
   sessionGet(){ try { return localStorage.getItem(SS_KEY); } catch(e){ return memSession; } },
   sessionSet(v){ memSession = v; try { v ? localStorage.setItem(SS_KEY, v) : localStorage.removeItem(SS_KEY); } catch(e){} },
@@ -730,7 +732,7 @@ const Local = {
     await DB.put(kind === 'horse' ? 'horses' : 'stock', { ...x, chipStatus: ok ? 'validado' : 'rechazado', chipValidatedBy: State.user.name, chipAt: Date.now() }); },
   async putFoto(id, eventId, img){ fotoMem[id] = img; try { localStorage.setItem('cp_foto_' + id, img); } catch (e) {} },
   async putDib(){},
-  async getDib(id){ const c = DB.get('croquis', id); if (!c) return null; const foto = c.hasPhoto ? await this.getFoto(id) : null; return { ej: c.ej.map(e => ({ draw: e.draw || null })), cells: foto ? await photoCellUrls(foto) : null }; },
+  async getDib(id){ const c = croVis(DB.get('croquis', id)); if (!c) return null; const foto = c.hasPhoto ? await this.getFoto(id) : null; return { ej: c.ej.map(e => ({ draw: e.draw || null })), cells: foto ? await photoCellUrls(foto) : null }; },
   async getFoto(id){ if (fotoMem[id]) return fotoMem[id]; try { return localStorage.getItem('cp_foto_' + id); } catch (e) { return null; } },
   async claimHorse(code){
     const u = State.user, r = DB.all('requests').find(x => x.type === 'transfer' && x.status === 'pendiente' && x.code === code.trim().toUpperCase());
@@ -796,7 +798,7 @@ const Remote = {
   decide(r, d){ return this.rpc('decide_request', { rid: r.id, decision: d }); },
   rosterRemove(c){ return this.rpc('roster_remove', { cid: c.id }); },
   setVerified(kind, d, decision, note){ return this.rpc('set_verified', { kind, rid: d.id, decision, note: note || '' }); },
-  async putFoto(id, eventId, img){ const { error } = await this.sb.from('croquis_foto').upsert({ id, data: { id, eventId, img } }); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
+  async putFoto(id, eventId, img, teamId){ const { error } = await this.sb.from('croquis_foto').upsert({ id, data: { id, eventId, teamId, img } }); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
   async putDib(row){ const { error } = await this.sb.from('croquis_dib').upsert({ id: row.id, data: row }); if (error) throw new Error(error.message); },
   async getDib(id){ const { data, error } = await this.sb.from('croquis_dib').select('data').eq('id', id).maybeSingle(); if (error) throw new Error(error.message); return data ? data.data : null; },
   async getFoto(id){ const { data, error } = await this.sb.from('croquis_foto').select('data').eq('id', id).maybeSingle(); if (error) throw new Error(error.message); return data ? data.data.img : null; },
@@ -938,7 +940,7 @@ function seed(){
   mkEsc('eesc2', 'Copa de Escaramuzas de la Villa', 'lvilla', day(-18), 'finalizado', true, [0, 1, 2, 3], () => JZ);
   mkEsc('eescv', 'Torneo de Escaramuzas Bicentenario', 'lvilla', day(0), 'en_vivo', true, [0, 1, 2], ti => ti === 0 ? JZ.slice(0, 3) : ti === 1 ? JZ.slice(0, 1) : [], { startedAt: Date.now() - 40 * 60000 });
   const CR = [], ring = (n, r) => Array.from({ length: n }, (_, k) => { const a = k / n * 6.283 + r, x = Math.round(500 + 300 * Math.cos(a)), y = Math.round(500 + 300 * Math.sin(a)); return { c: 'k', p: [x, y, Math.round(x + 70 * Math.cos(a + 1.6)), Math.round(y + 70 * Math.sin(a + 1.6))] }; });
-  E.filter(e => e.mode === 'escaramuza').forEach(e => e.teams.forEach(t => { const c = croBlank(e, t); c.via = 'dibujo'; c.instructor = 'Rosa Medina'; c.lugar = t.state; c.musica = 'Mariachi'; c.ej.forEach((x, i) => { x.draw = demoDraw(x.c); x.ad = (escAdicOpts(x.c, x.v).slice(-1)[0] || 0); }); c.puntas = [{ name: 'Valeria Pérez', caballo: 'Lucero' }, { name: 'Ximena Ortiz', caballo: 'Canela' }]; c.integrantes = c.integrantes.map((m, i) => ({ name: ['Valeria Pérez','Ximena Ortiz','Regina Luna','Camila Soto','Paola García','Andrea Ruiz','Sofía Díaz','Lucía Mora'][i], cred: 'FM' + (2100 + i) })); CR.push(c); }));
+  E.filter(e => e.mode === 'escaramuza').forEach(e => e.teams.forEach(t => { const c = croBlank(e, t); c.via = 'dibujo'; c.entregadoAt = Date.now(); c.entregadoBy = t.capitan; c.instructor = 'Rosa Medina'; c.lugar = t.state; c.musica = 'Mariachi'; c.ej.forEach((x, i) => { x.draw = demoDraw(x.c); x.ad = (escAdicOpts(x.c, x.v).slice(-1)[0] || 0); }); c.puntas = [{ name: 'Valeria Pérez', caballo: 'Lucero' }, { name: 'Ximena Ortiz', caballo: 'Canela' }]; c.integrantes = c.integrantes.map((m, i) => ({ name: ['Valeria Pérez','Ximena Ortiz','Regina Luna','Camila Soto','Paola García','Andrea Ruiz','Sofía Díaz','Lucía Mora'][i], cred: 'FM' + (2100 + i) })); CR.push(c); }));
   const live = mkEvent('elive','Torneo Nacional Charro Bicentenario','lvilla',day(0),[0,1,2],'en_vivo',true,{ startedAt: Date.now() - 70*60000 });
   scoreAll(live, 3, false);
   S.filter(x => x.eventId === 'elive').forEach((x, i) => { x.createdAt = x.updatedAt = Date.now() - (60 - i * 6) * 60000; });
@@ -998,6 +1000,11 @@ function seed(){
   RQ.push({ id:'rq5', type:'interes', horseId:'cb3', ownerId:'udueno', buyerName:'Ernesto Villaseñor', contact:'capitan@demo.mx', message:'', status:'pendiente', createdBy:'ucap', createdAt: ago(5) });
   RQ.push({ id:'rq3', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Fausto Herrera', contact:'55 1234 5678', message:'Me interesa para la temporada; ¿se puede ver en Texcoco?', status:'pendiente', createdBy:'ucharro', createdAt: ago(1) });
   RQ.push({ id:'rq2', type:'afiliacion', teamId:'q5', lienzoId:'lvilla', status:'pendiente', createdBy:'ucap2', createdAt: Date.now()-2*864e5 });
+  T.push({ id: 'qesc', name: 'Escaramuza Las Alteñas', state: 'Jalisco', assoc: '', photo: '', captainId: 'ucapi', captainName: 'Mariana Ríos', lienzoId: null, lienzoStatus: '', createdAt: Date.now() - 90 * 864e5 });
+  prof('ucapi', 'Mariana Ríos', 'capitana@demo.mx', 'equipo', 'aprobado', null);
+  E.filter(e => e.mode === 'escaramuza').forEach(e => e.teams.forEach(t => { if (t.name === 'Escaramuza Las Alteñas') t.refId = 'qesc'; }));
+  E.push({ id: 'eescp', title: 'Copa Primavera de Escaramuzas', lienzoId: 'lvilla', date: day(12), mode: 'escaramuza', category: 'Libre', status: 'programado', official: true, requestOfficial: true, suertes: [], charros: [], streamUrl: '', videoUrl: '', createdAt: Date.now(),
+    teams: [0, 1].map(i => ({ id: 'z' + i, name: ESCS[i][0], state: ESCS[i][1], assoc: 'Asociación de Charros de ' + ESCS[i][1], capitan: ESCS[i][2], members: [], refId: i ? null : 'qesc' })) });
   E.forEach(e => { if (e.mode === 'equipos') e.teams.forEach(x => { const o = T.find(y => y.name === x.name); if (o) x.refId = o.id; }); (e.charros || []).forEach(c => { const o = CH.find(y => y.name === c.name); if (o) c.refId = o.id; }); });
   return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, croquis:CR, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }] };
 }
@@ -1370,6 +1377,7 @@ function vEvento(){
   btns.push(`<button class="btn" data-act="share" data-id="${ev.id}">${I.share} Compartir</button>`);
   h += `<div class="btns mt">${btns.join('')}</div>`;
   if (DB.backend.mode === 'demo' && ev.status === 'en_vivo') h += `<button class="btn ghost block sm mt" data-act="simulate" data-id="${ev.id}">Simular la siguiente faena calificada (demo)</button>`;
+  { const capT = ev.mode === 'escaramuza' && ev.status !== 'finalizado' && ev.teams.find(t => isCapOf(State.user, t)); if (capT) h += `<a class="btn pri block mt" href="#croquis-${ev.id}-${capT.id}">${I.edit} Llenar mi croquis</a>`; }
   if (ev.status === 'programado') return h + `<div class="h2">${ev.mode === 'completo' ? 'Charros inscritos' : 'Equipos inscritos'}</div><div class="card pad0">${ev.teams.map(t => `<div class="rank"><div class="grow"><div style="font-weight:700">${esc(t.name)}</div><div class="small mut">${esc(t.assoc || t.state || '')}${ev.mode !== 'completo' ? ' · ' + ev.charros.filter(c => c.teamId === t.id).length + ' charros' : ''}</div></div></div>`).join('') || '<div class="empty">Aún sin inscritos</div>'}</div>`;
   if (ev.mode === 'escaramuza' && State.homeTab === 'charros') State.homeTab = 'marcador';
   h += `<div class="seg mt2">${[['marcador','Marcador'],['feed','Calificaciones'],...(ev.mode === 'escaramuza' ? [] : [['charros','Charros']])].map(([k, l]) => `<button class="${State.homeTab === k ? 'on' : ''}" data-act="evtab" data-k="${k}">${l}</button>`).join('')}</div>`;
@@ -2023,6 +2031,7 @@ function vCuenta(){
     if (u.role !== 'juez' && u.role !== 'ganadero') h += ranchSection(u);
     if (u.role === 'lienzo' && L) h += `<div class="h2">Foto del lienzo</div><div class="card">${photoBox('lienzo', L.id, L.photo, L.name)}</div>`;
   }
+  h += capCroquis(u);
   h += tcgSection(u);
   h += `<div class="h2">Mi plan</div><div class="card"><div class="row between" style="gap:8px"><div><div style="font-weight:800">${isPro(u) ? 'Pro' : 'Gratis'}</div><div class="small mut">${isSuper(u) ? 'El súper usuario tiene todas las funciones.' : isPro(u) ? `Activo hasta el ${fdate(localISO(+u.proUntil))}` : 'Marcadores, rankings y mesa del juez sin costo.'}</div></div>${isPro(u) ? '<span class="upg-badge">PRO</span>' : `<button class="btn pri sm" data-act="upgrade">Conocer Pro</button>`}</div>${isPro(u) && !isSuper(u) ? `<button class="btn ghost sm mt" data-act="upgrade">Renovar 30 días</button>` : ''}</div>`;
   if (u.role !== 'charro') h += `<div class="h2">Foto de perfil</div><div class="card">${photoBox('profile', u.id, u.photo, u.name)}</div>`;
@@ -2033,7 +2042,7 @@ function vCuenta(){
 const menuItem = (href, ic, t, d) => `<a class="card evc row" style="display:flex" href="${href}"><span class="logo" style="width:40px;height:40px">${ic}</span><div class="grow"><div class="t">${t}</div><div class="meta">${d}</div></div><span class="marrow">${I.arrow}</span></a>`;
 function demoBox(){
   return `<div class="h2">Modo demostración</div><div class="card"><div class="small mut">Entra con una cuenta de prueba para ver cada rol. Abre la app en dos pestañas para ver las calificaciones llegar en vivo.</div>
-    <div class="btns mt"><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez</button><button class="btn sm" data-act="demo" data-e="capitan@demo.mx" data-p="demo123">Capitán</button><button class="btn sm" data-act="demo" data-e="charro@demo.mx" data-p="demo123">Charro</button><button class="btn sm" data-act="demo" data-e="dueno@demo.mx" data-p="demo123">Dueño</button></div>
+    <div class="btns mt"><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez</button><button class="btn sm" data-act="demo" data-e="capitan@demo.mx" data-p="demo123">Capitán</button><button class="btn sm" data-act="demo" data-e="capitana@demo.mx" data-p="demo123">Capitana</button><button class="btn sm" data-act="demo" data-e="charro@demo.mx" data-p="demo123">Charro</button><button class="btn sm" data-act="demo" data-e="dueno@demo.mx" data-p="demo123">Dueño</button></div>
     <button class="btn ghost sm block mt" data-act="reset">Restablecer datos de ejemplo</button></div>`;
 }
 function charroSection(u){
@@ -2182,6 +2191,7 @@ function vPanelEvento(){
   const esz = ev.mode === 'escaramuza';
   if (!esz) h += `<div class="h2">Faenas</div><div class="card"><div class="chips">${order.map(k => `<button class="tog ${ev.suertes.includes(k) ? 'on' : ''}" data-act="toggleSuerte" data-s="${k}" ${dis}>${esc(FN(k))}</button>`).join('')}</div><div class="small mut mt">Orden oficial de las faenas conforme al reglamento.</div></div>`;
   h += `<div class="h2">${esz ? 'Escaramuzas inscritas' : cc ? 'Charros completos inscritos' : 'Equipos y charros'}</div>`;
+  if (esz && evScores(ev.id).length) h += `<button class="btn pri block" data-act="escPack" data-e="${ev.id}">${I.doc} Paquete de hojas para federación (PDF)</button>`;
   const chip = (t, cls) => ` <span class="chip ${cls}" style="padding:1px 6px;font-size:10px">${t}</span>`;
   const chRow = (c, del) => `<div class="chr"${c.addedBy ? ` title="Agregado por ${esc(c.addedByName || 'juez')}${c.note ? ' · ' + esc(c.note) : ''}"` : ''}>
       <div class="row" style="gap:6px;align-items:center"><button class="lnk grow" data-act="card" data-n="${esc(c.name)}"><span class="ell">${esc(c.name)}</span>${c.refId ? chip('registrado', 'green') : ''}${c.addedBy ? chip('juez', 'blue') : ''}</button>
@@ -2189,7 +2199,7 @@ function vPanelEvento(){
       <select class="in" data-horse="${c.id}" ${locked ? 'disabled' : ''} aria-label="Caballo de ${esc(c.name)}" style="min-height:40px;padding:6px 10px;font-size:13px;margin-top:6px">${horseOpts(c.horseId)}</select></div>`;
   h += charroDL() + ev.teams.map(t => { const inEv = ev.charros.filter(c => c.teamId === t.id), avail = t.refId ? rosterOf(t.refId).filter(c => !ev.charros.some(x => x.refId === c.id)) : [];
     return `<div class="team"><div class="row between"><div><div style="font-weight:800">${esc(t.name)}${t.refId ? chip('oficial', 'green') : ''}</div><div class="small mut">${esc(cc ? (t.assoc || '') + (t.state ? ' · ' + t.state : '') : (t.state || '') + (t.capitan ? ' · Capitán: ' + t.capitan : ''))}</div></div>${locked ? '' : `<button class="btn ghost sm" data-act="delTeam" data-id="${t.id}" aria-label="Quitar ${esc(t.name)}">${I.x}</button>`}</div>
-    ${esz ? `<div class="small mut mt">${(t.members || []).length ? 'Integrantes: ' + t.members.map(esc).join(', ') : 'Sin integrantes capturadas'}</div><div class="btns mt"><a class="btn sm ${croDone(croOf(ev.id, t.id)) ? '' : 'pri'}" href="#croquis-${ev.id}-${t.id}">${I.edit} ${croDone(croOf(ev.id, t.id)) ? 'Croquis listo ✓' : 'Capturar croquis'}</a><button class="btn sm" data-act="escPdfBtn" data-e="${ev.id}" data-t="${t.id}">${I.doc} Hojas en PDF</button></div>` : cc ? inEv.map(c => chRow(c, false)).join('') : `${inEv.length ? `<div class="small mut mt">Charro · caballo que monta</div>${inEv.map(c => chRow(c, true)).join('')}` : '<div class="small mut mt">Sin charros todavía</div>'}
+    ${esz ? `<div class="small mut mt">${(t.members || []).length ? 'Integrantes: ' + t.members.map(esc).join(', ') : 'Sin integrantes capturadas'}</div><div class="btns mt"><a class="btn sm ${croVis(croOf(ev.id, t.id)) ? '' : 'pri'}" href="#croquis-${ev.id}-${t.id}">${I.edit} ${(croOf(ev.id, t.id) || {}).entregadoAt ? 'Croquis entregado ✓' : croVis(croOf(ev.id, t.id)) && croDone(croOf(ev.id, t.id)) ? 'Croquis listo ✓' : t.refId ? 'Esperando a la capitana' : 'Capturar croquis'}</a><button class="btn sm" data-act="escPdfBtn" data-e="${ev.id}" data-t="${t.id}">${I.doc} Hojas en PDF</button></div>` : cc ? inEv.map(c => chRow(c, false)).join('') : `${inEv.length ? `<div class="small mut mt">Charro · caballo que monta</div>${inEv.map(c => chRow(c, true)).join('')}` : '<div class="small mut mt">Sin charros todavía</div>'}
     ${locked ? '' : `${avail.length ? `<form class="row mt" data-form="addRoster" data-team="${t.id}" style="gap:8px"><select class="in" name="charroId" required><option value="">＋ Del roster oficial (${avail.length})</option>${avail.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select><button class="btn sm" style="min-height:46px" aria-label="Agregar del roster">${I.plus}</button></form>` : ''}
       <form class="row mt" data-form="addCharro" data-team="${t.id}" style="gap:8px"><input class="in" name="name" list="dl-charros" placeholder="Nombre del charro (registrado u otro)" autocomplete="off" required><button class="btn sm" style="min-height:46px" aria-label="Agregar charro">${I.plus}</button></form>`}`}</div>`; }).join('');
   const offTeams = DB.all('teams').filter(t => !ev.teams.some(x => x.refId === t.id)).sort((a, b) => ((b.lienzoId === ev.lienzoId && b.lienzoStatus === 'aprobado') - (a.lienzoId === ev.lienzoId && a.lienzoStatus === 'aprobado')) || byName(a, b));
@@ -2405,7 +2415,16 @@ async function fillOfficialForms(PDFLib, calBytes, croBytes, F){
 const croId = (eid, tid) => `${eid}-${tid}`;
 const croOf = (eid, tid) => DB.get('croquis', croId(eid, tid));
 const canCro = (u, ev) => !!ev && (isSuper(u) || ownsLienzo(u, ev.lienzoId) || isJudgeOf(u, ev.lienzoId));
-const croBlank = (ev, team) => ({ id: croId(ev.id, team.id), eventId: ev.id, teamId: team.id, via: '', hasPhoto: false, noPart: '', horario: '', musica: '', instructor: '', lugar: '',
+const isCapOf = (u, team) => !!u && !!team && !!team.refId && (DB.get('teams', team.refId) || {}).captainId === u.id;
+const canCroTeam = (u, ev, team) => canCro(u, ev) || isCapOf(u, team);
+const croVis = c => c && (c.entregadoAt || !c.byCaptain) ? c : null;   // el borrador de la capitana es privado hasta que lo entrega
+function croMissing(d){ const out = [], sin = d.ej.map((e, i) => (e.draw || []).length ? 0 : i + 1).filter(Boolean);
+  if (!d.hasPhoto && sin.length) out.push(`Falta el dibujo de ${sin.length === 12 ? 'los 12 ejercicios' : 'los ejercicios ' + sin.join(', ')}`);
+  const n = d.integrantes.filter(m => (m.name || '').trim()).length; if (n < 8) out.push(`Faltan ${8 - n} integrantes`);
+  if (d.puntas.some(p => !(p.name || '').trim())) out.push('Falta el orden de puntas');
+  return out; }
+function capCroquis(u){ const L = DB.all('events').filter(e => e.mode === 'escaramuza' && ['programado','en_vivo'].includes(e.status)).flatMap(e => e.teams.filter(t => isCapOf(u, t)).map(t => [e, t])); if (!L.length) return '';
+  return `<div class="h2">Croquis de mi escaramuza</div><div class="list">${L.map(([e, t]) => { const c = croOf(e.id, t.id); return menuItem(`#croquis-${e.id}-${t.id}`, I.edit, esc(e.title), `${esc(t.name)} · ${fdate(e.date)} · ${c && c.entregadoAt ? 'Entregado ✓' : c ? 'Sin entregar' : 'Por llenar'}`); }).join('')}</div>`; }const croBlank = (ev, team) => ({ id: croId(ev.id, team.id), eventId: ev.id, teamId: team.id, via: '', hasPhoto: false, noPart: '', horario: '', musica: '', instructor: '', lugar: '',
   ej: escBlank().ej.map(e => ({ nombre: '', c: e.c, v: e.v, ad: 0, draw: null })), integrantes: Array.from({ length: 8 }, (_, i) => ({ name: (team.members || [])[i] || '', cred: '' })), suplente: { name: (team.members || [])[8] || '', cred: '' }, puntas: [{ name: '', caballo: '' }, { name: '', caballo: '' }] });
 const croDone = c => !!c && (c.hasPhoto || c.ej.some(e => (e.draw || []).length));
 const strokePath = st => { let d = `M${st.p[0]} ${st.p[1]}`; for (let i = 2; i < st.p.length; i += 2) d += `L${st.p[i]} ${st.p[i + 1]}`; return d; };
@@ -2413,11 +2432,12 @@ const drawThumb = (list, cls = 'thumb') => `<svg class="${cls}" viewBox="0 0 100
 function vCroquis(){
   const u = State.user, ev = DB.get('events', State.param), team = ev && ev.teams.find(t => t.id === State.param2);
   if (!ev || !team) return emptyState(I.doc, 'Croquis no encontrado', ''); if (!u) return needLogin();
-  if (!canCro(u, ev)) return emptyState(I.shield, 'Sin acceso', 'Solo el lienzo de la charreada, sus jueces y el súper usuario ven el croquis.');
+  if (!canCroTeam(u, ev, team)) return emptyState(I.shield, 'Sin acceso', 'Solo la capitana, el lienzo de la charreada y sus jueces ven el croquis.');
   let Q = State.cq; if (!Q || Q.key !== croId(ev.id, team.id)) Q = State.cq = { key: croId(ev.id, team.id), step: 0, d: clone(croOf(ev.id, team.id) || croBlank(ev, team)) };
-  const d = Q.d, back = canManage(u, ev) ? `#panel-evento-${ev.id}` : `#juez-${ev.id}`;
-  let h = `<a class="back" href="${back}">${I.arrow} Regresar</a><div class="h1">Croquis</div><div class="sub" style="margin-top:4px">${esc(team.name)}. Se captura una sola vez: las juezas ya no tienen que escribir los ejercicios.</div>`;
-  if (Q.step === 0) { h += `<div class="h2">Paso 1 de 3 · El dibujo</div>
+  const stored = croOf(ev.id, team.id); if (stored && stored.updatedAt !== Q.d.updatedAt && (stored.entregadoAt || 0) !== (Q.d.entregadoAt || 0)) Q.d = clone(stored);
+  const d = Q.d, staff = canCro(u, ev), back = canManage(u, ev) ? `#panel-evento-${ev.id}` : staff ? `#juez-${ev.id}` : '#cuenta';
+  let h = `<a class="back" href="${back}">${I.arrow} Regresar</a><div class="h1">Croquis</div><div class="sub" style="margin-top:4px">${esc(team.name)} · ${esc(ev.title)}. ${staff ? 'Lo llena la capitana; aquí lo revisas o lo capturas si no tiene cuenta.' : 'Llena tu rutina antes de la charreada. Las juezas la verán al calificar y sus datos se escriben solos en las hojas oficiales.'}</div>`;
+  if (d.entregadoAt) { h += `<div class="banner ok mt">${I.check}<span>Entregado${d.entregadoBy ? ' por ' + esc(d.entregadoBy) : ''} el ${fdate(localISO(d.entregadoAt))}.${staff ? '' : ' Ya no se puede cambiar; si necesitas corregir, pídelo al lienzo.'}</span></div>`; if (!staff) return h + croResumen(d); h += `<button class="btn ghost block mt" data-act="cqReopen">Reabrir para que la capitana corrija</button>`; }  if (Q.step === 0) { h += `<div class="h2">Paso 1 de 3 · El dibujo</div>
       <label class="bigchoice" style="cursor:pointer">${I.upload}<span><b>Tomar foto de la hoja</b><span>Si ya la tienen en papel. Toda la hoja, bien derecha y con buena luz.</span></span><input type="file" accept="image/*" capture="environment" data-cqphoto="1" hidden></label>
       <button class="bigchoice" data-act="cqVia" data-k="dibujo">${I.edit}<span><b>Dibujar con el dedo</b><span>Dibuja cada ejercicio aquí en el teléfono.</span></span></button>
       ${d.hasPhoto ? `<div class="banner ok mt">${I.check}<span>Ya hay una foto guardada de la hoja.</span></div>` : ''}
@@ -2432,11 +2452,17 @@ function vCroquis(){
       <div class="card mt"><b>Orden de puntas</b>${d.puntas.map((p, i) => inp(`puntas.${i}.name`, `Punta ${i + 1}: competidora`, p.name) + inp(`puntas.${i}.caballo`, 'Caballo', p.caballo)).join('')}</div>
       <div class="card mt"><b>Integrantes</b>${d.integrantes.map((m, i) => `<div class="row" style="gap:8px"><div class="grow">${inp(`integrantes.${i}.name`, `Integrante ${i + 1}`, m.name)}</div><div style="flex:0 0 96px">${inp(`integrantes.${i}.cred`, 'Credencial', m.cred)}</div>${isChm(ev) ? `<div style="flex:0 0 64px">${inp(`integrantes.${i}.edad`, 'Edad', m.edad || '')}</div>` : ''}</div>`).join('')}
       <div class="row" style="gap:8px"><div class="grow">${inp('suplente.name', 'Suplente', d.suplente.name)}</div><div style="flex:0 0 96px">${inp('suplente.cred', 'Credencial', d.suplente.cred)}</div>${isChm(ev) ? `<div style="flex:0 0 64px">${inp('suplente.edad', 'Edad', d.suplente.edad || '')}</div>` : ''}</div></div>
-      <div class="bignav"><button class="btn" data-act="cqGo" data-k="1">Atrás</button><button class="btn pri" data-act="cqSave">${I.check} Guardar croquis</button></div>`; }
+      <div class="bignav"><button class="btn" data-act="cqGo" data-k="1">Atrás</button><button class="btn pri" data-act="cqGo" data-k="3">Revisar</button></div>`; }
+  if (Q.step === 3) { const miss = croMissing(d); h += `<div class="h2">Revisar y entregar</div>${croResumen(d)}
+      ${miss.length ? `<div class="banner warn mt">${I.info}<span>${miss.map(esc).join('<br>')}</span></div>` : ''}
+      <div class="bignav"><button class="btn" data-act="cqGo" data-k="2">Atrás</button><button class="btn" data-act="cqSave">Guardar</button></div>
+      ${d.entregadoAt ? '' : `<button class="btn pri block mt" data-act="cqEntrega" ${miss.length ? 'disabled' : ''}>${I.check} Entregar a las juezas</button><div class="small mut mt">Al entregar ya no se puede cambiar, y el lienzo y las juezas reciben el aviso.</div>`}`; }
   return h;
 }
-async function cqPersist(){ const Q = State.cq; Q.d.updatedAt = Date.now(); Q.d.updatedBy = State.user.name; await DB.put('croquis', clone(Q.d)); await croPublish(Q.d); }
+const croResumen = d => `<div class="refgrid mt">${d.ej.map((e, i) => `<div class="card pad0" style="padding:6px;text-align:center">${(e.draw || []).length ? drawThumb(e.draw, 'ref') : `<div class="small mut" style="padding:24px 0">${d.hasPhoto ? 'En la foto' : 'Sin dibujo'}</div>`}<div class="small ell" style="font-weight:700">${i + 1}. ${esc(e.c)}</div><div class="small mut">${e.v}${+e.ad ? ' + ' + e.ad : ''}</div></div>`).join('')}</div>`;
+async function cqPersist(){ const Q = State.cq, ev = DB.get('events', Q.d.eventId); if (!canCro(State.user, ev)) Q.d.byCaptain = true; Q.d.updatedAt = Date.now(); Q.d.updatedBy = State.user.name; await DB.put('croquis', clone(Q.d)); await croPublish(Q.d); }
 async function croPublish(d){   // copia pública: solo los dibujos, sin nombres ni credenciales
+  if (!croVis(d)) return;
   try { const foto = d.hasPhoto ? await DB.backend.getFoto(d.id) : null; await DB.backend.putDib({ id: d.id, eventId: d.eventId, teamId: d.teamId, ej: d.ej.map(e => ({ draw: e.draw || null })), cells: foto ? await photoCellUrls(foto) : null, updatedAt: Date.now() }); }
   catch (e) { toast('El croquis se guardó, pero sus dibujos no se publicaron: ' + (e.message || e), 'err'); }
 }
@@ -2498,7 +2524,7 @@ function openCorners(file){
     const at = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) / r.width * W, (ev.clientY - r.top) / r.height * H]; };
     cv.onpointerdown = ev => { cv.setPointerCapture(ev.pointerId); const [x, y] = at(ev); let best = 1e12; q.forEach((p, i) => { const dd = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (dd < best) { best = dd; grab = i; } }); }; cv.onpointermove = ev => { if (grab < 0) return; q[grab] = at(ev); paint(); }; cv.onpointerup = () => { grab = -1; };
     $('#qN').onclick = () => { $('#modal').innerHTML = ''; }; $('#qS').onclick = async () => { const Q = State.cq, jpg = warpQuad(src, q, 1000, 1647).toDataURL('image/jpeg', .72);
-      await safe(async () => { await DB.backend.putFoto(Q.d.id, Q.d.eventId, jpg); Q.d.via = 'foto'; Q.d.hasPhoto = true; await cqPersist(); $('#modal').innerHTML = ''; Q.step = 1; }, 'Foto guardada'); }; paint(); };
+      await safe(async () => { await DB.backend.putFoto(Q.d.id, Q.d.eventId, jpg, Q.d.teamId); Q.d.via = 'foto'; Q.d.hasPhoto = true; await cqPersist(); $('#modal').innerHTML = ''; Q.step = 1; }, 'Foto guardada'); }; paint(); };
   img.src = url;
 }
 const dataUrlBytes = u => Uint8Array.from(atob(u.split(',')[1]), c => c.charCodeAt(0));
@@ -2514,13 +2540,19 @@ const canPdfDl = (u, ev) => !!ev && (ev.status === 'finalizado' || canCro(u, ev)
 async function escPdfBytes(ev, team){
   await loadPdfLib(); const staff = canCro(State.user, ev), fmt = isChm(ev) ? 'chm' : 'libre';
   const [cal, cro] = await Promise.all([`hoja-calificacion-${fmt}.pdf`, `hoja-croquis-${fmt}.pdf`].map(f => fetch(FORM_BASE + f).then(r => { if (!r.ok) throw new Error('No se encontró el formato oficial'); return r.arrayBuffer(); })));
-  const f = escFinal(ev, team.id), C = (staff && croOf(ev.id, team.id)) || croBlank(ev, team), L = lienzo(ev.lienzoId), rows = f.rows.slice().sort((a, b) => a.createdAt - b.createdAt), used = rows.filter(s => f.used.includes(s));
+  const f = escFinal(ev, team.id), C = (staff && croVis(croOf(ev.id, team.id))) || croBlank(ev, team), L = lienzo(ev.lienzoId), rows = f.rows.slice().sort((a, b) => a.createdAt - b.createdAt), used = rows.filter(s => f.used.includes(s));
   const first = rows[0] ? calcEsc(rows[0].input) : null, foto = staff && C.hasPhoto ? await DB.backend.getFoto(C.id) : null;
   let cellUrls = foto ? await photoCellUrls(foto) : null;
   if (!staff) { const dib = await DB.backend.getDib(croId(ev.id, team.id)).catch(() => null); if (dib) { C.ej.forEach((e, i) => { e.draw = (dib.ej[i] || {}).draw || null; }); cellUrls = dib.cells || null; } }
   const F = { chm: isChm(ev), conCroquis: staff, adEdad: first ? first.adEdad : 0, evento: ev.title, estado: L.state, sede: L.name, fecha: fdate(ev.date), escaramuza: team.name, capitana: team.capitan, asociacion: team.assoc, instructor: C.instructor, lugar: C.lugar || team.state, base: first ? first.base : C.ej.reduce((a, e) => a + +e.v, 0), adic: first ? first.adic : C.ej.reduce((a, e) => a + (+e.ad || 0), 0), final: f.n ? f.score : '', croquis: C,
     photo: foto ? dataUrlBytes(foto) : null, cells: cellUrls ? cellUrls.map(dataUrlBytes) : null, vaciado: used.slice(0, 3).map(s => ({ name: s.judgeName, c: calcEsc(s.input), total: s.total })), jueces: rows.map(s => ({ name: s.judgeName, d: s.input, c: calcEsc(s.input), total: s.total })) };
   return fillOfficialForms(window.PDFLib, cal, cro, F);
+}
+async function escPack(ev){   // todas las escaramuzas calificadas en un solo PDF, listo para enviar
+  if (!canCro(State.user, ev)) throw new Error('Solo el lienzo y sus jueces descargan el paquete'); toast('Armando el paquete, espera un momento…');
+  await loadPdfLib(); const out = await window.PDFLib.PDFDocument.create();
+  for (const t of ev.teams) { if (!escFinal(ev, t.id).n) continue; const src = await window.PDFLib.PDFDocument.load(await escPdfBytes(ev, t)); (await out.copyPages(src, src.getPageIndices())).forEach(p => out.addPage(p)); }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([await out.save()], { type: 'application/pdf' })); a.download = `hojas-${slug(ev.title)}.pdf`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
 }
 async function escPdf(ev, team){
   if (!canPdfDl(State.user, ev)) throw new Error('La hoja se podrá descargar cuando termine la charreada');
@@ -2564,16 +2596,18 @@ function scoreAudience(s){   // igual que trg_notif_score() en la base
 function notifLocal(s){ const ev = DB.get('events', s.eventId), L = DB.data.notifs || (DB.data.notifs = []);
   scoreAudience(s).forEach(uid_ => { const id = `${s.id}~${uid_}`, row = { id, userId: uid_, scoreId: s.id, eventId: s.eventId, teamId: s.teamId, faena: s.faena, teamName: s.teamName, net: s.net, judgeName: s.judgeName, evTitle: ev ? ev.title : '', at: Date.now(), read: false }, i = L.findIndex(n => n.id === id); if (i >= 0) L[i] = row; else L.push(row); }); }
 const myNotifs = () => State.user ? DB.all('notifs').filter(n => n.userId === State.user.id).sort((a, b) => b.at - a.at) : [];
-const notifText = n => `${n.teamName}: ${FN(n.faena)}, ${n.net} pts`;
-const notifLink = n => { const ev = DB.get('events', n.eventId); return ev && ev.mode === 'escaramuza' ? `#pdf-${n.eventId}-${n.teamId}` : `#hoja-${n.eventId}-${n.teamId}`; };
+function notifCroLocal(c){ if (!c.entregadoAt) return; const ev = DB.get('events', c.eventId), L = DB.data.notifs || (DB.data.notifs = []); if (!ev) return; const t = ev.teams.find(x => x.id === c.teamId) || {}, lz = DB.get('lienzos', ev.lienzoId);
+  [lz && lz.ownerId, ...DB.all('profiles').filter(p => p.role === 'juez' && p.lienzoId === ev.lienzoId).map(p => p.id)].filter(Boolean).forEach(uid_ => { const id = `cro~${c.id}~${uid_}`; if (!L.some(n => n.id === id)) L.push({ id, kind: 'croquis', userId: uid_, eventId: c.eventId, teamId: c.teamId, teamName: t.name, evTitle: ev.title, at: Date.now(), read: false }); }); }
+const notifText = n => n.kind === 'croquis' ? `${n.teamName} entregó su croquis` : `${n.teamName}: ${FN(n.faena)}, ${n.net} pts`;
+const notifLink = n => { const ev = DB.get('events', n.eventId); if (n.kind === 'croquis') return `#croquis-${n.eventId}-${n.teamId}`; return ev && ev.mode === 'escaramuza' ? `#pdf-${n.eventId}-${n.teamId}` : `#hoja-${n.eventId}-${n.teamId}`; };
 function checkNotifs(){ const seen = State.notifSeen || (State.notifSeen = new Set());
-  myNotifs().filter(n => !n.read).forEach(n => { const k = n.id + n.at; if (seen.has(k)) return; seen.add(k); if (!State.notifInit) return; toast('Ya calificó el juez · ' + notifText(n), 'ok');
-    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') { try { new Notification('Ya calificó el juez', { body: notifText(n) }); } catch (e) {} } });
+  myNotifs().filter(n => !n.read).forEach(n => { const k = n.id + n.at; if (seen.has(k)) return; seen.add(k); if (!State.notifInit) return; toast(notifText(n), 'ok');
+    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') { try { new Notification(CONFIG.APP_NAME, { body: notifText(n) }); } catch (e) {} } });
   if (State.user) State.notifInit = true; }
 function vAvisos(){
   const u = State.user; if (!u) return needLogin(); const L = myNotifs(), perm = 'Notification' in window ? Notification.permission : 'na';
   if (L.some(n => !n.read)) setTimeout(async () => { L.forEach(n => { n.read = true; }); try { await DB.backend.readNotifs(); } catch (e) {} render(); }, 1500);
-  return `<div class="h1">Avisos</div><div class="sub" style="margin-top:4px">Te avisamos cuando un juez califica tu lienzo, tu equipo o tu faena.</div>
+  return `<div class="h1">Avisos</div><div class="sub" style="margin-top:4px">Te avisamos cuando un juez califica o una capitana entrega su croquis.</div>
     ${perm === 'default' ? `<button class="btn block mt" data-act="notifPerm">${I.bell} Avisarme también en este navegador</button>` : ''}
     ${L.length ? `<div class="card pad0 mt">${L.map(n => `<a class="rank" href="${notifLink(n)}" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:${n.read ? 600 : 800}">${esc(notifText(n))}</div><div class="small mut ell">${esc(n.evTitle)} · ${esc(n.judgeName || 'Juez')} · ${new Date(n.at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</div></div>${n.read ? '' : '<span class="badge-n">Nuevo</span>'}</a>`).join('')}</div>` : `<div class="mt">${emptyState(I.bell, 'Sin avisos', 'Aquí aparecerán las calificaciones en cuanto el juez las publique.')}</div>`}`;
 }
@@ -2581,13 +2615,16 @@ const escDraftKey = id => 'cp_hoja_' + id;
 function escDraftGet(id){ try { const r = localStorage.getItem(escDraftKey(id)); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
 function escDraftSet(){ const J = State.ej, u = State.user; if (!J || !J.d || !u) return; try { localStorage.setItem(escDraftKey(`${J.eid}-${J.tid}-${u.id}`), JSON.stringify(J.d)); } catch (e) {} }
 function escDraftDel(id){ try { localStorage.removeItem(escDraftKey(id)); } catch (e) {} }
-function escFromCroquis(ev, team){ const d = escBlank(), c = croOf(ev.id, team.id); if (c) { d.ej = c.ej.map(e => ({ v: +e.v, c: e.c, ad: +e.ad || 0, inf: {}, lost: false, desc: false })); c.puntas.forEach((p, i) => { if (d.puntas[i]) d.puntas[i].name = p.name || ''; }); } return d; }
+function escFromCroquis(ev, team){ const d = escBlank(), c = croVis(croOf(ev.id, team.id)); if (c) { d.ej = c.ej.map(e => ({ v: +e.v, c: e.c, ad: +e.ad || 0, inf: {}, lost: false, desc: false })); c.puntas.forEach((p, i) => { if (d.puntas[i]) d.puntas[i].name = p.name || ''; }); } return d; }
+const dibCache = {};
+function escDibCells(eid, tid){ const id = croId(eid, tid); if (id in dibCache) return dibCache[id]; dibCache[id] = null; DB.backend.getDib(id).then(r => { if (r && r.cells) { dibCache[id] = r.cells; render(); } }).catch(() => {}); return null; }
 const ESC_COMMON = ['dist','def','defg','tpvr','camg','rehuse','noent','arreo'];
 function vJuezEsc(ev){
   const u = State.user; let J = State.ej; if (!J || J.eid !== ev.id) J = State.ej = { eid: ev.id, tid: ev.teams[0].id, d: null, dirty: false, col: 'e', step: 0, more: false };
   if (!ev.teams.some(t => t.id === J.tid)) { J.tid = ev.teams[0].id; J.d = null; }
-  const team = ev.teams.find(t => t.id === J.tid), sid = `${ev.id}-${team.id}-esc-${u.id}`, mine = DB.get('scores', sid), locked = (isLocked(ev, team.id) && !isSuper(u)) || ev.status !== 'en_vivo', cro = croOf(ev.id, team.id);
-  if (!J.d) { const dr = escDraftGet(`${ev.id}-${team.id}-${u.id}`); J.d = dr || (mine ? clone(mine.input) : escFromCroquis(ev, team)); J.dirty = !!dr; }
+  const team = ev.teams.find(t => t.id === J.tid), sid = `${ev.id}-${team.id}-esc-${u.id}`, mine = DB.get('scores', sid), locked = (isLocked(ev, team.id) && !isSuper(u)) || ev.status !== 'en_vivo', cro = croVis(croOf(ev.id, team.id));
+  if (!J.d) { const dr = escDraftGet(`${ev.id}-${team.id}-${u.id}`); J.d = dr || (mine ? clone(mine.input) : escFromCroquis(ev, team)); J.dirty = !!dr;
+    if (cro && !mine) { J.d.ej.forEach((e, i) => { const c = cro.ej[i]; if (c) Object.assign(e, { c: c.c, v: +c.v, ad: +c.ad || 0 }); }); cro.puntas.forEach((p, i) => { if (J.d.puntas[i] && !J.d.puntas[i].name) J.d.puntas[i].name = p.name || ''; }); } }
   const d = J.d, r = calcEsc(d), dis = locked ? 'disabled' : '';
   const cnt = (path, label, val) => { const n = +getP(d, path) || 0; return `<div class="esc-c ${n ? 'on' : ''}"><span>${esc(label)} <b>${/puntos/.test(label) ? '' : '−' + val}</b></span><span class="n"><button type="button" data-ec="${path}" data-d="-1" ${dis} aria-label="Quitar">−</button><b>${n}</b><button type="button" data-ec="${path}" data-d="1" ${dis} aria-label="Sumar">+</button></span></div>`; };
   const sel = (path, opts, cur, num) => `<select class="in" data-ep="${path}" ${num ? 'data-num="1"' : ''} ${dis}>${opts.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(cur) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`;
@@ -2597,7 +2634,8 @@ function vJuezEsc(ev){
     <label class="f">Escaramuza</label><div class="scroller">${ev.teams.map(t => { const m = DB.get('scores', `${ev.id}-${t.id}-esc-${u.id}`); return `<button class="tog ${t.id === J.tid ? 'on' : ''}" data-ejteam="${t.id}">${esc(t.name)}${m ? ' ✓' : ''}${isLocked(ev, t.id) ? ' 🔒' : ''}</button>`; }).join('')}</div>
     <div class="stepbar">${['1. Puntas', '2. Rutina', '3. Presentación', '4. Revisar'].map((l, i) => `<button class="${J.step === i ? 'on' : ''}" data-act="escStep" data-k="${i}">${l}</button>`).join('')}</div>`;
   if (locked) h += `<div class="banner warn mt">${I.info}<span>${ev.status !== 'en_vivo' ? 'La competencia no está en vivo: solo se puede ver.' : 'La hoja de esta escaramuza ya se entregó.'}</span></div>`;
-  if (!cro && canCro(u, ev) && J.step < 2) h += `<a class="banner warn mt" href="#croquis-${ev.id}-${team.id}" style="text-decoration:none">${I.info}<span>Falta el croquis de esta escaramuza. Toca aquí para capturarlo y no escribir los ejercicios.</span></a>`;
+  if (!cro && canCro(u, ev) && J.step < 2) h += `<a class="banner warn mt" href="#croquis-${ev.id}-${team.id}" style="text-decoration:none">${I.info}<span>La capitana aún no entrega su croquis. Sin él no hay dibujos de referencia. Toca aquí para capturarlo tú.</span></a>`;
+  const cells = cro && cro.hasPhoto ? escDibCells(ev.id, team.id) : null, refOf = (i, cls) => { const c = cro && cro.ej[i]; return c && (c.draw || []).length ? drawThumb(c.draw, cls) : cells && cells[i] ? `<img class="${cls}" src="${esc(cells[i])}" alt="">` : ''; };
   if (J.step === 0) h += d.puntas.map((p, i) => { const c = r.P[i]; return `<div class="card mt"><div class="row between"><b style="font-size:17px">Punta ${i + 1}</b><span class="chip gold">${c.total} pts</span></div>
       <label class="f">Competidora</label><input class="in" data-ep="puntas.${i}.name" value="${esc(p.name)}" ${dis}>
       <div class="chips mt">${PUNTA_ADIC.map(([k, l]) => chk(`puntas.${i}.adic.${k}`, l, !!p.adic[k])).join('')}</div>
@@ -2605,7 +2643,7 @@ function vJuezEsc(ev){
       <details class="mt"><summary style="cursor:pointer;padding:8px 0">Infracciones de la punta ${c.inf ? `(−${c.inf})` : ''}</summary>${PUNTA_INF.map(([k, l, v]) => cnt(`puntas.${i}.inf.${k}`, l, v)).join('')}</details>
       <div class="chips mt">${chk(`puntas.${i}.desc`, 'Punta descalificada', !!p.desc)}</div>${p.desc ? `<input class="in mt" data-ep="puntas.${i}.motivo" value="${esc(p.motivo)}" placeholder="Motivo" ${dis}>` : ''}</div>`; }).join('');
   if (J.step === 1) { const isE = col !== 'e' && col !== 's', e = isE ? d.ej[+col] : null, ce = isE && cro ? cro.ej[+col] : null, list = ESC_RINF.filter(x => !x[3] || x[3].includes(col)), common = list.filter(x => ESC_COMMON.includes(x[0]) || x[3]), rest = list.filter(x => !common.includes(x)), used = rest.filter(x => +(colInf(col)[x[0]]) > 0);
-    h += `<div class="card mt"><div class="row" style="gap:12px;align-items:center">${ce && (ce.draw || []).length ? drawThumb(ce.draw) : ''}<div class="grow"><div class="small mut">${ci + 1} de ${cols.length}</div><div style="font-weight:800;font-size:19px">${col === 'e' ? 'Entrada' : col === 's' ? 'Salida' : `Ejercicio ${+col + 1}`}</div>${isE ? `<div style="color:var(--gold2);font-weight:700">${esc(e.c)} · ${e.v} pts${+e.ad ? ` · +${e.ad}` : ''}</div>` : ''}</div></div></div>
+    h += `${cro ? `<div class="refstrip mt">${d.ej.map((x, i) => `<button class="${col === String(i) ? 'on' : ''}" data-act="escCol" data-k="${i}" aria-label="Ejercicio ${i + 1}"><b>${i + 1}</b>${refOf(i, 'mini')}</button>`).join('')}</div>` : ''}<div class="card mt">${isE && cro ? refOf(+col, 'ref big') : ''}<div class="row" style="gap:12px;align-items:center"><div class="grow"><div class="small mut">${ci + 1} de ${cols.length}</div><div style="font-weight:800;font-size:19px">${col === 'e' ? 'Entrada' : col === 's' ? 'Salida' : `Ejercicio ${+col + 1}`}</div>${isE ? `<div style="color:var(--gold2);font-weight:700">${esc(e.c)} · ${e.v} pts${+e.ad ? ` · +${e.ad}` : ''}</div>` : ''}</div></div></div>
       <div class="card mt">${common.map(([k, l, v]) => cnt(`${colPath(col)}.${k}`, l, v)).join('')}${(J.more ? rest : used).map(([k, l, v]) => cnt(`${colPath(col)}.${k}`, l, v)).join('')}
       <button class="btn ghost block mt" data-act="escMore">${J.more ? 'Ver menos' : 'Ver todas las infracciones'}</button></div>
       ${isE ? `<div class="chips mt">${chk(`ej.${col}.lost`, 'Pierde adicionales', !!e.lost)}${chk(`ej.${col}.desc`, 'Descalificado', !!e.desc)}</div><details class="mt"><summary style="cursor:pointer;padding:8px 0">Corregir concepto, valor o adicionales</summary><div class="card"><label class="f" style="margin-top:0">Concepto</label>${sel(`ej.${col}.c`, ESC_CONC, e.c)}<div class="grid2"><div><label class="f">Valor</label>${sel(`ej.${col}.v`, [16, 20, 26, 28], e.v, true)}</div><div><label class="f">Adicionales</label>${sel(`ej.${col}.ad`, escAdicOpts(e.c, e.v).map(x => [x, '+' + x]), e.ad, true)}</div></div></div></details>` : ''}`; }
@@ -2891,8 +2929,13 @@ const ACT = {
   authmode(el){ State.authMode = el.dataset.k; render(); },
   card(el){ openCard(el.dataset.n); },
   hcard(el){ openHorse(el.dataset.id); },
-  cqGo(el){ State.cq.step = +el.dataset.k; render(); window.scrollTo(0, 0); }, cqVia(el){ State.cq.d.via = el.dataset.k; State.cq.step = 1; render(); window.scrollTo(0, 0); }, cqDraw(el){ openDraw(+el.dataset.i); },
-  async cqSave(){ const Q = State.cq, ev = DB.get('events', Q.d.eventId); await safe(async () => { await cqPersist(); await audit('croquis', `Guardó el croquis de ${(ev.teams.find(t => t.id === Q.d.teamId) || {}).name} en “${ev.title}”`); go(canManage(State.user, ev) ? 'panel-evento-' + ev.id : 'juez-' + ev.id); }, 'Croquis guardado'); },
+  async cqGo(el){ const Q = State.cq; try { await cqPersist(); } catch (e) { return toast(e.message || 'No se pudo guardar', 'err'); } Q.step = +el.dataset.k; render(); window.scrollTo(0, 0); }, cqVia(el){ State.cq.d.via = el.dataset.k; State.cq.step = 1; render(); window.scrollTo(0, 0); }, cqDraw(el){ openDraw(+el.dataset.i); },
+  async cqSave(){ const Q = State.cq, ev = DB.get('events', Q.d.eventId); await safe(async () => { await cqPersist(); await audit('croquis', `Guardó el croquis de ${(ev.teams.find(t => t.id === Q.d.teamId) || {}).name} en “${ev.title}”`); go(canManage(State.user, ev) ? 'panel-evento-' + ev.id : canCro(State.user, ev) ? 'juez-' + ev.id : 'cuenta'); }, 'Croquis guardado'); },
+  async cqEntrega(){ const Q = State.cq, ev = DB.get('events', Q.d.eventId), miss = croMissing(Q.d); if (miss.length) return toast(miss[0], 'err'); if (!(await ask('Entregar croquis', 'Ya no podrás cambiarlo. El lienzo y las juezas lo recibirán.', 'Entregar'))) return;
+    await safe(async () => { Q.d.entregadoAt = Date.now(); Q.d.entregadoBy = State.user.name; try { await cqPersist(); } catch (e) { Q.d.entregadoAt = null; throw e; } await audit('croquis', `Entregó el croquis de ${(ev.teams.find(t => t.id === Q.d.teamId) || {}).name} en “${ev.title}”`); render(); }, 'Croquis entregado'); },
+  async cqReopen(){ const Q = State.cq; if (!(await ask('Reabrir croquis', 'La capitana podrá corregirlo y tendrá que entregarlo otra vez.', 'Reabrir'))) return; await safe(async () => { Q.d.entregadoAt = null; Q.d.entregadoBy = ''; await cqPersist(); Q.step = 0; render(); }, 'Croquis reabierto'); },
+  escCol(el){ State.ej.col = el.dataset.k; render(); },
+  async escPack(el){ const ev = DB.get('events', el.dataset.e); if (ev) { try { await escPack(ev); toast('Paquete descargado', 'ok'); } catch (e) { toast(e.message || 'No se pudo generar', 'err'); } } },
   async escPdfBtn(el){ const ev = DB.get('events', el.dataset.e), t = ev && ev.teams.find(x => x.id === el.dataset.t); if (!t) return; try { await escPdf(ev, t); toast('PDF descargado', 'ok'); } catch (e) { toast(e.message || 'No se pudo generar el PDF', 'err'); } },
   escStep(el){ State.ej.step = +el.dataset.k; render(); window.scrollTo(0, 0); }, escMore(){ State.ej.more = !State.ej.more; render(); },
   escNav(el){ const J = State.ej, dir = +el.dataset.d, cols = ['e', ...J.d.ej.map((e, i) => String(i)), 's'], ci = cols.indexOf(J.col || 'e'); J.more = false;
