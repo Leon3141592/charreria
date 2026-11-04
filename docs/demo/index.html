@@ -674,7 +674,7 @@ const DB = {
   }
 };
 const fotoMem = {};
-const LS_KEY = 'charreriapro_demo_v18', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v19', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -939,8 +939,13 @@ function seed(){
   mkEsc('eesc1', 'Campeonato Estatal de Escaramuzas · Etapa 1', 'lstm', day(-55), 'finalizado', true, [0, 1, 2, 3], () => JZ, { category: ESC_CHM });
   mkEsc('eesc2', 'Copa de Escaramuzas de la Villa', 'lvilla', day(-18), 'finalizado', true, [0, 1, 2, 3], () => JZ);
   mkEsc('eescv', 'Torneo de Escaramuzas Bicentenario', 'lvilla', day(0), 'en_vivo', true, [0, 1, 2], ti => ti === 0 ? JZ.slice(0, 3) : ti === 1 ? JZ.slice(0, 1) : [], { startedAt: Date.now() - 40 * 60000 });
-  const CR = [], ring = (n, r) => Array.from({ length: n }, (_, k) => { const a = k / n * 6.283 + r, x = Math.round(500 + 300 * Math.cos(a)), y = Math.round(500 + 300 * Math.sin(a)); return { c: 'k', p: [x, y, Math.round(x + 70 * Math.cos(a + 1.6)), Math.round(y + 70 * Math.sin(a + 1.6))] }; });
-  E.filter(e => e.mode === 'escaramuza').forEach(e => e.teams.forEach(t => { const c = croBlank(e, t); c.via = 'dibujo'; c.entregadoAt = Date.now(); c.entregadoBy = t.capitan; c.instructor = 'Rosa Medina'; c.lugar = t.state; c.musica = 'Mariachi'; c.ej.forEach((x, i) => { x.draw = demoDraw(x.c); x.ad = (escAdicOpts(x.c, x.v).slice(-1)[0] || 0); }); c.puntas = [{ name: 'Valeria Pérez', caballo: 'Lucero' }, { name: 'Ximena Ortiz', caballo: 'Canela' }]; c.integrantes = c.integrantes.map((m, i) => ({ name: ['Valeria Pérez','Ximena Ortiz','Regina Luna','Camila Soto','Paola García','Andrea Ruiz','Sofía Díaz','Lucía Mora'][i], cred: 'FM' + (2100 + i) })); CR.push(c); }));
+  const CR = [];
+  const NOMBRES = ['Valeria Pérez','Ximena Ortiz','Regina Luna','Camila Soto','Paola García','Andrea Ruiz','Sofía Díaz','Lucía Mora','Renata Vega','Natalia Cruz','Mónica Salas','Elena Ibarra'];
+  const mkCro = (e, t, o = {}) => { const k = (+String(t.id).slice(1) || 0) * 3, nm = i => NOMBRES[(i + k) % 12], c = croBlank(e, t); c.via = 'dibujo'; c.instructor = 'Rosa Medina'; c.lugar = t.state; c.musica = 'Mariachi'; c.horario = '11:00'; c.noPart = String((+String(t.id).slice(1) || 0) + 1);
+    c.ej.forEach((x, i) => { x.draw = i < (o.dibujos ?? 12) ? demoDraw(x.c) : null; x.ad = (escAdicOpts(x.c, x.v).slice(-1)[0] || 0); });
+    c.puntas = o.borrador ? c.puntas : [{ name: nm(0), caballo: 'Lucero' }, { name: nm(1), caballo: 'Canela' }]; c.integrantes = c.integrantes.map((m, i) => ({ name: i < (o.integrantes ?? 8) ? nm(i) : '', cred: i < (o.integrantes ?? 8) ? 'FM' + (2100 + k * 10 + i) : '', ...(isChm(e) ? { edad: String(36 + i * 2) } : {}) }));
+    if (o.borrador) c.byCaptain = true; else { c.entregadoAt = Date.now() - 864e5; c.entregadoBy = t.capitan; } c.updatedAt = Date.now() - 864e5; CR.push(c); };
+  E.filter(e => e.mode === 'escaramuza').forEach(e => e.teams.forEach(t => mkCro(e, t)));
   const live = mkEvent('elive','Torneo Nacional Charro Bicentenario','lvilla',day(0),[0,1,2],'en_vivo',true,{ startedAt: Date.now() - 70*60000 });
   scoreAll(live, 3, false);
   S.filter(x => x.eventId === 'elive').forEach((x, i) => { x.createdAt = x.updatedAt = Date.now() - (60 - i * 6) * 60000; });
@@ -1000,13 +1005,19 @@ function seed(){
   RQ.push({ id:'rq5', type:'interes', horseId:'cb3', ownerId:'udueno', buyerName:'Ernesto Villaseñor', contact:'capitan@demo.mx', message:'', status:'pendiente', createdBy:'ucap', createdAt: ago(5) });
   RQ.push({ id:'rq3', type:'interes', horseId:'cb2', ownerId:'udueno', buyerName:'Fausto Herrera', contact:'55 1234 5678', message:'Me interesa para la temporada; ¿se puede ver en Texcoco?', status:'pendiente', createdBy:'ucharro', createdAt: ago(1) });
   RQ.push({ id:'rq2', type:'afiliacion', teamId:'q5', lienzoId:'lvilla', status:'pendiente', createdBy:'ucap2', createdAt: Date.now()-2*864e5 });
-  T.push({ id: 'qesc', name: 'Escaramuza Las Alteñas', state: 'Jalisco', assoc: '', photo: '', captainId: 'ucapi', captainName: 'Mariana Ríos', lienzoId: null, lienzoStatus: '', createdAt: Date.now() - 90 * 864e5 });
-  prof('ucapi', 'Mariana Ríos', 'capitana@demo.mx', 'equipo', 'aprobado', null);
-  E.filter(e => e.mode === 'escaramuza').forEach(e => e.teams.forEach(t => { if (t.name === 'Escaramuza Las Alteñas') t.refId = 'qesc'; }));
-  E.push({ id: 'eescp', title: 'Copa Primavera de Escaramuzas', lienzoId: 'lvilla', date: day(12), mode: 'escaramuza', category: 'Libre', status: 'programado', official: true, requestOfficial: true, suertes: [], charros: [], streamUrl: '', videoUrl: '', createdAt: Date.now(),
-    teams: [0, 1].map(i => ({ id: 'z' + i, name: ESCS[i][0], state: ESCS[i][1], assoc: 'Asociación de Charros de ' + ESCS[i][1], capitan: ESCS[i][2], members: [], refId: i ? null : 'qesc' })) });
+  const CAPS = [['qesc', 'ucapi', 'capitana@demo.mx', 0], ['qesc2', 'ucapi2', 'capitana2@demo.mx', 1], ['qesc3', 'ucapi3', 'capitana3@demo.mx', 2]];
+  CAPS.forEach(([q, uid_, mail, i]) => { T.push({ id: q, name: ESCS[i][0], state: ESCS[i][1], assoc: '', photo: '', captainId: uid_, captainName: ESCS[i][2], lienzoId: null, lienzoStatus: '', createdAt: Date.now() - 90 * 864e5 }); prof(uid_, ESCS[i][2], mail, 'equipo', 'aprobado', null); });
+  const escRef = n => (CAPS.find(c => ESCS[c[3]][0] === n) || [null])[0];
+  E.filter(e => e.mode === 'escaramuza').forEach(e => e.teams.forEach(t => { t.refId = escRef(t.name); }));
+  const mkProx = (id, title, date, category, idxs) => { const e = { id, title, lienzoId: 'lvilla', date, mode: 'escaramuza', category, status: 'programado', official: true, requestOfficial: true, suertes: [], charros: [], streamUrl: '', videoUrl: '', createdAt: Date.now(),
+    teams: idxs.map(i => ({ id: 'z' + i, name: ESCS[i][0], state: ESCS[i][1], assoc: 'Asociación de Charros de ' + ESCS[i][1], capitan: ESCS[i][2], members: [], refId: escRef(ESCS[i][0]) })) }; E.push(e); return e; };
+  // Una escaramuza en cada etapa: por llenar, entregado, en borrador y sin cuenta (la captura el lienzo)
+  const prox = mkProx('eescp', 'Copa Primavera de Escaramuzas', day(12), 'Libre', [0, 1, 2, 3]); mkCro(prox, prox.teams[1]); mkCro(prox, prox.teams[2], { borrador: true, dibujos: 5, integrantes: 6 }); prox.teams[3].refId = null;
+  const chm = mkProx('eescm', 'Encuentro de Charras Mayores', day(20), ESC_CHM, [0, 1]); mkCro(chm, chm.teams[1]);
+  const N = [...['uvilla', 'ujuez'].map(u => ({ id: `cro~eescp-z1~${u}`, kind: 'croquis', userId: u, eventId: 'eescp', teamId: 'z1', teamName: ESCS[1][0], evTitle: prox.title, at: Date.now() - 864e5, read: false })),
+    ...S.filter(x => x.eventId === 'eescv' && x.teamId === 'z0').slice(0, 1).map(x => ({ id: `${x.id}~ucapi`, userId: 'ucapi', scoreId: x.id, eventId: x.eventId, teamId: x.teamId, faena: x.faena, teamName: x.teamName, net: x.net, judgeName: x.judgeName, evTitle: 'Torneo de Escaramuzas Bicentenario', at: Date.now() - 36e5, read: false }))];
   E.forEach(e => { if (e.mode === 'equipos') e.teams.forEach(x => { const o = T.find(y => y.name === x.name); if (o) x.refId = o.id; }); (e.charros || []).forEach(c => { const o = CH.find(y => y.name === c.name); if (o) c.refId = o.id; }); });
-  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, croquis:CR, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }] };
+  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, croquis:CR, notifs:N, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }] };
 }
 
 /* ------------------------- LÓGICA ------------------------- */
@@ -2042,8 +2053,10 @@ function vCuenta(){
 const menuItem = (href, ic, t, d) => `<a class="card evc row" style="display:flex" href="${href}"><span class="logo" style="width:40px;height:40px">${ic}</span><div class="grow"><div class="t">${t}</div><div class="meta">${d}</div></div><span class="marrow">${I.arrow}</span></a>`;
 function demoBox(){
   return `<div class="h2">Modo demostración</div><div class="card"><div class="small mut">Entra con una cuenta de prueba para ver cada rol. Abre la app en dos pestañas para ver las calificaciones llegar en vivo.</div>
-    <div class="btns mt"><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez</button><button class="btn sm" data-act="demo" data-e="capitan@demo.mx" data-p="demo123">Capitán</button><button class="btn sm" data-act="demo" data-e="capitana@demo.mx" data-p="demo123">Capitana</button><button class="btn sm" data-act="demo" data-e="charro@demo.mx" data-p="demo123">Charro</button><button class="btn sm" data-act="demo" data-e="dueno@demo.mx" data-p="demo123">Dueño</button></div>
-    <button class="btn ghost sm block mt" data-act="reset">Restablecer datos de ejemplo</button></div>`;
+    <div class="btns mt"><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez</button><button class="btn sm" data-act="demo" data-e="capitan@demo.mx" data-p="demo123">Capitán</button><button class="btn sm" data-act="demo" data-e="charro@demo.mx" data-p="demo123">Charro</button><button class="btn sm" data-act="demo" data-e="dueno@demo.mx" data-p="demo123">Dueño</button></div>
+    <button class="btn ghost sm block mt" data-act="reset">Restablecer datos de ejemplo</button></div>
+    <div class="h2">Ejemplo: croquis de escaramuzas</div><div class="card"><div class="small mut">Cada cuenta muestra una etapa. Después de entrar, ve a Mi panel.</div>
+    ${[['capitana@demo.mx', 'Capitana por llenar', 'Tiene dos charreadas por llenar: Libre y Charra Mayor'], ['capitana3@demo.mx', 'Capitana en borrador', 'Lleva 5 dibujos; solo ella lo ve'], ['capitana2@demo.mx', 'Capitana que ya entregó', 'Su croquis está bloqueado'], ['juez@demo.mx', 'Jueza', 'Mesa del juez › Torneo de Escaramuzas Bicentenario, con los dibujos de referencia'], ['villa@demo.mx', 'Lienzo', 'Copa Primavera: ve cada etapa; en las finalizadas baja el paquete para federación']].map(([e, t, x]) => `<button class="btn block mt" style="height:auto;text-align:left;display:block;padding:10px 12px" data-act="demo" data-e="${e}" data-p="demo123"><b>${t}</b><div class="small mut" style="font-weight:500">${x}</div></button>`).join('')}</div>`;
 }
 function charroSection(u){
   const C = myCharro(u); if (!C) return `<div class="h2">Mi perfil de charro</div><div class="card small mut">No encontramos tu perfil de charro. Contacta al administrador.</div>`;
