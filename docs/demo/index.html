@@ -605,7 +605,7 @@ const CONFIG = {"APP_NAME":"Charrería Pro","MODE":"demo","SUPABASE_URL":"","SUP
 const TCG = CONFIG.SITE === 'tcg';   // el mismo código sirve Charrería Pro y su sitio satélite CharreríaTCG
 const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
 const CATEGORIAS = ['Libre','Juvenil'];
-const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust','tcg_cards','notifs','croquis'];
+const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust','tcg_cards','notifs','horse_rides','croquis'];
 RULES.F.escaramuza = { name: 'Rutina de escaramuza', short: 'Escaramuza', inf: [], eq: [] };
 const FN = k => RULES.F[k].name;
 
@@ -1561,11 +1561,11 @@ const ownerLabel = (h, u) => isHorseOwner(u, h) ? 'Tú' + (h.ownerPublic ? '' : 
 const canSeePrice = (h, u) => (h.pricePublic && isOfficial('horse', h)) || isHorseOwner(u, h) || isSuper(u);   // sin verificar, el precio no es público
 let horseCache = null;
 function horseTable(){   // faenas de cada caballo: las del charro que lo montó en cada charreada
-  const key = DB.all('scores').length + ':' + DB.all('events').length + ':' + DB.all('horses').length;
+  const key = DB.all('scores').map(s => s.updatedAt).join() + ':' + DB.all('events').length + ':' + DB.all('horses').length + ':' + DB.all('horse_rides').map(r => r.id + r.horseId).join();
   if (horseCache && horseCache.key === key) return horseCache;
   const evs = new Map(cardEvents().map(e => [e.id, e])), M = {};
-  DB.all('scores').forEach(s => { const ev = evs.get(s.eventId); if (!ev) return; s.parts.forEach(p => { const c = ev.charros.find(x => x.id === p.id); if (!c || !c.horseId) return;
-    const R = M[c.horseId] = M[c.horseId] || { pts: 0, n: 0, pos: 0, best: null, suertes: {}, evs: new Map() };
+  DB.all('scores').forEach(s => { const ev = evs.get(s.eventId); if (!ev) return; s.parts.forEach(p => { const c = ev.charros.find(x => x.id === p.id), hid = (DB.get('horse_rides', `${s.eventId}-${p.id}-${s.faena}`) || {}).horseId || (c && c.horseId); if (!c || !hid) return;
+    const R = M[hid] = M[hid] || { pts: 0, n: 0, pos: 0, best: null, suertes: {}, evs: new Map() };
     R.pts += p.pts; R.n++; if (p.pts > 0) R.pos++; R.best = Math.max(R.best ?? -999, p.pts); R.suertes[s.faena] = (R.suertes[s.faena] || 0) + p.pts;
     const e = R.evs.get(ev.id) || { ev, pts: 0, n: 0, riders: new Set(), teamId: s.teamId, team: s.teamName }; e.pts += p.pts; e.n++; e.riders.add(c.name); R.evs.set(ev.id, e); }); });
   let tp = 0, tn = 0; Object.values(M).forEach(r => { tp += r.pts; tn += r.n; });
@@ -1575,7 +1575,7 @@ function horseTable(){   // faenas de cada caballo: las del charro que lo montó
 function horseStats(h){
   const T = horseTable(), R = { ...(T.M[h.id] || { pts: 0, n: 0, pos: 0, best: null, suertes: {}, evs: new Map() }) };
   R.wins = 0; R.evs.forEach(e => { if (e.ev.status === 'finalizado') { const st = teamStandings(e.ev); if (st[0] && st[0].id === e.teamId && st[0].pts > 0) R.wins++; } });
-  R.live = cardEvents().find(e => e.status === 'en_vivo' && e.charros.some(c => c.horseId === h.id)) || null;
+  R.live = cardEvents().find(e => e.status === 'en_vivo' && (e.charros.some(c => c.horseId === h.id) || DB.all('horse_rides').some(r => r.eventId === e.id && r.horseId === h.id))) || null;
   R.pct = R.n ? T.list.filter(x => x <= T.adj(R)).length / T.list.length : 0;
   R.ovr = R.n ? Math.min(R.n < 3 ? 72 : 99, Math.round(45 + 54 * Math.pow(R.pct, 1.6))) : 40;
   R.tier = R.ovr >= 90 ? 'leyenda' : R.ovr >= 78 ? 'oro' : R.ovr >= 64 ? 'plata' : 'bronce';
@@ -2265,8 +2265,25 @@ const DEFS = key => { const [t, fk] = key.split(':'); if (t === 'eq') return RUL
 
 function jSelWho(path, ev, tid, label){
   const d = State.j.d, cur = getP(d, path) || '', ch = ev.charros.filter(c => c.teamId === tid);
-  return `${label ? `<label class="f">${label}</label>` : ''}<select class="in" data-jp="${path}" data-team="${tid}"><option value="">— Elegir charro —</option>${ch.map(c => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)}${c.addedBy ? ' (agregado por juez)' : ''}</option>`).join('')}${ev.mode === 'completo' ? '' : '<option value="__nuevo">＋ Agregar charro (cambio de último momento)…</option>'}</select>`;
+  return `${label ? `<label class="f">${label}</label>` : ''}<select class="in" data-jp="${path}" data-team="${tid}"><option value="">— Elegir charro —</option>${ch.map(c => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)}${c.addedBy ? ' (agregado por juez)' : ''}</option>`).join('')}${ev.mode === 'completo' ? '' : '<option value="__nuevo">＋ Agregar charro (cambio de último momento)…</option>'}</select>${rideBox(ev, cur)}`;
 }
+/* ---------- ESCANEO DE CABALLO: el juez acerca el celular al chip y queda ligado al charro en esa faena ---------- */
+const RIDE_FAENAS = ['cala', 'piales', 'coleadero', 'terna', 'mcab', 'paso'];   // en toro, yegua y manganas a pie no se usa caballo
+const rideId = (eid, cid, fk) => `${eid}-${cid}-${fk}`;
+const rideOf = (eid, cid, fk) => DB.get('horse_rides', rideId(eid, cid, fk));
+const canRide = (u, ev) => !!ev && ev.status === 'en_vivo' && isJudgeOf(u, ev.lienzoId);
+function rideBox(ev, cid){ const fk = State.j.fk, u = State.user; if (!cid || cid === '__nuevo' || !RIDE_FAENAS.includes(fk)) return '';
+  const r = rideOf(ev.id, cid, fk), c = ev.charros.find(x => x.id === cid) || {}, fijo = !r && c.horseId && DB.get('horses', c.horseId), can = canRide(u, ev) && !isLocked(ev, State.j.tid);
+  return `<div class="row between small mt" style="gap:8px;align-items:center"><span class="grow">${r ? `${I.check.replace('<svg', '<svg style="width:14px;height:14px;vertical-align:-2px;color:var(--green)"')} <b>${esc(r.horseName)}</b> · escaneado` : fijo ? `Caballo asignado: ${esc(fijo.name)}` : '<span class="mut">Sin caballo registrado</span>'}</span>${can ? `${r ? `<button class="btn ghost sm" data-act="rideDel" data-c="${cid}" aria-label="Quitar caballo">Quitar</button>` : ''}<button class="btn pri sm" data-act="scanHorse" data-c="${cid}">${I.horse.replace('<svg', '<svg style="width:16px;height:16px"')} Escanear caballo</button>` : ''}</div>`; }
+async function rideSave(ev, cid, fk, uidv){ const id = normUid(uidv), h = DB.all('horses').find(x => x.chipUid === id), u = State.user, c = ev.charros.find(x => x.id === cid);
+  if (!h) throw new Error('Ese chip no está registrado en ningún caballo'); if (!hasCarnet(h)) throw new Error(`El chip de ${h.name} todavía no está validado`);
+  await DB.put('horse_rides', { id: rideId(ev.id, cid, fk), eventId: ev.id, charroId: cid, faena: fk, horseId: h.id, horseName: h.name, chipUid: id, judgeId: u.id, judgeName: u.name, at: Date.now() });
+  await audit('caballo', `Escaneó a ${h.name} con ${c ? c.name : 'el charro'} en ${FN(fk)} de “${ev.title}”`); return h; }
+function askChip(){ return new Promise(ok => { const L = DB.backend.mode === 'demo' ? DB.all('horses').filter(hasCarnet) : [];
+  $('#modal').innerHTML = `<div class="modal"><div class="box"><div class="row between"><b style="font-size:17px">Escanear caballo</b><button class="btn sm" id="scX">Cerrar</button></div><div class="small mut mt">${esc(NFC_HELP)}</div>
+    ${L.length ? `<div class="small mut mt">Demostración: elige el chip que acercarías.</div>${L.map(h => `<button class="btn block mt" data-chip="${esc(h.chipUid)}">${esc(h.name)}</button>`).join('')}` : ''}
+    <form id="scF" class="mt"><label class="f">UID del chip</label><input class="in" name="uid" placeholder="04:A1:C2:E3:F4:05:1A" style="font-family:monospace;text-transform:uppercase" autocomplete="off" required><button class="btn pri block mt">Registrar</button></form></div></div>`;
+  const end = v => { $('#modal').innerHTML = ''; ok(v); }; $('#scX').onclick = () => end(''); $('#scF').onsubmit = e => { e.preventDefault(); end(e.target.uid.value); }; document.querySelectorAll('[data-chip]').forEach(b => b.onclick = () => end(b.dataset.chip)); }); }
 function askCharro(team){
   return new Promise(res => {
     $('#modal').innerHTML = `<div class="modal"><div class="box"><div style="font-weight:800;font-size:17px">Agregar charro a ${esc(team.name)}</div><div class="sub" style="margin-top:6px">Para cambios de último momento. Quedará registrado a tu nombre y el lienzo lo verá marcado como agregado por juez.</div>
@@ -3001,6 +3018,9 @@ const ACT = {
   async tcgToggle(){ const on = !State.user.tcgConsent; if (on && !(await ask('Autorización CharreríaTCG', TCG_CONSENT, 'Autorizo'))) return; await safe(() => tcgConsent(on), on ? 'Tu carta ya está en CharreríaTCG' : 'Tu carta salió de CharreríaTCG'); },
   tcgTab(el){ State.tcgTab = el.dataset.k; render(); },
   async notifPerm(){ try { await Notification.requestPermission(); } catch (e) {} render(); },
+  async scanHorse(el){ const ev = curEv(), j = State.j; if (!canRide(State.user, ev)) return toast('Solo los jueces de esta charreada pueden escanear', 'err');
+    try { const uidv = hasNFC() ? await nfcRead() : await askChip(); if (!uidv) return; const h = await rideSave(ev, el.dataset.c, j.fk, uidv); toast(isOfficial('horse', h) ? `${h.name} registrado` : `${h.name} registrado; entra al ranking al verificarse`, 'ok'); render(); } catch (e) { toast(e.message || 'No se pudo escanear', 'err'); } },
+  async rideDel(el){ const ev = curEv(); await safe(async () => { await DB.del('horse_rides', rideId(ev.id, el.dataset.c, State.j.fk)); render(); }, 'Caballo quitado'); },
   scard(el){ openStock(el.dataset.id); }, rateStock(el){ openRateStock(el.dataset.id); },
   async evStockDel(el){ const ev = curEv(), x = DB.get('stock', el.dataset.id); await safe(() => updEv({ stock: (ev.stock || []).filter(y => y.stockId !== el.dataset.id) }), x ? `Se quitó ${x.name}` : 'Quitado'); }, smanage(el){ go('res-' + el.dataset.id); }, gtab(el){ State.gTab = el.dataset.k; render(); },
   newRanch(){ State.newRanch = !State.newRanch; render(); }, newStock(){ State.newStock = !State.newStock; render(); },
