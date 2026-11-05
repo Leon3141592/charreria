@@ -35,7 +35,7 @@ from pathlib import Path
 
 BASE = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE.parent / "charros_pro_matrix"))
-from supabase_client import ClienteSupabase, ErrorSupabase  # noqa: E402
+from db_supabase import ErrorSupabase, RepositorioCharros  # noqa: E402
 
 RUTA_DATOS = BASE / "datos"
 
@@ -228,17 +228,15 @@ class Bitacora:
 class BitacoraSupabase(Bitacora):
     """Bitácora de REAL. Si la base falla guarda en archivo local: una alerta no se debe perder."""
 
-    def __init__(self, cliente: ClienteSupabase, ruta_respaldo: Path):
+    def __init__(self, repositorio: RepositorioCharros, ruta_respaldo: Path):
         super().__init__(ruta_respaldo)
-        self.cliente = cliente
+        self.repositorio = repositorio
 
     def agregar(self, hallazgo: Hallazgo) -> None:
         if hallazgo.nivel == 0:
             return
         try:
-            self.cliente.insertar("sombra_hallazgos", {
-                "nivel": hallazgo.nivel, "origen": hallazgo.origen,
-                "tipo": hallazgo.tipo, "data": asdict(hallazgo)})
+            self.repositorio.guardar_hallazgo(hallazgo.nivel, hallazgo.origen, hallazgo.tipo, asdict(hallazgo))
         except ErrorSupabase as e:
             print(f"Sombra: hallazgo guardado solo en local ({e})", file=sys.stderr)
             super().agregar(hallazgo)
@@ -253,7 +251,7 @@ class Sombra:
         if bitacora is not None:
             self.bitacora = bitacora
         elif modo == "REAL":
-            self.bitacora = BitacoraSupabase(ClienteSupabase.desde_entorno(), ruta)
+            self.bitacora = BitacoraSupabase(RepositorioCharros.desde_entorno(), ruta)
         else:
             self.bitacora = Bitacora(ruta)
         self.accesos = MonitorAccesos()

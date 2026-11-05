@@ -30,7 +30,7 @@ from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-from supabase_client import ClienteSupabase, ErrorDuplicado, ErrorSupabase
+from db_supabase import ErrorDuplicado, ErrorSupabase, RepositorioCharros
 
 BASE = Path(__file__).resolve().parent
 RUTA_CONFIG = BASE / "config.json"
@@ -171,6 +171,13 @@ class Liquidacion:
 
 # --------------------------------------------------------------------------- filtro de medibilidad
 
+def fecha_en_periodo(fecha: str, periodo: str) -> bool:
+    try:
+        return datetime.strptime(fecha, "%Y-%m-%d").strftime("%Y-%m") == periodo
+    except ValueError:
+        return False
+
+
 def filtrar_medibles(ingresos: list[Ingreso], periodo: str, modo: str, config: dict):
     """
     Separa lo medible de lo que no lo es. "Si no se puede comprobar, no existe":
@@ -198,14 +205,14 @@ def filtrar_medibles(ingresos: list[Ingreso], periodo: str, modo: str, config: d
             motivo = "Es una estimación, no un cobro"
         elif ing.fuente not in fuentes:
             motivo = f"Fuente no verificable en {modo}: {ing.fuente or 'vacía'}"
-        elif not ing.fecha.startswith(periodo + "-"):
+        elif not fecha_en_periodo(ing.fecha, periodo):
             motivo = f"Fuera del periodo {periodo}"
 
         if motivo:
             rechazados.append(Rechazo(ing.referencia, ing.monto, motivo))
         else:
             vistos.add(ing.referencia)
-            medibles.append(centavos)
+            medibles.append((ing, centavos))
     return medibles, rechazados
 
 
@@ -266,7 +273,8 @@ class Libro:
     def ya_cerrado(self, lienzo_id: str, periodo: str) -> bool:
         return any(a["lienzo_id"] == lienzo_id and a["periodo"] == periodo for a in self.asientos())
 
-    def agregar(self, asiento: dict) -> None:
+    def agregar(self, asiento: dict, transacciones: list[dict]) -> None:
+        asiento = {**asiento, "transacciones": transacciones}
         if self.ruta is None:
             self.memoria.append(asiento)
             return
@@ -280,21 +288,16 @@ class Libro:
 class LibroSupabase:
     """Libro de REAL. La base impide cerrar dos veces y rechaza un reparto que no cumpla la regla."""
 
-    TABLA = "matriz_liquidaciones"
-
-    def __init__(self, cliente: ClienteSupabase):
-        self.cliente = cliente
+    def __init__(self, repositorio: RepositorioCharros):
+        self.repositorio = repositorio
 
     def ya_cerrado(self, lienzo_id: str, periodo: str) -> bool:
         try:
-            filas = self.cliente.leer(self.TABLA, {"select": "id", "lienzo_id": f"eq.{lienzo_id}",
-                                                   "periodo": f"eq.{periodo}", "limit": "1"})
+            return self.repositorio.cierre_existe(lienzo_id, periodo)
         except ErrorSupabase as e:
             raise ErrorMotor(str(e)) from None
-        return bool(filas)
 
-    def agregar(self, asiento: dict) -> None:
-        """Si se corta la red no se sabe si guardó, pero reintentar es seguro: no puede duplicar."""
+    def agregar(self, asiento: dict, transacciones: list[dict]) -> None:
         fila = {
             "id": f"{asiento['lienzo_id']}-{asiento['periodo']}",
             "lienzo_id": asiento["lienzo_id"],
@@ -309,8 +312,10 @@ class LibroSupabase:
             "data": asiento,
         }
         try:
-            self.cliente.insertar(self.TABLA, fila)
-        except ErrorDuplicado:
+            self.repositorio.registrar_cierre(fila, transacciones)
+        except ErrorDuplicado as e:
+            if "matriz_comprobante_unico" in str(e):
+                raise ErrorMotor("Un comprobante de este cierre ya se usó en otro. No se guardó nada.") from None
             raise ErrorMotor(f"{asiento['lienzo_id']} ya tiene cerrado {asiento['periodo']}.") from None
         except ErrorSupabase as e:
             raise ErrorMotor(f"El cierre no quedó confirmado: {e}") from None
@@ -333,7 +338,7 @@ class CEOIA:
         elif self.modo == "REAL":
             # Sin respaldo local a propósito: si la base no responde, REAL no cierra.
             try:
-                self.libro = LibroSupabase(ClienteSupabase.desde_entorno())
+                self.libro = LibroSupabase(RepositorioCharros.desde_entorno())
             except ErrorSupabase as e:
                 raise ErrorMotor(str(e)) from None
         else:
@@ -349,7 +354,12 @@ class CEOIA:
             raise ErrorMotor(f"{lienzo_id} ya tiene cerrado {periodo}.")
 
         medibles, rechazados = filtrar_medibles(ingresos, periodo, self.modo, self.config)
-        total = sum(medibles)
+        total = sum(centavos for _, centavos in medibles)
+        transacciones = [
+            {"referencia": i.referencia, "monto_centavos": centavos, "fuente": i.fuente,
+             "fecha": i.fecha, "concepto": i.concepto}
+            for i, centavos in medibles
+        ]
         r = calcular_reparto(total, self.config["finanzas"])
 
         liquidacion = Liquidacion(
@@ -369,7 +379,7 @@ class CEOIA:
             rechazados=rechazados,
             cerrado_en=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         )
-        self.libro.agregar(asdict(liquidacion))
+        self.libro.agregar(asdict(liquidacion), transacciones)
         return liquidacion
 
 
@@ -392,9 +402,7 @@ def _ejemplo() -> None:
 
 def verificar_conexion() -> None:
     """Solo lee: confirma que la clave sirve y que las tablas ya están instaladas."""
-    cliente = ClienteSupabase.desde_entorno()
-    for tabla in ("matriz_liquidaciones", "sombra_hallazgos"):
-        cliente.leer(tabla, {"select": "id", "limit": "1"})
+    for tabla in RepositorioCharros.desde_entorno().verificar():
         print(f"OK: {tabla}")
 
 

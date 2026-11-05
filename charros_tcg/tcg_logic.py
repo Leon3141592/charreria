@@ -9,7 +9,8 @@ Sigue los mismos nombres y reglas de Charrería Pro, para poder conectarse a sus
   - El chip usa chipUid y chipStatus: pendiente, validado o rechazado.
   - Una monta tiene el id '<eventId>-<charroId>-<faena>': un caballo por charro y faena.
 
-Este módulo todavía no lee Supabase: trabaja con los datos que se le entregan, en memoria.
+Los datos reales se cargan con cargar_cartas(), cargar_chips() y cargar_estadisticas(), que reciben un
+RepositorioCharros (charros_pro_matrix/db_supabase.py). Solo leen: cartas, chips y montas los escribe la app.
 El diseño visual de la carta no vive aquí; sigue siendo el `.tc` de la app.
 
 Uso:  python3 tcg_logic.py     (muestra un ejemplo)
@@ -220,6 +221,52 @@ class Estadisticas:
         tabla = [self.de_caballo(h) for h in caballos]
         tabla.sort(key=lambda f: (-f["puntos"], -f["promedio"], f["horse_id"]))
         return tabla[:limite]
+
+
+# --------------------------------------------------------------------------- carga desde Supabase
+
+def cargar_cartas(repositorio) -> list[Carta]:
+    """Cartas vigentes del catálogo que mantienen los disparadores de la base."""
+    cartas = [Carta(d["id"], d["kind"], d["refId"], d["name"], d["ownerId"], int(d["activeUntil"]))
+              for d in repositorio.leer_datos("tcg_cards")]
+    return [c for c in cartas if c.vigente()]
+
+
+def cargar_chips(repositorio) -> RegistroChips:
+    chips = RegistroChips()
+    for tipo, tabla in (("horse", "horses"), ("stock", "stock")):
+        for d in repositorio.leer_datos(tabla):
+            uid = normalizar_uid(d.get("chipUid"))
+            if uid and d.get("chipStatus") in ESTADOS_CHIP:
+                chips.por_uid[uid] = Chip(uid, tipo, d["id"], d.get("ownerId", ""), d["chipStatus"],
+                                          d.get("chipValidatedBy"), int(d.get("chipAt") or 0))
+    return chips
+
+
+def cargar_estadisticas(repositorio) -> Estadisticas:
+    """
+    Igual que la app: cada calificación se acredita al caballo escaneado en esa faena o, si no hubo
+    escaneo, al caballo inscrito por el charro. Las montas históricas no exigen chip validado.
+    """
+    montas_nfc = {r["id"]: r["horseId"] for r in repositorio.leer_datos("horse_rides")}
+    aprobados = {l["id"] for l in repositorio.leer_datos("lienzos") if l.get("status") == "aprobado"}
+    eventos = {e["id"]: e for e in repositorio.leer_datos("events")
+               if e.get("status") in ("en_vivo", "finalizado") and e.get("lienzoId") in aprobados}
+    stats = Estadisticas()
+    for s in repositorio.leer_datos("scores"):
+        evento = eventos.get(s.get("eventId"))
+        if evento is None:
+            continue
+        inscritos = {c["id"]: c for c in evento.get("charros", [])}
+        for parte in s.get("parts", []):
+            charro = inscritos.get(parte.get("id"))
+            if charro is None:
+                continue
+            horse_id = montas_nfc.get(f"{s['eventId']}-{parte['id']}-{s['faena']}") or charro.get("horseId")
+            if horse_id:
+                monta = Monta(s["eventId"], parte["id"], s["faena"], horse_id, parte.get("pts", 0))
+                stats.montas[monta.id] = monta
+    return stats
 
 
 # --------------------------------------------------------------------------- ejemplo
