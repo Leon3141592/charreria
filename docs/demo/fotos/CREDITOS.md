@@ -16,8 +16,22 @@ Solo se publican en el demo. Antes de usar una imagen en otro lugar, revisa su l
 ## Proporcionadas por el dueño del proyecto
 
 - lucero.jpg: archivo photo-1598974357801-cbca100e65d3.avif, con formato de Unsplash
-- relampago.jpg y canelo.jpg: enviadas por el dueño del proyecto, quien confirmó el 2026-11-05 que son de uso libre
+- relampago.jpg: enviada por el dueño del proyecto, quien confirmó el 2026-11-05 que es de uso libre
+- canelo.jpg: Pixabay, foto 5157309, licencia de contenido de Pixabay
+- charro-*.jpg y escaramuza-*.jpg: enviadas por el dueño del proyecto el 2026-11-05. Muestran a personas reales con nombres ficticios: confirmar permiso de uso
 
 ## Generadas para este proyecto
 
-- hombre-*, mujer-*, escudo-*, lienzo-* y ganaderia-*: ilustraciones; no representan a personas reales
+- hombre-*, mujer-*, escudo-* y ganaderia-*: ilustraciones; no representan a personas reales
+
+## Wikimedia Commons (atribución y compartir igual; recortadas y reducidas)
+
+- lienzo-villa.jpg: Lienzo Cuna de la Charrería en Pachuca de Soto. 001.jpg, de RubeHM · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Lienzo_Cuna_de_la_Charrer%C3%ADa_en_Pachuca_de_Soto._001.jpg
+- lienzo-santa-maria.jpg: Charrería poblana. 06.jpg, de NartGB · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Charrer%C3%ADa_poblana._06.jpg
+- lienzo-herradero.jpg: Charrería poblana. 08.jpg, de NartGB · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Charrer%C3%ADa_poblana._08.jpg
+- equipo-1.jpg: Charreria en la feria del Mole 15.JPG, de A01333649 · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Charreria_en_la_feria_del_Mole_15.JPG
+- equipo-2.jpg: Charreria en la feria del Mole 27.JPG, de A01333649 · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Charreria_en_la_feria_del_Mole_27.JPG
+- equipo-3.jpg: Charro Mangana a pie.jpg, de Tyrv · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Charro_Mangana_a_pie.jpg
+- equipo-4.jpg: La terna en el ruedo.jpg, de Tyrv · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:La_terna_en_el_ruedo.jpg
+- equipo-5.jpg: Charrería poblana. 07.jpg, de NartGB · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Charrer%C3%ADa_poblana._07.jpg
+- equipo-6.jpg: Charrería poblana. 09.jpg, de NartGB · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Charrer%C3%ADa_poblana._09.jpg

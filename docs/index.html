@@ -682,7 +682,7 @@ const DB = {
   }
 };
 const fotoMem = {};
-const LS_KEY = 'charreriapro_demo_v20', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v21', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -1027,11 +1027,13 @@ function seed(){
   E.forEach(e => { if (e.mode === 'equipos') e.teams.forEach(x => { const o = T.find(y => y.name === x.name); if (o) x.refId = o.id; }); (e.charros || []).forEach(c => { const o = CH.find(y => y.name === c.name); if (o) c.refId = o.id; }); });
   // Imágenes del demo: viven en fotos-demo/ y build.mjs las copia a docs/demo/fotos/
   const fotoDemo = n => `demo:${n}.jpg`, hashN = t => [...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
-  const retrato = n => fotoDemo(/\b(Ana|Mariana|Daniela|Lucía|Fernanda)\b/.test(n) ? `mujer-${hashN(n) % 6 + 1}` : `hombre-${hashN(n) % 12 + 1}`);
+  const FOTO_PERSONA = { 'Ernesto Villaseñor':'charro-1', 'Alberto Fidencio Ramírez':'charro-2', 'Lorenzo Vázquez':'charro-3', 'Gerardo Solís':'charro-4', 'Octavio Rentería':'charro-5', 'Fausto Herrera':'charro-6', 'Rubén Escamilla':'charro-7', 'Mariana Ríos':'escaramuza-1', 'Daniela Ochoa':'escaramuza-2' };
+  const retrato = n => fotoDemo(FOTO_PERSONA[n] || (/\b(Ana|Mariana|Daniela|Lucía|Fernanda)\b/.test(n) ? `mujer-${hashN(n) % 6 + 1}` : `hombre-${hashN(n) % 12 + 1}`));
+  const FOTO_EQUIPO = { q0:'equipo-1', q1:'equipo-2', q2:'equipo-3', q3:'equipo-4', q4:'equipo-5', q5:'equipo-6', qesc:'escaramuza-1', qesc2:'escaramuza-2' }, FOTO_LIENZO = { lvilla:'lienzo-villa', lstm:'lienzo-santa-maria', lherr:'lienzo-herradero' };
   const FOTO_CABALLO = { cb1:'lucero', cb2:'relampago', cb3:'canelo', cb4:'tormenta', cb5:'el-moro', cb6:'centella', cb7:'diamante' }, FOTO_GANADO = { s1:'el-diablo', s2:'toros-terna', s3:'yeguas', s4:'la-guera', s5:'novillos' };
   HS.forEach(x => { if (FOTO_CABALLO[x.id]) x.photo = fotoDemo(FOTO_CABALLO[x.id]); }); ST.forEach(x => { if (FOTO_GANADO[x.id]) x.photo = fotoDemo(FOTO_GANADO[x.id]); });
-  CH.forEach(x => { x.photo = retrato(x.name); }); T.forEach((x, i) => { x.photo = fotoDemo(`escudo-${i % 6 + 1}`); });
-  L.forEach((x, i) => { x.photo = fotoDemo(`lienzo-${i % 3 + 1}`); }); RA.forEach((x, i) => { x.photo = fotoDemo(`ganaderia-${i % 2 + 1}`); });
+  CH.forEach(x => { x.photo = retrato(x.name); }); T.forEach((x, i) => { x.photo = fotoDemo(FOTO_EQUIPO[x.id] || `escudo-${i % 6 + 1}`); });
+  L.forEach(x => { if (FOTO_LIENZO[x.id]) x.photo = fotoDemo(FOTO_LIENZO[x.id]); }); RA.forEach((x, i) => { x.photo = fotoDemo(`ganaderia-${i % 2 + 1}`); });
   P.forEach(x => { const l = L.findIndex(y => y.ownerId === x.id); x.photo = l >= 0 ? L[l].photo : retrato(x.name); });
   return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, croquis:CR, notifs:N, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }] };
 }
@@ -1182,12 +1184,14 @@ function readPhoto(file){   // recorta al centro y reduce a 320 px para guardarl
     img.src = url;
   });
 }
-const fotoCarta = (kind, id, puede) => puede ? `<label class="btn block mt" style="cursor:pointer">${I.upload} Subir mi foto<input type="file" accept="image/*" data-photo="${kind}:${id}" hidden></label>` : '';
+// La tarjeta usa la foto de perfil, salvo que el dueño le ponga una propia en cardPhoto.
+const fotoDeCarta = x => safeImg(x && (x.cardPhoto || x.photo));
+const fotoCarta = (kind, row, puede) => puede ? `<label class="btn block mt" style="cursor:pointer">${I.upload} Cambiar foto de la tarjeta<input type="file" accept="image/*" data-photo="${kind}:${row.id}:card" hidden></label>${row.cardPhoto ? `<button class="btn ghost block mt" data-act="cardPhotoDel" data-k="${kind}:${row.id}:card">Usar mi foto de perfil</button>` : ''}` : '';
 function reabrirCarta(key){ if (!$('#modal .modal')) return; const [kind, id] = key.split(':'); if (kind === 'horse') openHorse(id); if (kind === 'stock') openStock(id); if (kind === 'charro') openCard(DB.get('charros', id).name); }
 async function savePhoto(key, src){
-  const [kind, id] = key.split(':'), table = { profile: 'profiles', charro: 'charros', team: 'teams', lienzo: 'lienzos', horse: 'horses', ranch: 'ranches', stock: 'stock' }[kind], row = table && DB.get(table, id);
+  const [kind, id, campo] = key.split(':'), table = { profile: 'profiles', charro: 'charros', team: 'teams', lienzo: 'lienzos', horse: 'horses', ranch: 'ranches', stock: 'stock' }[kind], row = table && DB.get(table, id);
   if (!row) throw new Error('No se encontró el registro');
-  const n = await DB.put(table, { ...row, photo: src }); if (kind === 'profile') State.user = n;
+  const n = await DB.put(table, { ...row, [campo === 'card' ? 'cardPhoto' : 'photo']: src }); if (kind === 'profile') State.user = n;
 }
 const photoBox = (kind, id, src, name, px = 64) => `<div class="row" style="gap:12px">${av(src, name, px)}<div class="btns" style="margin:0"><label class="btn sm" style="cursor:pointer">${I.upload} Subir foto<input type="file" accept="image/*" data-photo="${kind}:${id}" hidden></label><button class="btn ghost sm" data-act="photoUrl" data-k="${kind}:${id}">Usar URL</button>${src ? `<button class="btn ghost sm" data-act="photoDel" data-k="${kind}:${id}">Quitar</button>` : ''}</div></div>`;
 const lienzo = id => DB.get('lienzos', id) || { name:'Lienzo', state:'', city:'' };
@@ -1526,7 +1530,7 @@ function tcgSection(u){
     ${mine.map(([kind, d]) => { const c = tcgCardOf(kind, d.id); return `<div class="row between small" style="padding:8px 0;border-bottom:1px solid var(--line);gap:8px"><span class="ell">${esc(d.name)}</span>${c ? `<a href="tcg/#carta-${kind}-${d.id}">Ver carta</a>` : `<span class="mut">${!isOfficial(kind, d) ? 'Falta verificar' : 'Sin publicar'}</span>`}</div>`; }).join('')}</div>`;
 }
 function stockCardHTML(x){
-  const q = stockQuality(x.id), r = DB.get('ranches', x.ranchId) || {}, ovr = q ? Math.round(q.overall * 20) : 40, tier = ovr >= 90 ? 'leyenda' : ovr >= 78 ? 'oro' : ovr >= 64 ? 'plata' : 'bronce', photo = safeImg(x.photo), toro = x.kind === 'toro';
+  const q = stockQuality(x.id), r = DB.get('ranches', x.ranchId) || {}, ovr = q ? Math.round(q.overall * 20) : 40, tier = ovr >= 90 ? 'leyenda' : ovr >= 78 ? 'oro' : ovr >= 64 ? 'plata' : 'bronce', photo = fotoDeCarta(x), toro = x.kind === 'toro';
   const crit = q ? RATE_CRIT.map(([k, l]) => `<div><span class="ell">${esc(l)}</span><span class="bar" style="margin:0"><i style="width:${Math.round(q.parts[k] * 20)}%"></i></span><b>${q.parts[k].toFixed(1)}</b></div>`).join('') : '<div style="grid-template-columns:1fr;text-align:center">Aún sin calificaciones</div>';
   return `<div class="tc-wrap"><div class="tc ${tier}" id="tcard"><div class="in">
     <div class="pic">${photo ? `<img src="${esc(photo)}" alt="">` : `<span style="width:92px;height:92px;color:var(--t1);opacity:.8">${toro ? TORO_ICON : I.horse}</span>`}<div class="ovr"><b>${ovr}</b><span>Media</span></div><span class="tier">${TIER_LBL[tier]}</span></div>
@@ -1633,7 +1637,7 @@ function horseValue(h, R){
   return { value: fin, model, adj, low: ov || adj ? fin : Math.max(VAL_MIN, rndPrice(model * .9)), high: ov || adj ? fin : rndPrice(model * 1.1), override: ov ? h.priceOverride : null, floor: raw < VAL_MIN, steps, k, age };
 }
 function horseCardHTML(h, R){
-  const u = State.user, photo = safeImg(h.photo), age = horseAge(h), seeP = canSeePrice(h, u);
+  const u = State.user, photo = fotoDeCarta(h), age = horseAge(h), seeP = canSeePrice(h, u);
   const sub = [h.discipline, age != null ? age + ' años' : '', h.breed].filter(Boolean).join(' · ');
   const top = Object.entries(R.suertes).sort((a, b) => b[1] - a[1]).slice(0, 3), mx = Math.max(1, ...top.map(x => Math.abs(x[1])));
   const rk = horseRanking(), idx = rk.findIndex(x => x.h.id === h.id), badges = [];
@@ -1672,7 +1676,7 @@ function openHorse(id){
   const iInt = u && DB.all('requests').find(r => r.type === 'interes' && r.horseId === h.id && r.createdBy === u.id && r.status === 'pendiente');
   $('#modal').innerHTML = `<div class="modal"><div class="box" role="dialog" aria-label="Tarjeta de ${esc(h.name)}"><div class="row between"><div style="font-weight:800;font-size:15px">Tarjeta de caballo</div><button class="btn sm" data-close="1">Cerrar</button></div>
     ${horseCardHTML(h, R)}
-    ${fotoCarta('horse', h.id, own)}
+    ${fotoCarta('horse', h, own)}
     ${own ? `<a class="btn pri block mt" href="#caballo-${h.id}" data-close="1">${I.edit} Administrar mi caballo</a>` : h.forSale ? (iInt ? `<div class="banner ok mt">${I.check}<span>Ya enviaste tu interés. El dueño tiene tu contacto.</span></div>` : `<button class="btn pri block mt" data-act="interes" data-id="${h.id}">Me interesa este caballo</button>`) : ''}
     ${R.live ? `<a class="btn vino block mt" href="#evento-${R.live.id}" data-close="1">${I.live} Verlo en vivo: ${esc(R.live.title)}</a>` : ''}
     <div class="h2">Ficha</div><div class="card small">${[['Disciplina', h.discipline], ['Sexo', h.sex], ['Raza', h.breed], ['Pelaje', h.coat], ['Registro', h.registry || 'Sin registro'], ['Dueño', ownerLabel(h, u)], ['Verificación', { oficial: 'Oficial', rechazado: 'Rechazada', cambios: 'Cambios por verificar', pendiente: 'Pendiente' }[verifState('horse', h)]]].map(([k, v]) => `<div class="row between" style="padding:3px 0"><span class="mut">${k}</span><b>${esc(v || '—')}</b></div>`).join('')}</div>
@@ -1924,10 +1928,10 @@ function vRes(){
     <button class="btn ghost block mt2" data-act="stockDel" data-id="${x.id}">${I.x} Dar de baja</button>`;
 }
 function openStock(id){
-  const x = DB.get('stock', id); if (!x) return; const r = DB.get('ranches', x.ranchId) || {}, photo = safeImg(x.photo);
+  const x = DB.get('stock', id); if (!x) return; const r = DB.get('ranches', x.ranchId) || {}, photo = fotoDeCarta(x);
   $('#modal').innerHTML = `<div class="modal"><div class="box" role="dialog" aria-label="${esc(stockTitle(x))}"><div class="row between"><div style="font-weight:800;font-size:15px">${x.kind === 'toro' ? 'Toro' : 'Yegua bruta'}${x.mode === 'lote' ? ' · lote' : ''}</div><button class="btn sm" data-close="1">Cerrar</button></div>
     ${photo ? `<img src="${esc(photo)}" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:14px;margin-top:10px">` : ''}
-    ${fotoCarta('stock', x.id, State.user && x.ownerId === State.user.id)}
+    ${fotoCarta('stock', x, State.user && x.ownerId === State.user.id)}
     <div style="font-family:'Cinzel',serif;font-weight:800;font-size:20px;margin-top:10px">${esc(stockTitle(x))}</div><div style="margin-top:6px">${verifChip('stock', x)}</div>
     <div class="card small mt">${[['Ganadería', r.name], ['Faenas', (x.uses || []).join(', ')], ['Cabezas', x.mode === 'lote' ? x.count : ''], ['Edad', x.age], ['Peso', x.weight], ['Renta', canSeeRent(x) ? rentLbl(x) : 'Por verificar'], ['Disponible', x.available === false ? 'No' : 'Sí']].filter(([, v]) => v).map(([k, v]) => `<div class="row between" style="padding:3px 0"><span class="mut">${k}</span><b>${esc(v)}</b></div>`).join('')}</div>
     ${tcgLink('stock', x.id)}
@@ -1984,7 +1988,7 @@ function ranchSection(u){
 }
 const TIER_LBL = { bronce: 'Bronce', plata: 'Plata', oro: 'Oro', leyenda: 'Leyenda' };
 function cardHTML(R){
-  const P = R.prof, photo = safeImg(P && P.photo), sub = [P && P.alias ? `“${P.alias}”` : '', R.team, P && P.state].filter(Boolean).join(' · ') || 'Charro';
+  const P = R.prof, photo = fotoDeCarta(P), sub = [P && P.alias ? `“${P.alias}”` : '', R.team, P && P.state].filter(Boolean).join(' · ') || 'Charro';
   const top = Object.entries(R.suertes).sort((a, b) => b[1] - a[1]).slice(0, 3), mx = Math.max(1, ...top.map(x => Math.abs(x[1])));
   const badges = [];
   if (R.rank >= 0 && R.rank < 3 && /nacional/.test(R.rankLbl)) badges.push(['Top ' + (R.rank + 1) + ' nacional']);
@@ -2009,7 +2013,8 @@ function openCard(name){
   const R = charroStats(name), list = [...R.evs.values()].sort((a, b) => b.ev.date.localeCompare(a.ev.date));
   $('#modal').innerHTML = `<div class="modal"><div class="box" role="dialog" aria-label="Tarjeta de ${esc(name)}"><div class="row between"><div style="font-weight:800;font-size:15px">Tarjeta de charro</div><button class="btn sm" data-close="1">Cerrar</button></div>
     ${cardHTML(R)}
-    ${fotoCarta('charro', R.prof && R.prof.id, R.prof && State.user && (R.prof.userId === State.user.id || isSuper(State.user)))}
+    ${fotoCarta('charro', R.prof, R.prof && State.user && (R.prof.userId === State.user.id || isSuper(State.user)))}
+    ${CONFIG.MODE === 'demo' ? '<div class="small mut2 mt">Demostración: la foto es ilustrativa; el nombre y los datos son ficticios.</div>' : ''}
     ${R.live ? `<a class="btn vino block mt" href="#evento-${R.live.id}" data-close="1">${I.live} Verlo en vivo: ${esc(R.live.title)}</a>` : ''}
     ${R.prof ? tcgLink('charro', R.prof.id) : ''}
     <div class="h2">Torneos</div>${list.length ? `<div class="card pad0">${list.slice(0, isPro(State.user) ? 500 : 3).map(e => `<a class="rank" href="#evento-${e.ev.id}" data-close="1" style="text-decoration:none;color:inherit"><div class="grow"><div class="ell" style="font-weight:700">${esc(e.ev.title)}</div><div class="small mut ell">${fdate(e.ev.date)} · ${esc(e.team)} · ${e.n} faenas${e.ev.official ? ' · Oficial' : ''}</div></div><div class="pts">${e.pts}<small>pts</small></div></a>`).join('')}</div>` : '<div class="card small mut">Todavía no tiene faenas calificadas.</div>'}
@@ -3014,6 +3019,7 @@ const ACT = {
   authmode(el){ State.authMode = el.dataset.k; render(); },
   card(el){ openCard(el.dataset.n); },
   hcard(el){ openHorse(el.dataset.id); },
+  async cardPhotoDel(el){ const key = el.dataset.k; await safe(async () => { await savePhoto(key, ''); reabrirCarta(key); }, 'La tarjeta usa tu foto de perfil'); },
   async cqGo(el){ const Q = State.cq; try { await cqPersist(); } catch (e) { return toast(e.message || 'No se pudo guardar', 'err'); } Q.step = +el.dataset.k; render(); window.scrollTo(0, 0); }, cqVia(el){ State.cq.d.via = el.dataset.k; State.cq.step = 1; render(); window.scrollTo(0, 0); }, cqDraw(el){ openDraw(+el.dataset.i); },
   async cqSave(){ const Q = State.cq, ev = DB.get('events', Q.d.eventId); await safe(async () => { await cqPersist(); await audit('croquis', `Guardó el croquis de ${(ev.teams.find(t => t.id === Q.d.teamId) || {}).name} en “${ev.title}”`); go(canManage(State.user, ev) ? 'panel-evento-' + ev.id : canCro(State.user, ev) ? 'juez-' + ev.id : 'cuenta'); }, 'Croquis guardado'); },
   async cqEntrega(){ const Q = State.cq, ev = DB.get('events', Q.d.eventId), miss = croMissing(Q.d); if (miss.length) return toast(miss[0], 'err'); if (!(await ask('Entregar croquis', 'Ya no podrás cambiarlo. El lienzo y las juezas lo recibirán.', 'Entregar'))) return;
