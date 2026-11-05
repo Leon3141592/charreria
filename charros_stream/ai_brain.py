@@ -12,9 +12,12 @@ instrucciones, y todo lo generado pasa por revisar_salida() antes de convertirse
 
 from __future__ import annotations
 
+import logging
 import os
 import re
+import sqlite3
 import sys
+import time
 from collections import OrderedDict, deque
 from dataclasses import dataclass
 from itertools import cycle
@@ -23,6 +26,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "security_war_room"))
 from sombra_core import analizar_texto  # noqa: E402
 
+log = logging.getLogger("cerebro")
+RUTA_MEMORIA = Path(__file__).resolve().parent / "datos" / "memoria.sqlite3"
+DIAS_MEMORIA = 90        # a quien no vuelve en este tiempo se le olvida
+SEPARACION_VISITA = 3600  # comentarios dentro de esta hora cuentan como la misma visita
 MODELO = os.getenv("CHARROS_STREAM_MODELO", "claude-opus-5-5")
 URL_PLATAFORMA = os.getenv("CHARROS_STREAM_URL", "https://leon3141592.github.io/charreria/")
 MAX_CARACTERES = 420     # unos 25 segundos de voz
@@ -111,24 +118,67 @@ def revisar_salida(texto: str) -> str | None:
     return texto
 
 
-class MemoriaCorta:
-    """Recuerda a quienes comentan y lo último dicho. Vive en memoria y se borra al reiniciar."""
+class MemoriaUsuarios:
+    """
+    Recuerda en SQLite a los usuarios recurrentes del chat, aunque el agente se reinicie.
+    Guarda solo el nombre público y sus visitas, nunca lo que escribieron. Si la base falla,
+    el agente sigue sin esta memoria: un archivo dañado no debe afectar la transmisión.
+    """
 
-    def __init__(self, max_usuarios: int = 30, max_dichos: int = 6):
+    def __init__(self, ruta: Path = RUTA_MEMORIA):
+        self.bd = None
+        try:
+            ruta.parent.mkdir(parents=True, exist_ok=True)
+            self.bd = sqlite3.connect(ruta)
+            self.bd.execute("create table if not exists usuarios (nombre text primary key, "
+                            "visitas integer not null, ultima real not null)")
+            self.bd.execute("delete from usuarios where ultima < ?", (time.time() - DIAS_MEMORIA * 86400,))
+            self.bd.commit()
+        except (sqlite3.Error, OSError) as e:
+            log.warning("Sin memoria de usuarios: %s", e)
+            self.bd = None
+
+    def registrar(self, nombre: str) -> int:
+        """Anota la visita y devuelve cuántas lleva. Sin base devuelve 1."""
+        if self.bd is None:
+            return 1
+        ahora = time.time()
+        try:
+            self.bd.execute(
+                "insert into usuarios values (?, 1, ?) on conflict(nombre) do update set "
+                "visitas = visitas + (excluded.ultima - ultima > ?), ultima = excluded.ultima",
+                (nombre, ahora, SEPARACION_VISITA))
+            self.bd.commit()
+            return self.bd.execute("select visitas from usuarios where nombre = ?", (nombre,)).fetchone()[0]
+        except sqlite3.Error as e:
+            log.warning("No se pudo guardar la visita: %s", e)
+            return 1
+
+
+class MemoriaCorta:
+    """Lo reciente vive en memoria; los usuarios recurrentes se recuerdan en SQLite."""
+
+    def __init__(self, max_usuarios: int = 30, max_dichos: int = 6, usuarios: MemoriaUsuarios | None = None):
         self.usuarios: OrderedDict[str, str] = OrderedDict()
         self.max_usuarios = max_usuarios
         self.dichos: deque[str] = deque(maxlen=max_dichos)
+        self.base = usuarios
+        self.regresaron: set[str] = set()
 
     def recordar(self, mensaje: MensajeChat) -> None:
         self.usuarios[mensaje.usuario] = mensaje.texto
+        if self.base and self.base.registrar(mensaje.usuario) > 1:
+            self.regresaron.add(mensaje.usuario)
         self.usuarios.move_to_end(mensaje.usuario)
         while len(self.usuarios) > self.max_usuarios:
-            self.usuarios.popitem(last=False)
+            self.regresaron.discard(self.usuarios.popitem(last=False)[0])
 
     def contexto(self) -> str:
         partes = []
         if self.usuarios:
             partes.append("Personas que han comentado hace poco: " + ", ".join(self.usuarios))
+        if self.regresaron:
+            partes.append("Ya te habían acompañado antes: " + ", ".join(sorted(self.regresaron)))
         if self.dichos:
             partes.append("Lo último que dijiste, para no repetirte:\n" + "\n".join(f"- {d}" for d in self.dichos))
         return "\n\n".join(partes)
@@ -155,7 +205,7 @@ class Cerebro:
         self.anthropic = anthropic
         # Una respuesta tardía ya no sirve en vivo: mejor fallar pronto y pasar al siguiente turno.
         self.cliente = anthropic.AsyncAnthropic(timeout=25.0, max_retries=1)
-        self.memoria = MemoriaCorta()
+        self.memoria = MemoriaCorta(usuarios=MemoriaUsuarios())
         self.rotador = RotadorCapsulas()
 
     async def _generar(self, pedido: str) -> str | None:
@@ -195,7 +245,7 @@ class CerebroSimulado:
     """Mismas funciones que Cerebro, con frases fijas: no usa la red ni tiene costo."""
 
     def __init__(self) -> None:
-        self.memoria = MemoriaCorta()
+        self.memoria = MemoriaCorta(usuarios=MemoriaUsuarios())
         self.rotador = RotadorCapsulas()
 
     async def responder(self, mensajes: list[MensajeChat]) -> str | None:

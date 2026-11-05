@@ -1044,8 +1044,9 @@ const OPEN_ROLES = ['charro','equipo','dueno','ganadero'];   // cuentas activas 
 const myCharro = u => u && DB.all('charros').find(c => c.userId === u.id);
 const myTeam = u => u && DB.all('teams').find(t => t.captainId === u.id);
 const rosterOf = tid => DB.all('charros').filter(c => c.teamId === tid).sort((a, b) => a.name.localeCompare(b.name));
+const TV_TIPOS = { tv_kit: 'el kit de cámaras', tv_sub: 'la suscripción a Charros TV' };
 function canDecide(u, r){
-  if (!isApproved(u) || !r || r.status !== 'pendiente') return false;
+  if (!isApproved(u) || !r || r.status !== 'pendiente' || TV_TIPOS[r.type]) return false;   // las de Charros TV se atienden en Admin
   if (r.type === 'interes') return (DB.get('horses', r.horseId) || {}).ownerId === u.id;   // el contacto del comprador solo lo ve el dueño
   if (r.type === 'transfer') return false;
   if (isSuper(u)) return true;
@@ -1055,7 +1056,7 @@ function canDecide(u, r){
 }
 const byName = (a, b) => a.name.localeCompare(b.name);
 /* ---------- PLAN PRO ---------- */
-const prices = () => { const c = DB.get('settings', 'precios') || {}; return { pro: +c.pro || 99, kit: +c.kit || 699 }; };
+const prices = () => { const c = DB.get('settings', 'precios') || {}; return { pro: +c.pro || 99, kit: +c.kit || 699, tvKit: +c.tvKit || 0, tvMes: +c.tvMes || 0 }; };
 const isPro = u => !!u && (isSuper(u) || (u.subscriptionStatus === 'pro' && (+u.proUntil || 0) > Date.now()));
 function needPro(why){ if (isPro(State.user)) return false; openUpgrade(why); return true; }
 function openUpgrade(why){
@@ -1279,7 +1280,7 @@ const State = { user: null, route: 'inicio', param: null, param2: null,
 function go(h){ if (location.hash.slice(1) === h) render(); else location.hash = h; }
 function parseRoute(){
   const h = location.hash.slice(1) || (TCG ? 'tienda' : 'inicio');
-  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo|ganaderia|res|carnet|carta|croquis|pdf|microchip|comprar|pedido)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
+  const m = h.match(/^(evento|panel-evento|juez|hoja|caballo|ganaderia|res|carnet|carta|croquis|pdf|microchip|comprar|pedido|solicitar)-([a-z0-9]+)(?:-([a-z0-9]+))?$/i);
   if (m) { State.route = m[1]; State.param = m[2]; State.param2 = m[3] || null; } else { State.route = h; State.param = State.param2 = null; }
 }
 window.addEventListener('hashchange', () => { parseRoute(); render(); window.scrollTo(0, 0); });
@@ -1297,7 +1298,7 @@ function render(){
   const tabs = [['inicio','Inicio',I.home],['vivo','En vivo',I.live,liveN],['historial','Historial',I.clock],['ranking','Ranking',I.trophy],['cuenta', u ? (isSuper(u) ? 'Admin' : 'Mi panel') : 'Entrar', isSuper(u) ? I.shield : I.user, 0, pend]];
   const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta', solicitudes:'cuenta', caballos:'ranking', caballo:'cuenta', ganado:'inicio', ganaderia:'inicio', res:'cuenta' }[State.route] || State.route;
   $('#nav').innerHTML = tabs.map(([k, l, ic, dot, badge]) => `<a href="#${k === 'cuenta' && isSuper(u) ? 'admin' : k}" class="${active === k ? 'on' : ''}">${ic}${dot ? '<span class="dot"></span>' : ''}${badge ? `<span class="badge-n" style="position:absolute;top:0;right:calc(50% - 22px)">${badge}</span>` : ''}<span>${l}</span></a>`).join('');
-  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes, avisos: vAvisos, pdf: vPdf, microchip: vMicrochip, comprar: vComprar, pedido: vPedido, carnet: vCarnet, croquis: vCroquis };
+  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes, avisos: vAvisos, pdf: vPdf, microchip: vMicrochip, camaras: vCamaras, charrostv: vCharrosTv, tv: vTv, solicitar: vSolicitar, comprar: vComprar, pedido: vPedido, carnet: vCarnet, croquis: vCroquis };
   $('#view').className = 'wrap' + (State.route === 'hoja' ? ' wide' : '');
   $('#view').innerHTML = State.recovery ? vNewPass() : (views[State.route] || vInicio)();
   fitSheet();
@@ -1373,7 +1374,7 @@ function vInicio(){
     h += `<div class="hero" style="border-color:var(--line2)"><div class="h1">La charrería, en vivo y con historia.</div><div class="sub" style="margin-top:8px">Calificaciones al momento conforme al reglamento, hojas oficiales digitales y el ranking nacional.</div>
       <div class="btns mt2"><a class="btn pri" href="#ranking">${I.trophy} Ver ranking</a><a class="btn" href="#historial">${I.clock} Historial</a></div><div class="pattern"></div></div>`;
   }
-  h += tcgBanner() + chipBanner();
+  h += tcgBanner() + chipBanner() + tvBanners(State.user);
   h += `<div class="h2">Próximas charreadas</div>` + (next.length ? `<div class="list">${next.map(eventCard).join('')}</div>` : emptyState(I.clock, 'Sin charreadas programadas', 'Cuando un lienzo publique su próxima charreada aparecerá aquí.'));
   h += `<div class="h2">Top charros ${new Date().getFullYear()}<a href="#ranking">Ver todo</a></div>` + (top.length ? `<div class="card pad0">${top.map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.n} faenas`, c.pts, 'pts', true)).join('')}</div>` : emptyState(I.trophy, 'Aún sin ranking', 'Se forma con las charreadas oficiales finalizadas.'));
   h += `<div class="h2">Resultados recientes<a href="#historial">Historial</a></div><div class="list">${past.map(eventCard).join('') || emptyState(I.clock, 'Sin resultados', '')}</div>`;
@@ -1390,7 +1391,7 @@ function vInicio(){
 function vVivo(){
   const evs = publicEvents(), live = evs.filter(e => e.status === 'en_vivo'), next = evs.filter(e => e.status === 'programado').sort((a, b) => a.date.localeCompare(b.date));
   return `<div class="h1">En vivo</div><div class="sub" style="margin-top:4px">Charreadas calificándose en este momento.</div><div class="h2">Ahora</div>` +
-    (live.length ? `<div class="list">${live.map(eventCard).join('')}</div>` : emptyState(I.live, 'No hay charreadas en vivo', 'Aquí aparecerán las que inicien.')) +
+    (live.length ? `<div class="list">${live.map(eventCard).join('')}</div>` : emptyState(I.live, 'No hay charreadas en vivo', 'Aquí aparecerán las que inicien.')) + tvBanner('tv') + tvBanner('kit') +
     `<div class="h2">Próximas</div>` + (next.length ? `<div class="list">${next.map(eventCard).join('')}</div>` : emptyState(I.clock, 'Sin próximas', ''));
 }
 
@@ -1403,7 +1404,7 @@ function vEvento(){
   let h = `<a class="back" href="#${ev.status === 'finalizado' ? 'historial' : 'vivo'}">${I.arrow} Volver</a>
     <div class="row wrapf" style="gap:6px">${statusChip(ev)}${officialChip(ev)}${modeChip(ev)}</div>
     <div class="h1" style="margin-top:10px">${esc(ev.title)}</div><div class="sub" style="margin-top:5px">${esc(L.name)} ${verifiedMark(L)}</div>
-    <div class="small mut" style="margin-top:2px">${fdate(ev.date)} · ${esc(L.city)}, ${esc(L.state)}</div><div class="mt">${videoBlock(ev)}</div>`;
+    <div class="small mut" style="margin-top:2px">${fdate(ev.date)} · ${esc(L.city)}, ${esc(L.state)}</div><div class="mt">${videoBlock(ev)}</div>${tvBanners(State.user)}`;
   if (!ev.official && ev.status !== 'programado') h += `<div class="banner warn mt">${I.info}<span>Charreada no oficial: no cuenta para el ranking nacional.</span></div>`;
   const btns = [];
   if (canScore(u, ev) || canSheet(u, ev)) btns.push(`<a class="btn pri" href="#juez-${ev.id}">${I.gavel} Mesa del juez</a>`);
@@ -1457,7 +1458,7 @@ function vHistorial(){
     <button class="tog ${State.histOficial ? 'on' : ''}" data-act="histOficial" style="white-space:nowrap">Solo oficiales</button></div>`;
   if (!evs.length) return h + `<div class="mt">${emptyState(I.search, 'Sin resultados', 'Prueba con otra búsqueda o filtro.')}</div>`;
   Object.entries(groups).forEach(([k, list]) => { h += `<div class="h2">${k}</div><div class="list">${list.map(eventCard).join('')}</div>`; });
-  return h;
+  return h + tvBanner('tv');
 }
 
 /* ---------- RANKING ---------- */
@@ -1750,6 +1751,47 @@ function chipSection(kind, x){
   if (orders.length) h += `<div class="sep"></div>${orders.map(r => `<div class="row between small" style="padding:4px 0;gap:8px"><span>Kit · ${fdate(localISO(r.createdAt))}${r.tracking ? ' · Guía ' + esc(r.tracking) : ''}</span><a class="chip ${r.status === 'entregado' ? 'green' : 'blue'}" href="#pedido-${r.id}" style="text-decoration:none">${kitLabel(r)}</a></div>`).join('')}`;
   if (!open && st !== 'validado') h += `<a class="btn pri block mt" href="#microchip-${kind}-${x.id}">${KIT_COTIZA ? 'Apartar kit de microchip' : `Comprar kit de microchip · ${mxn(prices().kit)}`}</a>`;
   return h + '</div>';
+}
+/* ---------- CHARROS TV: el kit de cámaras se paga una vez; Charros TV es suscripción ---------- */
+const tvPendiente = (u, tipo) => !!u && DB.all('requests').some(r => r.type === tipo && r.createdBy === u.id && r.status === 'pendiente');
+const tvPrecioKit = () => prices().tvKit ? `${mxn(prices().tvKit)} · pago único` : 'Precio por cotizar';
+const tvPrecioMes = () => prices().tvMes ? `${mxn(prices().tvMes)} al mes` : 'Precio por confirmar';
+const tvBanner = tipo => { const kit = tipo === 'kit'; return `<a class="card tcg-ban mt" href="#${kit ? 'camaras' : 'charrostv'}"><span class="logo" style="width:44px;height:44px;flex:none">${kit ? I.video : I.live}</span><div class="grow"><div style="font-family:'Cinzel',serif;font-weight:800;font-size:17px;color:var(--gold2)">${kit ? 'Kit de cámaras' : 'Charros TV'}</div><div class="small" style="margin-top:2px">${kit ? 'Lleva tu lienzo a la pantalla de todos. Un solo pago.' : 'Las charreadas en vivo, con marcador, en un solo lugar. Suscripción mensual.'}</div></div><span class="marrow">${I.arrow}</span></a>`; };
+const esLienzo = u => !!u && u.role === 'lienzo';
+const tvBanners = u => (esLienzo(u) ? tvBanner('kit') : '') + tvBanner('tv');
+const tvLi = t => `<div class="upg-li">${I.check}<span>${t}</span></div>`, tvQ = (t, r) => `<details class="lp-q"><summary>${t}</summary><div class="small" style="padding-bottom:10px;line-height:1.5">${r}</div></details>`;
+const tvEnviada = t => `<div class="banner ok mt">${I.check}<span>${t}</span></div>`;
+function vCamaras(){
+  const u = State.user, ya = tvPendiente(u, 'tv_kit'), cta = ya ? tvEnviada('Ya recibimos tu solicitud. Te contactaremos con la cotización.') : `<a class="btn pri block mt" style="min-height:56px;font-size:17px" href="#solicitar-kit">Solicitar mi kit</a>`;
+  return `<div class="hero lp-hero" style="border-color:var(--line2)"><span class="upg-badge">${I.video} KIT DE CÁMARAS</span><div class="h1" style="margin-top:14px">Tu lienzo, en la pantalla de todos.</div><div class="sub" style="margin-top:8px">Cámaras OBSBOT para transmitir tus charreadas y que la afición las vea donde esté.</div><div class="lp-price">${tvPrecioKit()}</div><div class="small mut">Es un equipo: se paga una sola vez. No incluye la suscripción a Charros TV.</div>${cta}<div class="pattern"></div></div>
+    <div class="h2">Qué es</div><div class="card small" style="line-height:1.5">Un equipo de cámaras OBSBOT pensado para un lienzo charro: vista general, partidero, corrales y mesa de jueces. El número de cámaras y sus modelos se definen al cotizar, según tu lienzo.</div>
+    <div class="h2">Para qué sirve</div><div class="card">${tvLi('<b>Llega a más gente.</b> Quien no pudo ir al lienzo sigue la charreada desde su celular.')}${tvLi('<b>Dale valor a tus eventos.</b> Una transmisión da más presencia a tus patrocinadores.')}${tvLi('<b>Guarda cada charreada.</b> El video queda disponible en la página de tu evento.')}${tvLi('<b>Junto al marcador.</b> La transmisión aparece al lado de la calificación en vivo de Charrería Pro.')}</div>
+    <div class="h2">Cómo funciona</div><div class="card lp-steps"><div>Solicitas tu kit y nos cuentas cómo es tu lienzo.</div><div>Te enviamos la cotización y el equipo recomendado.</div><div>Coordinamos la entrega y la instalación.</div><div>En cada charreada pegas el enlace de tu transmisión en el panel de control.</div><div>La afición te ve en la página del evento y en Charros TV.</div></div>
+    <div class="h2">Preguntas frecuentes</div><div class="card">${tvQ('¿Es lo mismo que Charros TV?', 'No. El kit es el equipo y se paga una vez. Charros TV es el servicio para ver las charreadas y es una suscripción mensual.')}${tvQ('¿Qué necesito en mi lienzo?', 'Internet estable y un lugar para las cámaras. Lo revisamos contigo antes de cotizar.')}${tvQ('¿La transmisión ya es automática?', 'Todavía no. Hoy la transmisión se hace con tu plataforma de video y pegas el enlace en el panel. La operación automática sigue en desarrollo.')}${tvQ('¿Tiene costo solicitarlo?', 'No. Solicitar no genera ningún cargo; decides cuando recibas la cotización.')}</div>
+    ${ya ? '' : `<a class="btn pri block mt" href="#solicitar-kit">Solicitar mi kit</a>`}<a class="btn block mt" href="#charrostv">Conocer Charros TV</a>`;
+}
+function vCharrosTv(){
+  const u = State.user, ya = tvPendiente(u, 'tv_sub'), sub = ya ? tvEnviada('Ya recibimos tu solicitud. Te avisaremos cuando la suscripción esté disponible.') : `<a class="btn block mt" href="#solicitar-tv">Quiero suscribirme</a>`;
+  return `<div class="hero lp-hero" style="border-color:var(--line2)"><span class="upg-badge">${I.live} CHARROS TV</span><div class="h1" style="margin-top:14px">La charrería, en vivo y en un solo lugar.</div><div class="sub" style="margin-top:8px">Transmisiones de los lienzos con su marcador oficial, desde tu celular o tu computadora.</div><div class="lp-price">${tvPrecioMes()}</div><div class="small mut">Es una suscripción mensual. No incluye cámaras.</div><a class="btn pri block mt" style="min-height:56px;font-size:17px" href="#tv">Abrir Charros TV</a>${sub}<div class="pattern"></div></div>
+    <div class="h2">Qué es</div><div class="card small" style="line-height:1.5">La televisora de la charrería: reúne en una sola página las transmisiones que publican los lienzos y los videos de charreadas anteriores.</div>
+    <div class="h2">Para qué sirve</div><div class="card">${tvLi('<b>No te pierdas una charreada.</b> Ve lo que está en vivo sin buscar en varias páginas.')}${tvLi('<b>Marcador al momento.</b> Cada transmisión te lleva a la calificación en vivo.')}${tvLi('<b>Vuelve a verlas.</b> Encuentra los videos que los lienzos publicaron.')}${tvLi('<b>Apoya a tu lienzo.</b> Sigue a la charrería de tu estado desde donde estés.')}</div>
+    <div class="h2">Cómo funciona</div><div class="card lp-steps"><div>Abres Charros TV.</div><div>Eliges una charreada en vivo o un video.</div><div>Sigues la transmisión y el marcador desde tu celular.</div></div>
+    <div class="h2">Preguntas frecuentes</div><div class="card">${tvQ('¿Ya se cobra la suscripción?', 'Todavía no. Puedes abrir Charros TV y dejar tu solicitud; no se hace ningún cargo y te avisaremos antes de que empiece el cobro.')}${tvQ('¿Los marcadores siguen gratis?', 'Sí. Los marcadores en vivo y la mesa del juez son libres en Charrería Pro.')}${tvQ('¿Soy lienzo, qué necesito para transmitir?', 'Cualquier transmisión con enlace, o el kit de cámaras si quieres equipo para tu lienzo.')}</div>
+    <a class="btn block mt" href="#camaras">Conocer el kit de cámaras</a>`;
+}
+function vTv(){
+  const evs = publicEvents(), live = evs.filter(e => e.status === 'en_vivo'), past = evs.filter(e => e.status === 'finalizado' && e.videoUrl).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12), u = State.user;
+  const bloque = ev => `<div class="card"><a href="#evento-${ev.id}" style="text-decoration:none;color:inherit"><div style="font-weight:800">${esc(ev.title)}</div><div class="small mut" style="margin:2px 0 8px">${esc(lienzo(ev.lienzoId).name)} · Ver marcador</div></a>${videoBlock(ev)}</div>`;
+  return `<a class="back" href="#charrostv">${I.arrow} Charros TV</a><div class="h1">Charros TV</div><div class="sub" style="margin-top:4px">Transmisiones de los lienzos.</div><div class="h2">En vivo</div>` +
+    (live.length ? `<div class="list">${live.map(bloque).join('')}</div>` : emptyState(I.live, 'No hay transmisiones en vivo', 'Aquí aparecerán las que inicien.')) +
+    `<div class="h2">Videos</div>` + (past.length ? `<div class="list">${past.map(bloque).join('')}</div>` : `<div class="card small mut">Aún no hay videos publicados.</div>`) + (esLienzo(u) ? tvBanner('kit') : '');
+}
+function vSolicitar(){
+  const u = State.user, kit = State.param === 'kit', tipo = kit ? 'tv_kit' : 'tv_sub', back = kit ? 'camaras' : 'charrostv', nombre = kit ? 'Kit de cámaras' : 'Charros TV', L = u && myLienzo(u);
+  const atras = `<a class="back" href="#${back}">${I.arrow} ${nombre}</a>`, inp = (n, l, o = '') => `<label class="f">${l}</label><input class="in" name="${n}" ${o}>`;
+  if (!u) return atras + emptyState(I.user, 'Inicia sesión para continuar', 'Así podemos darle seguimiento a tu solicitud.', `<a class="btn pri" href="#cuenta">Entrar</a>`);
+  if (tvPendiente(u, tipo)) return atras + tvEnviada('Ya recibimos tu solicitud.');
+  return `${atras}<div class="h1">${kit ? 'Solicitar kit de cámaras' : 'Suscribirme a Charros TV'}</div><form data-form="tvPedir" data-tipo="${tipo}"><div class="card mt"><div class="row between"><b>${nombre}</b><b style="text-align:right">${kit ? tvPrecioKit() : tvPrecioMes()}</b></div>${inp('name', 'Nombre', `value="${esc(u.name)}" required autocomplete="name"`)}${inp('phone', 'Teléfono', `type="tel" value="${esc(u.phone || '')}" required autocomplete="tel"`)}${kit ? inp('lienzo', 'Lienzo', `value="${esc(L ? L.name : '')}" required`) + inp('city', 'Municipio y estado', `value="${esc(L ? [L.city, L.state].filter(Boolean).join(', ') : '')}" required`) : ''}${inp('notes', kit ? 'Cuéntanos de tu lienzo (opcional)' : 'Comentarios (opcional)')}<div class="small mut2 mt">Solo la administración ve estos datos.</div></div><div class="banner warn mt">${I.info}<span>${kit ? 'No se hace ningún cargo: te contactaremos con la cotización.' : 'No se hace ningún cargo: la suscripción todavía no se cobra y te avisaremos antes de empezar.'}</span></div><button class="btn pri block mt2" style="min-height:56px;font-size:17px">Enviar solicitud</button></form>`;
 }
 /* ---------- MICROCHIP: página informativa, compra y pedido ---------- */
 // Cuando exista la cuenta del proveedor, llena estos datos y completa iniciarPago(). Los datos de tarjeta nunca pasan por esta app.
@@ -2104,6 +2146,7 @@ function vCuenta(){
   }
   h += capCroquis(u);
   h += tcgSection(u);
+  h += tvBanners(u);
   h += `<div class="h2">Mi plan</div><div class="card"><div class="row between" style="gap:8px"><div><div style="font-weight:800">${isPro(u) ? 'Pro' : 'Gratis'}</div><div class="small mut">${isSuper(u) ? 'El súper usuario tiene todas las funciones.' : isPro(u) ? `Activo hasta el ${fdate(localISO(+u.proUntil))}` : 'Marcadores, rankings y mesa del juez sin costo.'}</div></div>${isPro(u) ? '<span class="upg-badge">PRO</span>' : `<button class="btn pri sm" data-act="upgrade">Conocer Pro</button>`}</div>${isPro(u) && !isSuper(u) ? `<button class="btn ghost sm mt" data-act="upgrade">Renovar 30 días</button>` : ''}</div>`;
   if (u.role !== 'charro') h += `<div class="h2">Foto de perfil</div><div class="card">${photoBox('profile', u.id, u.photo, u.name)}</div>`;
   h += `<div class="h2">Seguridad</div>` + (State.changePass ? passForm(true) : `<button class="btn block" data-act="changepass">${I.key} Cambiar contraseña</button>`);
@@ -2176,7 +2219,7 @@ function verifCard({ kind, d, st }){
 }
 function vSolicitudes(){
   const u = State.user; if (!u) return needLogin();
-  const R = DB.all('requests').slice().sort((a, b) => b.createdAt - a.createdAt), dec = R.filter(r => canDecide(u, r)), mine = R.filter(r => r.createdBy === u.id && r.type !== 'transfer'), done = R.filter(r => r.status !== 'pendiente' && r.decidedBy === u.id && r.createdBy !== u.id).slice(0, 20);
+  const R = DB.all('requests').slice().sort((a, b) => b.createdAt - a.createdAt), dec = R.filter(r => canDecide(u, r)), mine = R.filter(r => r.createdBy === u.id && r.type !== 'transfer' && !TV_TIPOS[r.type]), done = R.filter(r => r.status !== 'pendiente' && r.decidedBy === u.id && r.createdBy !== u.id).slice(0, 20);
   const VQ = verifQueue(u);
   let h = `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="h1">Solicitudes</div><div class="sub" style="margin-top:4px">Rosters de equipos, afiliaciones a lienzos e interesados en tus caballos.</div>`;
   if (VQ.length || isSuper(u) || u.role === 'lienzo') h += `<div class="h2">Verificaciones</div>` + (VQ.length ? `<div class="small mut" style="margin-bottom:8px">Solo lo verificado aparece en rankings, vitrina y precios públicos. Revisa que los datos sean reales.</div><div class="list">${VQ.map(verifCard).join('')}</div>` : `<div class="card small mut">No hay registros por verificar. ✓</div>`);
@@ -2238,7 +2281,7 @@ function vPanel(){
   const L = myLienzo(u), order = { en_vivo: 0, programado: 1, borrador: 2, finalizado: 3 };
   const evs = DB.all('events').filter(e => isSuper(u) || e.lienzoId === u.lienzoId).sort((a, b) => order[a.status] - order[b.status] || b.date.localeCompare(a.date));
   const judges = L ? DB.all('profiles').filter(p => p.role === 'juez' && p.lienzoId === L.id) : [];
-  let h = `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="row between"><div class="h1">${isSuper(u) ? 'Charreadas' : 'Mis charreadas'}</div>${L ? `<button class="btn pri sm" data-act="newEvent">${I.plus} Nueva</button>` : ''}</div>${L ? `<div class="sub" style="margin-top:4px">${esc(L.name)} ${verifiedMark(L)}</div>` : ''}`;
+  let h = `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="row between"><div class="h1">${isSuper(u) ? 'Charreadas' : 'Mis charreadas'}</div>${L ? `<button class="btn pri sm" data-act="newEvent">${I.plus} Nueva</button>` : ''}</div>${L ? `<div class="sub" style="margin-top:4px">${esc(L.name)} ${verifiedMark(L)}</div>` : ''}${tvBanner('kit')}${tvBanner('tv')}`;
   h += evs.length ? `<div class="list mt">${evs.map(ev => `<a class="card evc" href="#panel-evento-${ev.id}"><div class="row">${dateBox(ev.date)}<div class="grow"><div class="row wrapf" style="gap:6px;margin-bottom:4px">${statusChip(ev)}${officialChip(ev)}${modeChip(ev)}</div><div class="t">${esc(ev.title)}</div><div class="meta">${isSuper(u) ? esc(lienzo(ev.lienzoId).name) + ' · ' : ''}${ev.teams.length} ${ev.mode === 'completo' ? 'charros' : 'equipos'} · ${evScores(ev.id).length} faenas calificadas</div></div></div></a>`).join('')}</div>`
     : `<div class="mt">${emptyState(I.horse, 'Aún no tienes charreadas', 'Crea tu primera charreada.', `<button class="btn pri" data-act="newEvent">${I.plus} Crear charreada</button>`)}</div>`;
   if (L) { h += `<div class="h2">Jueces de tu lienzo</div>` + (judges.length ? `<div class="card pad0">${judges.map(j => `<div class="rank"><div class="avatar">${esc(initials(j.name))}</div><div class="grow"><div style="font-weight:700">${esc(j.name)}</div><div class="small mut">${esc(j.email)}</div></div>${j.status === 'aprobado' ? '<span class="chip green">Activo</span>' : `<span class="chip ${j.status === 'pendiente' ? 'blue' : 'red'}">${esc(j.status)}</span>`}</div>`).join('')}</div>` : `<div class="card small mut">Pide a tus jueces que se registren como “Juez” eligiendo tu lienzo; el administrador los autoriza.</div>`); }
@@ -2285,6 +2328,7 @@ function vPanelEvento(){
     : `<form class="team" data-form="addTeam" style="border-style:dashed"><div style="font-weight:700">${offTeams.length ? 'Agregar otro equipo (no registrado)' : 'Agregar equipo'}</div><input class="in mt" name="name" placeholder="Nombre del equipo / asociación" required><input class="in mt" name="capitan" placeholder="Capitán"><select class="in mt" name="state">${ESTADOS.map(s => `<option ${s === lienzo(ev.lienzoId).state ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn block mt">${I.plus} Agregar equipo</button></form>`;
   h += eventStockSection(ev, u, canManage(u, ev));
   h += `<div class="h2">Transmisión en vivo</div><form class="card" data-form="stream"><div class="small mut">Transmite desde YouTube Live o Facebook Live y pega aquí el enlace.</div><input class="in mt" name="url" type="url" placeholder="https://youtube.com/live/…" value="${esc(ev.streamUrl)}"><button class="btn block mt">Guardar enlace</button></form>`;
+  h += tvBanner('kit');
   h += `<div class="h2">Video grabado</div><div class="card"><div class="small mut">Pega el enlace del video o sube el archivo grabado.</div><form data-form="video"><input class="in mt" name="url" type="url" placeholder="https://youtube.com/watch?v=…" value="${esc(ev.videoUrl && !ev.videoUrl.startsWith('blob:') ? ev.videoUrl : '')}"><button class="btn block mt">Guardar enlace</button></form>
     <label class="btn block mt" style="cursor:pointer">${I.upload} Subir archivo de video<input type="file" accept="video/*" data-upload="${ev.id}" style="display:none"></label>${ev.videoUrl ? `<div class="small mt" style="color:#7fdcb0">✓ Video publicado</div>` : ''}</div>`;
   if (ev.status === 'borrador' || isSuper(u)) h += `<button class="btn ghost block mt2" style="color:#ff9a9a" data-act="delEvent">Eliminar charreada</button>`;
@@ -2933,12 +2977,13 @@ function vAdmin(){
       <label class="f">Tipo</label><select class="in" name="role"><option value="juez">Juez</option><option value="lienzo">Lienzo</option></select>
       <label class="f">Lienzo (solo para jueces)</label><select class="in" name="lienzoId"><option value="">—</option>${Ls.filter(l => l.status === 'aprobado').map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select><button class="btn pri block mt2">${I.key} Generar código</button></form>
       <div class="h2">Códigos</div>` + (inv.length ? `<div class="card pad0">${inv.map(i => `<div class="rank"><div class="grow"><div style="font-weight:800;font-family:monospace;font-size:15px">${esc(i.code)}</div><div class="small mut">${roleName(i.role)}${i.lienzoId ? ' · ' + esc(lienzo(i.lienzoId).name) : ''} · ${fdt(i.createdAt)}</div></div>${i.used ? '<span class="chip">Usado</span>' : `<button class="btn sm" data-act="copy" data-t="${esc(i.code)}">Copiar</button>`}</div>`).join('')}</div>` : `<div class="card small mut">Sin códigos.</div>`); }
-  if (t === 'microchips') { const P = prices(), O = DB.all('requests').filter(r => r.type === 'chip_order').sort((a, b) => b.createdAt - a.createdAt);
+  if (t === 'microchips') { const P = prices(), O = DB.all('requests').filter(r => r.type === 'chip_order').sort((a, b) => b.createdAt - a.createdAt), TV = DB.all('requests').filter(r => TV_TIPOS[r.type]).sort((a, b) => b.createdAt - a.createdAt);
     const pend = [...DB.all('horses').map(x => ['horse', x]), ...DB.all('stock').map(x => ['stock', x])].filter(([, x]) => x.chipStatus === 'pendiente'), pros = DB.all('profiles').filter(p => p.subscriptionStatus === 'pro');
-    h += `<form class="card mt" data-form="prices"><div style="font-weight:800">Precios</div><div class="grid2"><div><label class="f">Pro al mes (MXN)</label><input class="in" name="pro" type="number" min="0" step="1" value="${P.pro}" required></div>${KIT_COTIZA ? `<input type="hidden" name="kit" value="${P.kit}"><div><label class="f">Kit de microchip</label><div class="small mut" style="padding-top:12px">Se cotiza en cada pedido.</div></div>` : `<div><label class="f">Kit de microchip (MXN)</label><input class="in" name="kit" type="number" min="0" step="1" value="${P.kit}" required></div>`}</div><button class="btn block mt2">Guardar precios</button>
+    h += `<form class="card mt" data-form="prices"><div style="font-weight:800">Precios</div><div class="grid2"><div><label class="f">Pro al mes (MXN)</label><input class="in" name="pro" type="number" min="0" step="1" value="${P.pro}" required></div>${KIT_COTIZA ? `<input type="hidden" name="kit" value="${P.kit}"><div><label class="f">Kit de microchip</label><div class="small mut" style="padding-top:12px">Se cotiza en cada pedido.</div></div>` : `<div><label class="f">Kit de microchip (MXN)</label><input class="in" name="kit" type="number" min="0" step="1" value="${P.kit}" required></div>`}</div><div class="grid2"><div><label class="f">Kit de cámaras (MXN, pago único)</label><input class="in" name="tvKit" type="number" min="0" step="1" value="${P.tvKit}" required></div><div><label class="f">Charros TV (MXN al mes)</label><input class="in" name="tvMes" type="number" min="0" step="1" value="${P.tvMes}" required></div></div><div class="small mut2 mt">En cero se muestran como precio por confirmar.</div><button class="btn block mt2">Guardar precios</button>
       <div class="small mut2 mt">Aún no hay cobro en línea: Pro es simulado y los kits quedan apartados hasta marcarlos como pagados. Falta conectar el proveedor de pagos.</div></form>
       <div class="h2">Chips por validar</div>${pend.length ? `<div class="list">${pend.map(([k, x]) => `<div class="card"><div class="row" style="gap:10px">${av(x.photo, x.name, 40)}<div class="grow"><div style="font-weight:800">${esc(x.name)} <span class="small mut">· ${k === 'horse' ? 'Caballo' : 'Ganado'}</span></div><div class="small mut" style="font-family:monospace">${esc(fmtUid(x.chipUid))}</div></div></div>
         <div class="btns mt"><button class="btn pri sm" data-act="chipVal" data-k="${k}" data-id="${x.id}" data-ok="1">${I.check} Validar carnet</button><button class="btn sm" data-act="chipVal" data-k="${k}" data-id="${x.id}" data-ok="">${I.x} Rechazar</button></div></div>`).join('')}</div>` : '<div class="card small mut">No hay chips por validar. ✓</div>'}
+      <div class="h2">Charros TV y cámaras</div>${TV.length ? `<div class="list">${TV.map(r => { const c = r.contact || {}; return `<div class="card"><div class="row between" style="gap:8px"><div class="grow"><div style="font-weight:800">${esc(c.name || r.createdByName || 'Solicitud')}</div><div class="small mut">${fdt(r.createdAt)} · ${r.type === 'tv_kit' ? 'Kit de cámaras' : 'Suscripción a Charros TV'}</div></div><span class="chip ${r.status === 'atendido' ? 'green' : 'blue'}">${r.status === 'atendido' ? 'Atendida' : 'Pendiente'}</span></div><div class="small" style="margin-top:8px;line-height:1.5">${esc(c.phone || '')}${c.lienzo ? '<br>' + esc(c.lienzo) : ''}${c.city ? ' · ' + esc(c.city) : ''}${c.notes ? '<br>' + esc(c.notes) : ''}</div>${r.status === 'pendiente' ? `<div class="btns mt"><button class="btn pri sm" data-act="tvDone" data-id="${r.id}">Marcar atendida</button></div>` : ''}</div>`; }).join('')}</div>` : '<div class="card small mut">Aún no hay solicitudes.</div>'}
       <div class="h2">Pedidos de kit</div>${O.length ? `<div class="list">${O.map(r => { const sh = r.ship || {}; return `<div class="card"><div class="row between" style="gap:8px"><div class="grow"><div style="font-weight:800">${esc(r.targetName || 'Ejemplar')}</div><div class="small mut">${fdt(r.createdAt)} · ${kitMontoTxt(r)} · ${r.payStatus === 'pagado_simulado' ? 'pago simulado' : r.payStatus === 'pagado' ? 'pagado' + (r.paidBy ? ' · registró ' + esc(r.paidBy) : '') : 'sin pagar'}</div></div><span class="chip ${r.status === 'entregado' ? 'green' : 'blue'}">${kitLabel(r)}</span></div>
         <div class="small" style="margin-top:8px;line-height:1.5">${esc(sh.name || '')} · ${esc(sh.phone || '')}<br>${esc([sh.street, sh.colonia, sh.city, sh.state, sh.zip].filter(Boolean).join(', '))}${sh.notes ? '<br>' + esc(sh.notes) : ''}</div>
         ${r.kitUid ? `<div class="small mut" style="margin-top:4px">Chip enviado: <b style="font-family:monospace">${esc(fmtUid(r.kitUid))}</b>${r.tracking ? ' · Guía ' + esc(r.tracking) : ''}</div>` : ''}
@@ -3037,6 +3082,7 @@ const ACT = {
   upgrade(el){ openUpgrade(el.dataset.why || ''); },
   async cardHD(el){ if (needPro('La tarjeta en alta resolución es una función Pro.')) return; await safe(() => downloadNode($('#tcard'), `tarjeta-${slug(el.dataset.n)}.png`), 'Tarjeta descargada'); },
   report(el){ if (needPro('Los reportes en PDF son una función Pro.')) return; openReport(el.dataset.k, el.dataset.id); },
+  async tvDone(el){ const r = DB.get('requests', el.dataset.id); if (!r) return; await safe(async () => { await DB.put('requests', { ...r, status: 'atendido', attendedBy: State.user.name, attendedAt: Date.now() }); await audit('charros-tv', `Atendió la solicitud de ${(r.contact || {}).name || r.createdByName}`); }, 'Solicitud atendida'); },
   async kitQuote(el){ const r = DB.get('requests', el.dataset.id); if (!r) return; const v = await ask('Cotizar kit', `Precio total para ${r.targetName}, en pesos mexicanos.`, 'Guardar', false, 'Ej. 1500'); if (!v) return;
     const price = Math.round(Number(String(v).replace(/[$,\s]/g, ''))); if (!(price > 0)) return toast('Escribe un precio mayor a cero', 'err');
     await safe(async () => { await DB.put('requests', { ...r, price, cotizadoAt: Date.now(), cotizadoBy: State.user.name }); await audit('kit', `Cotizó en ${mxn(price)} el kit de ${r.targetName}`); }, 'Cotización guardada'); },
@@ -3216,8 +3262,13 @@ document.addEventListener('submit', async e => {
     return safe(async () => { await DB.put('requests', r); await audit('kit', `${u.name} pidió kit de microchip para ${x.name}`); if (pagoListo() && !KIT_COTIZA) await iniciarPago(r); go('pedido-' + r.id); }, !KIT_COTIZA && DB.backend.mode === 'demo' ? 'Pedido recibido' : 'Pedido apartado'); }
   if (k === 'chipReg') { const kind = f.dataset.kind, x = DB.get(kind === 'horse' ? 'horses' : 'stock', f.dataset.id); if (!x) return;
     return safe(async () => { const st = await DB.backend.registerChip(kind, x, d.uid); await audit('microchip', `Registró el chip ${fmtUid(d.uid)} en ${x.name}`); toast(st === 'validado' ? '¡Carnet validado! El chip coincide con tu kit.' : 'Chip registrado. Queda pendiente de validación.', 'ok'); if (st === 'validado') go('carnet-' + x.id); }); }
-  if (k === 'prices') { const pro = Math.max(0, Math.round(+d.pro)), kit = Math.max(0, Math.round(+d.kit));
-    return safe(async () => { await DB.put('settings', { id: 'precios', pro, kit, updatedAt: Date.now() }); await audit('precios', `Cambió precios: Pro ${mxn(pro)}/mes, kit ${mxn(kit)}`); }, 'Precios guardados'); }
+  if (k === 'prices') { const n = v => Math.max(0, Math.round(+v || 0)), pro = n(d.pro), kit = n(d.kit), tvKit = n(d.tvKit), tvMes = n(d.tvMes);
+    return safe(async () => { await DB.put('settings', { id: 'precios', pro, kit, tvKit, tvMes, updatedAt: Date.now() }); await audit('precios', `Cambió precios: Pro ${mxn(pro)}/mes, kit ${mxn(kit)}, cámaras ${mxn(tvKit)}, Charros TV ${mxn(tvMes)}/mes`); }, 'Precios guardados'); }
+  if (k === 'tvPedir') { const u = State.user, tipo = f.dataset.tipo; if (!u || !TV_TIPOS[tipo]) return;
+    if (tvPendiente(u, tipo)) return toast('Ya tienes una solicitud en revisión', 'err');
+    const contact = {}; ['name', 'phone', 'lienzo', 'city', 'notes'].forEach(q => { contact[q] = String(d[q] || '').trim(); });
+    const r = { id: 'r' + uid(), type: tipo, contact, status: 'pendiente', createdBy: u.id, createdByName: u.name, createdAt: Date.now() };
+    return safe(async () => { await DB.put('requests', r); await audit('charros-tv', `${u.name} solicitó ${TV_TIPOS[tipo]}`); go(tipo === 'tv_kit' ? 'camaras' : 'charrostv'); }, 'Solicitud enviada'); }
   if (k === 'adjust') { if (!isSuper(State.user)) return; const kind = State.adjKind || 'charro', key = d.key, sel = f.querySelector('[name=key]');
     const label = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.replace(' · con ajuste', '') : key;
     const row = { id: `${kind}:${key}`, kind, key, label, pts: Math.round(+d.pts || 0), amt: Math.round(+d.amt || 0), pct: Math.max(-90, Math.min(500, +d.pct || 0)), rent: Math.max(0, Math.round(+d.rent || 0)), featured: !!d.featured, updatedAt: Date.now(), updatedByName: State.user.name };
