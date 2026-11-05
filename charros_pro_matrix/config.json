@@ -1,0 +1,31 @@
+{
+  "modo": "DEMO",
+  "moneda": "MXN",
+  "finanzas": {
+    "cuota_base_lienzo": "10000.00",
+    "porcentaje_excedente": "16",
+    "reparto_excedente": {
+      "dueno": "6",
+      "computo_local": "5",
+      "fondo_global": "5"
+    }
+  },
+  "medibilidad": {
+    "fuentes_demo": ["demo"],
+    "fuentes_real": ["banco", "pasarela_pago", "taquilla_electronica"]
+  },
+  "credenciales": {
+    "_nota": "Aquí van NOMBRES de variables de entorno, nunca los valores. Este archivo se sube a GitHub. CHARROS_SUPABASE_KEY es la clave secreta del proyecto: solo en el servidor.",
+    "requeridas_real": ["CHARROS_SUPABASE_URL", "CHARROS_SUPABASE_KEY", "CHARROS_TV_TOKEN"]
+  },
+  "tv": {
+    "host": "127.0.0.1",
+    "puerto": 8765,
+    "camaras": [
+      { "id": "cam1", "nombre": "Lienzo: vista general" },
+      { "id": "cam2", "nombre": "Partidero" },
+      { "id": "cam3", "nombre": "Corrales" },
+      { "id": "cam4", "nombre": "Mesa de jueces" }
+    ]
+  }
+}

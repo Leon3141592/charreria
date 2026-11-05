@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "charros-tv",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["charros_tv/tv_server.py"],
+      "port": 8765
+    }
+  ]
+}

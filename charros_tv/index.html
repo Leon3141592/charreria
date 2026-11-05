@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Charros TV</title>
+<style>
+  /* Misma paleta que Charrería Pro */
+  :root {
+    color-scheme: dark;
+    --bg: #0e0a08; --card: #1c1510; --card2: #251b14; --line: #3a2b20;
+    --gold: #d9a84e; --gold2: #f2cd7e; --vino2: #b02a3e; --red: #ef4444; --green: #3fb37f;
+    --text: #f4ece1; --mut: #a8988a; --r: 16px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+  }
+  h1 { margin: 0; font: 800 20px/1.2 Georgia, "Times New Roman", serif; letter-spacing: .04em; color: var(--gold2); }
+  .conexion { color: var(--mut); font-size: 13px; }
+
+  /* Interruptor DEMO / REAL */
+  .modo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; letter-spacing: .06em; }
+  .modo span { color: var(--mut); }
+  .modo span.activo { color: var(--gold2); }
+  body[data-modo="REAL"] .modo span.activo { color: var(--red); }
+  .switch {
+    position: relative; width: 52px; height: 28px; padding: 0; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--card2);
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+    border-radius: 50%; background: var(--gold); transition: transform .18s ease;
+  }
+  .switch[aria-checked="true"] { background: var(--vino2); }
+  .switch[aria-checked="true"]::after { transform: translateX(24px); background: var(--text); }
+  .switch:focus-visible { outline: 2px solid var(--gold2); outline-offset: 2px; }
+  .switch:disabled { opacity: .5; cursor: wait; }
+
+  main {
+    display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px;
+    max-width: 1400px; margin: 0 auto; padding: 16px 20px;
+  }
+  .pantalla {
+    position: relative; overflow: hidden; aspect-ratio: 16 / 9; width: 100%; padding: 0;
+    border: 1px solid var(--line); border-radius: var(--r); background: #000; color: inherit; font: inherit;
+  }
+  .pantalla canvas { display: block; width: 100%; height: 100%; }
+  .etiqueta {
+    position: absolute; left: 10px; bottom: 10px; padding: 3px 9px; border-radius: 8px;
+    background: rgba(14, 10, 8, .78); font-size: 13px; text-align: left;
+  }
+  .senal {
+    position: absolute; top: 10px; right: 10px; padding: 3px 9px; border-radius: 8px;
+    background: rgba(14, 10, 8, .78); font-size: 12px; font-weight: 700;
+  }
+  .senal.en_vivo { color: var(--green); }
+  .senal.simulada { color: var(--gold2); }
+  .senal.sin_senal { color: var(--red); }
+
+  .camaras { display: flex; flex-direction: column; gap: 12px; }
+  .camara { cursor: pointer; border-radius: 12px; }
+  .camara[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+  .camara:focus-visible { outline: 2px solid var(--gold2); outline-offset: 2px; }
+
+  #aviso {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: min(560px, 92vw);
+    padding: 10px 16px; border: 1px solid var(--vino2); border-radius: 12px; background: var(--card);
+  }
+  #aviso[hidden] { display: none; }
+
+  @media (max-width: 860px) {
+    main { grid-template-columns: minmax(0, 1fr); }
+    .camaras { display: grid; grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body data-modo="DEMO">
+  <header>
+    <div>
+      <h1>CHARROS TV</h1>
+      <div class="conexion" id="conexion" role="status">Conectando…</div>
+    </div>
+    <div class="modo">
+      <span id="etqDemo">DEMO</span>
+      <button class="switch" id="switch" role="switch" aria-checked="false" aria-label="Usar modo real"></button>
+      <span id="etqReal">REAL</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="pantalla" aria-label="Programa al aire">
+      <canvas id="programa" width="1280" height="720"></canvas>
+      <div class="etiqueta" id="programaNombre"></div>
+      <div class="senal" id="programaSenal"></div>
+    </section>
+    <aside class="camaras" id="camaras" aria-label="Cámaras"></aside>
+  </main>
+
+  <div id="aviso" role="alert" hidden></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const TEXTO_SENAL = { simulada: 'Señal simulada', en_vivo: 'En vivo', sin_senal: 'Sin señal' };
+
+let estado = { modo: 'DEMO', camaras: [] };
+let seleccion = null;           // cámara que está al aire
+const lienzos = new Map();      // id de cámara -> canvas de su miniatura
+const cuadros = new Map();      // id de cámara -> último cuadro real recibido
+
+/* ---------- Cámaras ---------- */
+
+function pintarCamaras() {
+  const cont = $('camaras');
+  const ids = estado.camaras.map(c => c.id).join();
+  if (cont.dataset.ids !== ids) {          // la lista solo se reconstruye si cambió
+    cont.dataset.ids = ids;
+    cont.replaceChildren();
+    lienzos.clear();
+    for (const cam of estado.camaras) {
+      const boton = document.createElement('button');
+      boton.className = 'pantalla camara';
+      boton.dataset.id = cam.id;
+      boton.addEventListener('click', () => { seleccion = cam.id; pintarCamaras(); });
+      const lienzo = document.createElement('canvas');
+      lienzo.width = 320; lienzo.height = 180;
+      const nombre = document.createElement('div');
+      nombre.className = 'etiqueta';
+      const senal = document.createElement('div');
+      senal.className = 'senal';
+      boton.append(lienzo, nombre, senal);
+      cont.append(boton);
+      lienzos.set(cam.id, lienzo);
+    }
+  }
+  if (!estado.camaras.some(c => c.id === seleccion)) seleccion = estado.camaras[0]?.id ?? null;
+  for (const boton of cont.children) {
+    const cam = estado.camaras.find(c => c.id === boton.dataset.id);
+    boton.setAttribute('aria-pressed', String(cam.id === seleccion));
+    boton.querySelector('.etiqueta').textContent = cam.nombre;
+    pintarSenal(boton.querySelector('.senal'), cam.senal);
+  }
+  const alAire = estado.camaras.find(c => c.id === seleccion);
+  $('programaNombre').textContent = alAire ? alAire.nombre : '';
+  if (alAire) pintarSenal($('programaSenal'), alAire.senal);
+}
+
+function pintarSenal(el, senal) {
+  el.className = 'senal ' + senal;
+  el.textContent = TEXTO_SENAL[senal] ?? senal;
+}
+
+/* ---------- Dibujo ---------- */
+
+// DEMO: un lienzo charro dibujado; la etiqueta deja claro que no es video real.
+function dibujarSimulada(canvas, indice, t) {
+  const g = canvas.getContext('2d'), w = canvas.width, h = canvas.height;
+  g.fillStyle = '#2a1c12'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#6d4a2c'; g.beginPath();
+  g.ellipse(w * .5, h * .62, w * .42, h * .26, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#d9a84e'; g.lineWidth = Math.max(2, w / 300); g.stroke();
+  const a = t / 1400 + indice * 1.6;
+  g.fillStyle = '#f4ece1'; g.beginPath();
+  g.arc(w * .5 + Math.cos(a) * w * .33, h * .62 + Math.sin(a) * h * .18, w * .012, 0, Math.PI * 2);
+  g.fill();
+}
+
+function dibujarSinSenal(canvas) {
+  const g = canvas.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function dibujar(canvas, cam, indice, t) {
+  if (cam.senal === 'simulada') return dibujarSimulada(canvas, indice, t);
+  const cuadro = cuadros.get(cam.id);
+  if (cam.senal === 'en_vivo' && cuadro) {
+    canvas.getContext('2d').drawImage(cuadro, 0, 0, canvas.width, canvas.height);
+  } else {
+    dibujarSinSenal(canvas);
+  }
+}
+
+function animar(t) {
+  estado.camaras.forEach((cam, i) => {
+    const lienzo = lienzos.get(cam.id);
+    if (lienzo) dibujar(lienzo, cam, i, t);
+    if (cam.id === seleccion) dibujar($('programa'), cam, i, t);
+  });
+  requestAnimationFrame(animar);
+}
+
+/* ---------- Conexión con el servidor ---------- */
+
+function aplicarEstado(nuevo) {
+  estado = nuevo;
+  document.body.dataset.modo = nuevo.modo;
+  const real = nuevo.modo === 'REAL';
+  $('switch').setAttribute('aria-checked', String(real));
+  $('etqDemo').classList.toggle('activo', !real);
+  $('etqReal').classList.toggle('activo', real);
+  pintarCamaras();
+}
+
+async function recibirCuadro(buffer) {
+  const datos = new Uint8Array(buffer);
+  const largo = datos[0];
+  const id = new TextDecoder().decode(datos.subarray(1, 1 + largo));
+  try {
+    const imagen = await createImageBitmap(new Blob([datos.subarray(1 + largo)], { type: 'image/jpeg' }));
+    cuadros.get(id)?.close();
+    cuadros.set(id, imagen);
+  } catch { /* cuadro dañado: se ignora y se espera el siguiente */ }
+}
+
+function conectar(espera = 1000) {
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/panel`);
+  ws.binaryType = 'arraybuffer';
+  ws.onopen = () => { espera = 1000; $('conexion').textContent = 'Conectado al servidor'; };
+  ws.onmessage = e => {
+    if (typeof e.data === 'string') aplicarEstado(JSON.parse(e.data));
+    else recibirCuadro(e.data);
+  };
+  ws.onclose = () => {
+    $('conexion').textContent = 'Sin conexión con el servidor. Reintentando…';
+    setTimeout(() => conectar(Math.min(espera * 2, 15000)), espera);
+  };
+}
+
+let temporizadorAviso;
+function avisar(texto) {
+  $('aviso').textContent = texto;
+  $('aviso').hidden = false;
+  clearTimeout(temporizadorAviso);
+  temporizadorAviso = setTimeout(() => { $('aviso').hidden = true; }, 7000);
+}
+
+$('switch').addEventListener('click', async () => {
+  const boton = $('switch');
+  boton.disabled = true;
+  try {
+    const r = await fetch('/api/modo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ modo: estado.modo === 'REAL' ? 'DEMO' : 'REAL' }),
+    });
+    const datos = await r.json();
+    if (r.ok) aplicarEstado(datos); else avisar(datos.error);
+  } catch {
+    avisar('No se pudo hablar con el servidor.');
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+conectar();
+requestAnimationFrame(animar);
+</script>
+</body>
+</html>

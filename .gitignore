@@ -2,3 +2,7 @@
 node_modules/
 dist/
 PENDIENTES.md
+
+# Charros Pro: bitácoras locales y caché de Python
+datos/
+__pycache__/
