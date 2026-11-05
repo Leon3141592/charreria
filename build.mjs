@@ -19,6 +19,7 @@ const build = (dir, cfg) => {
 mkdirSync('docs', { recursive: true });
 writeFileSync('docs/.nojekyll', '');
 cpSync('formatos', 'docs/formatos', { recursive: true });   // formatos oficiales para los PDF de escaramuzas
+cpSync('fotos-demo', 'docs/demo/fotos', { recursive: true });   // imágenes de ejemplo: solo existen en el demo
 build('docs/demo', { MODE: 'demo', SUPABASE_URL: '', SUPABASE_ANON_KEY: '' });
 build('docs/demo/tcg', { MODE: 'demo', SITE: 'tcg', SUPABASE_URL: '', SUPABASE_ANON_KEY: '' });
 
