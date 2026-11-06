@@ -682,7 +682,7 @@ const DB = {
   }
 };
 const fotoMem = {};
-const LS_KEY = 'charreriapro_demo_v24', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v25', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -726,10 +726,11 @@ const Local = {
     const u = State.user; if (!r || r.status !== 'pendiente') throw new Error('Esta solicitud ya fue resuelta');
     if (d === 'cancelado' ? r.createdBy !== u.id : !canDecide(u, r)) throw new Error('No tienes permiso para esta acción');
     await DB.put('requests', { ...r, status: d, decidedBy: u.id, decidedByName: u.name, decidedAt: Date.now() });
-    if (d === 'aprobado' && r.type === 'roster') { const c = DB.get('charros', r.charroId); if (c) await DB.put('charros', { ...c, teamId: r.teamId }); }
+    if (d === 'aprobado' && r.type === 'roster') { const c = DB.get('charros', r.charroId); if (c) await DB.put('charros', { ...c, teamId: c.teamId || r.teamId, teamIds: [...new Set([...equiposDe(c), r.teamId])] }); }
     if (d === 'aprobado' && r.type === 'afiliacion') { const t = DB.get('teams', r.teamId); if (t) await DB.put('teams', { ...t, lienzoId: r.lienzoId, lienzoStatus: 'aprobado' }); }
   },
-  async rosterRemove(c){ await DB.put('charros', { ...c, teamId: null }); },
+  async rosterRemove(c, tid){ const q = equiposDe(c).filter(x => x !== tid); await DB.put('charros', { ...c, teamIds: q, teamId: c.teamId === tid ? q[0] || null : c.teamId }); },
+  async equipoPublico(c, tid){ if (!equiposDe(c).includes(tid)) throw new Error('No perteneces a ese equipo'); await DB.put('charros', { ...c, teamId: tid }); },
   async setVerified(kind, d, decision, note){ const u = State.user;
     if (!canVerify(u, kind, d) || (decision === 'pendiente' && !isSuper(u))) throw new Error('No tienes permiso para verificar este registro');
     await DB.put(VK_TABLE[kind], { ...d, verif: decision, verifKey: decision === 'pendiente' ? null : verifKeyOf(kind, d), verifiedBy: u.id, verifiedByName: u.name, verifiedAt: Date.now(), verifNote: decision === 'rechazado' ? (note || '') : '' }); },
@@ -812,7 +813,8 @@ const Remote = {
   },
   async del(t, id){ const { error } = await this.sb.from(t).delete().eq('id', id); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
   decide(r, d){ return this.rpc('decide_request', { rid: r.id, decision: d }); },
-  rosterRemove(c){ return this.rpc('roster_remove', { cid: c.id }); },
+  rosterRemove(c, tid){ return this.rpc('charro_salir', { cid: c.id, tid }); },
+  equipoPublico(c, tid){ return this.rpc('charro_equipo_publico', { cid: c.id, tid }); },
   setVerified(kind, d, decision, note){ return this.rpc('set_verified', { kind, rid: d.id, decision, note: note || '' }); },
   async putFoto(id, eventId, img, teamId){ const { error } = await this.sb.from('croquis_foto').upsert({ id, data: { id, eventId, teamId, img } }); if (error) throw new Error(error.message.includes('row-level security') ? 'No tienes permiso para esta acción' : error.message); },
   async putDib(row){ const { error } = await this.sb.from('croquis_dib').upsert({ id: row.id, data: row }); if (error) throw new Error(error.message); },
@@ -1038,6 +1040,7 @@ function seed(){
   L[0].admins = ['uvilla2']; L[0].pendientes = ['upublico']; L[0].adminNames = { uvilla2: 'Laura Méndez', upublico: 'Público Demo' };   // uno autorizado y otro por autorizar
   const capCh = CH.find(x => x.name === 'Ernesto Villaseñor'); if (capCh) capCh.userId = 'ucap';   // capitán que también es charro
   CH.push({ id:'hmariana', name:'Mariana Ríos', alias:'', state:'Jalisco', category:'Libre', disciplina:'escaramuza', photo:'', teamId:'qesc', userId:'ucapi', createdAt: Date.now()-90*864e5 });
+  const dosEq = CH.find(x => x.id === 'hfausto'); if (dosEq) { dosEq.teamId = 'q0'; dosEq.teamIds = ['q0', 'q5']; }   // charro en dos equipos
   const esc1 = HS.find(x => x.id === 'cb6'); if (esc1) esc1.discipline = 'Escaramuza';
   // Imágenes del demo: viven en fotos-demo/ y build.mjs las copia a docs/demo/fotos/
   const fotoDemo = n => `demo:${n}.jpg`, hashN = t => [...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -1057,7 +1060,9 @@ const roleName = r => ({ superadmin:'Súper usuario', lienzo:'Lienzo', juez:'Jue
 const OPEN_ROLES = ['publico','charro','escaramuza','equipo','dueno','ganadero'];   // cuentas activas al registrarse; lo oficial lo da una solicitud aprobada
 const myCharro = u => u && DB.all('charros').find(c => c.userId === u.id);
 const myTeam = u => u && DB.all('teams').find(t => t.captainId === u.id);
-const rosterOf = tid => DB.all('charros').filter(c => c.teamId === tid).sort((a, b) => a.name.localeCompare(b.name));
+// teamId es el equipo que el charro muestra al público; teamIds, todos sus equipos oficiales.
+const equiposDe = c => [...new Set([c && c.teamId, ...((c && c.teamIds) || [])].filter(Boolean))];
+const rosterOf = tid => DB.all('charros').filter(c => equiposDe(c).includes(tid)).sort((a, b) => a.name.localeCompare(b.name));
 const TV_TIPOS = { tv_kit: 'el kit de cámaras', tv_sub: 'un lugar en Charros TV' };
 function canDecide(u, r){
   if (!isApproved(u) || !r || r.status !== 'pendiente' || TV_TIPOS[r.type]) return false;   // las de Charros TV se atienden en Admin
@@ -1512,6 +1517,7 @@ function rankingCharros(opt){
     r.pts += p.pts; r.n++; r.best = Math.max(r.best, p.pts); r.evs.add(s.eventId); r.team = s.teamName; if (evm.get(s.eventId).official) r.off = true;
   }));
   if (!opt.suerte) Object.entries(m).forEach(([k, r]) => { const a = adjOf('charro', k); if (a && +a.pts) { r.pts += +a.pts; r.adj = true; } });
+  Object.values(m).forEach(r => { const c = regCharro(r.name), t = c && DB.get('teams', c.teamId); if (t) r.team = t.name; });   // el equipo que eligió mostrar
   return Object.values(m).sort((a, b) => b.pts - a.pts || b.best - a.best);
 }
 /* ---------- TARJETAS COLECCIONABLES ---------- */
@@ -2229,16 +2235,17 @@ function demoBox(){
 }
 function charroSection(u){
   const C = myCharro(u); if (!C) return `<div class="h2">Mi perfil de charro</div><div class="card small mut">No encontramos tu perfil de charro. Contacta al administrador.</div>`;
-  const T = C.teamId && DB.get('teams', C.teamId), pend = DB.all('requests').find(r => r.type === 'roster' && r.charroId === C.id && r.status === 'pendiente');
-  const teams = DB.all('teams').filter(t => t.id !== C.teamId).sort((a, b) => a.name.localeCompare(b.name));
+  const mios = equiposDe(C).map(id => DB.get('teams', id)).filter(Boolean), pend = DB.all('requests').find(r => r.type === 'roster' && r.charroId === C.id && r.status === 'pendiente');
+  const teams = DB.all('teams').filter(t => !equiposDe(C).includes(t.id)).sort((a, b) => a.name.localeCompare(b.name));
   let h = `<div class="h2">Mi perfil de charro</div><div class="card">${photoBox('charro', C.id, C.photo, C.name)}${verifNote('charro', C, 'Lo verifica el súper usuario o el lienzo al que está afiliado tu equipo.')}
     <form data-form="charroEdit" class="mt"><label class="f">Nombre</label><input class="in" name="name" value="${esc(C.name)}" required><label class="f">Apodo (opcional)</label><input class="in" name="alias" value="${esc(C.alias || '')}">
     <div class="grid2"><div><label class="f">Estado</label>${selState(C.state)}</div><div><label class="f">Categoría</label><select class="in" name="category">${CATEGORIAS.map(x => `<option ${x === C.category ? 'selected' : ''}>${x}</option>`).join('')}</select></div></div>
-    <button class="btn block mt">Guardar perfil</button></form><button class="btn ghost block mt" data-act="card" data-n="${esc(C.name)}">${I.trophy} Ver mi tarjeta</button></div><div class="h2">Mi equipo</div><div class="card">`;
-  if (T) h += `<div class="row" style="gap:10px">${av(T.photo, T.name, 44)}<div class="grow"><div style="font-weight:800">${esc(T.name)}</div><div class="small mut">${esc(T.state || '')}${T.lienzoStatus === 'aprobado' ? ' · ' + esc(lienzo(T.lienzoId).name) : ''}</div></div><span class="chip green">${I.check}Oficial</span></div><button class="btn ghost sm block mt" data-act="rosterRm" data-id="${C.id}">Salir del equipo</button>`;
+    <button class="btn block mt">Guardar perfil</button></form><button class="btn ghost block mt" data-act="card" data-n="${esc(C.name)}">${I.trophy} Ver mi tarjeta</button></div><div class="h2">${mios.length > 1 ? 'Mis equipos' : 'Mi equipo'}</div><div class="card">`;
+  if (mios.length > 1) h += `<div class="small mut">Elige qué equipo aparece en tu perfil y tu tarjeta. Sigues siendo parte de todos.</div>`;
+  if (mios.length) h += mios.map(T => `<div class="row mt" style="gap:10px">${av(T.photo, T.name, 44)}<div class="grow"><div style="font-weight:800">${esc(T.name)}</div><div class="small mut">${esc(T.state || '')}${T.lienzoStatus === 'aprobado' ? ' · ' + esc(lienzo(T.lienzoId).name) : ''}</div></div>${T.id === C.teamId ? `<span class="chip green">${I.check}${mios.length > 1 ? 'Público' : 'Oficial'}</span>` : ''}</div><div class="btns" style="margin-top:6px">${T.id !== C.teamId ? `<button class="btn sm" data-act="equipoPublico" data-id="${C.id}" data-t="${esc(T.id)}">Mostrar al público</button>` : ''}<button class="btn ghost sm" data-act="rosterRm" data-id="${C.id}" data-t="${esc(T.id)}">Salir del equipo</button></div>`).join('');
   else if (!pend) h += `<div class="small mut">Aún no eres parte oficial de un equipo. Pide unirte y su capitán, el lienzo o un juez aprobará tu solicitud.</div>`;
   if (pend) h += `<div class="banner warn mt">${I.clock}<span>Tu solicitud para unirte a <b>${esc((DB.get('teams', pend.teamId) || {}).name || 'el equipo')}</b> está en revisión.</span></div><button class="btn ghost sm block mt" data-act="decideReq" data-id="${pend.id}" data-d="cancelado">Cancelar solicitud</button>`;
-  else if (teams.length) h += `<form data-form="joinTeam" class="mt"><label class="f">${T ? 'Cambiarme a otro equipo' : 'Pedir unirme a un equipo'}</label><select class="in" name="teamId" required><option value="">— Elegir equipo —</option>${teams.map(t => `<option value="${t.id}">${esc(t.name)} · ${esc(t.state || '')}</option>`).join('')}</select><button class="btn block mt">Enviar solicitud</button></form>`;
+  else if (teams.length) h += `<form data-form="joinTeam" class="mt"><label class="f">${mios.length ? 'Unirme a otro equipo' : 'Pedir unirme a un equipo'}</label><select class="in" name="teamId" required><option value="">— Elegir equipo —</option>${teams.map(t => `<option value="${t.id}">${esc(t.name)} · ${esc(t.state || '')}</option>`).join('')}</select><button class="btn block mt">Enviar solicitud</button></form>`;
   return h + '</div>';
 }
 function teamSection(u){
@@ -2250,7 +2257,7 @@ function teamSection(u){
   h += `<div class="h2">Lienzo</div><div class="card">` + (L ? `<div style="font-weight:800">${esc(L.name)} ${verifiedMark(L)}</div><div class="small mut">Afiliación aprobada. El lienzo y sus jueces también pueden aprobar charros para tu roster.</div>` : `<div class="small mut">Tu equipo aún no está afiliado a un lienzo.</div>`);
   if (afil) h += `<div class="banner warn mt">${I.clock}<span>Solicitud de afiliación a <b>${esc(lienzo(afil.lienzoId).name)}</b> en revisión.</span></div><button class="btn ghost sm block mt" data-act="decideReq" data-id="${afil.id}" data-d="cancelado">Cancelar solicitud</button>`;
   else if (Ls.length) h += `<form data-form="afiliar" class="mt"><label class="f">${L ? 'Cambiar de lienzo' : 'Pedir afiliación a un lienzo'}</label><select class="in" name="lienzoId" required><option value="">— Elegir lienzo —</option>${Ls.map(l => `<option value="${l.id}">${esc(l.name)} · ${esc(l.state)}</option>`).join('')}</select><button class="btn block mt">Enviar solicitud</button></form>`;
-  h += `</div><div class="h2">Roster oficial<a href="#solicitudes">${nPend ? nPend + ' por revisar' : 'Solicitudes'}</a></div><div class="card pad0">${roster.length ? roster.map(c => `<div class="rank tap" data-act="card" data-n="${esc(c.name)}" role="button" tabindex="0">${av(c.photo, c.name, 36)}<div class="grow"><div style="font-weight:700" class="ell">${esc(c.name)}${c.alias ? ` <span class="small mut">“${esc(c.alias)}”</span>` : ''}</div><div class="small mut">${esc(c.state || '')} · ${esc(c.category || 'Libre')}</div></div><button class="btn ghost sm" data-act="rosterRm" data-id="${c.id}" aria-label="Quitar del equipo">${I.x}</button></div>`).join('') : `<div class="empty small">Aún no hay charros en el roster. Los charros se registran en la app y piden unirse a tu equipo.</div>`}</div>`;
+  h += `</div><div class="h2">Roster oficial<a href="#solicitudes">${nPend ? nPend + ' por revisar' : 'Solicitudes'}</a></div><div class="card pad0">${roster.length ? roster.map(c => `<div class="rank tap" data-act="card" data-n="${esc(c.name)}" role="button" tabindex="0">${av(c.photo, c.name, 36)}<div class="grow"><div style="font-weight:700" class="ell">${esc(c.name)}${c.alias ? ` <span class="small mut">“${esc(c.alias)}”</span>` : ''}</div><div class="small mut">${esc(c.state || '')} · ${esc(c.category || 'Libre')}</div></div><button class="btn ghost sm" data-act="rosterRm" data-id="${c.id}" data-t="${esc(T.id)}" aria-label="Quitar del equipo">${I.x}</button></div>`).join('') : `<div class="empty small">Aún no hay charros en el roster. Los charros se registran en la app y piden unirse a tu equipo.</div>`}</div>`;
   return h;
 }
 function reqText(r){ const c = DB.get('charros', r.charroId), t = DB.get('teams', r.teamId), hz = DB.get('horses', r.horseId);
@@ -2819,7 +2826,7 @@ function scoreAudience(s){   // igual que trg_notif_score() en la base
   const ev = DB.get('events', s.eventId); if (!ev) return []; const t = (ev.teams || []).find(x => x.id === s.teamId) || {}, out = new Set(), add = id => { if (id && id !== s.judgeId) out.add(id); }, L = DB.get('lienzos', ev.lienzoId);
   add(L && L.ownerId);
   if (ev.mode === 'completo') add((DB.get('charros', t.refId) || {}).userId);
-  else if (t.refId) { add((DB.get('teams', t.refId) || {}).captainId); if (ev.mode === 'escaramuza') DB.all('charros').filter(c => c.teamId === t.refId).forEach(c => add(c.userId)); }
+  else if (t.refId) { add((DB.get('teams', t.refId) || {}).captainId); if (ev.mode === 'escaramuza') rosterOf(t.refId).forEach(c => add(c.userId)); }
   (s.parts || []).forEach(p => { const c = (ev.charros || []).find(x => x.id === p.id); if (c) add((DB.get('charros', c.refId) || {}).userId); });
   return [...out];
 }
@@ -3249,9 +3256,10 @@ const ACT = {
   async decideReq(el){ const r = DB.get('requests', el.dataset.id), d = el.dataset.d; if (!r) return;
     if (d === 'rechazado' && r.type !== 'interes' && !(await ask('Rechazar solicitud', 'Quien la envió verá que fue rechazada.', 'Rechazar', true))) return;
     await safe(async () => { const txt = reqText(r); await DB.backend.decide(r, d); await audit('solicitud', `${{ aprobado: 'Aprobó', rechazado: 'Rechazó', cancelado: 'Canceló' }[d]} ${txt}`); }, r.type === 'interes' ? { aprobado: 'Marcado como atendido', rechazado: 'Interés descartado', cancelado: 'Interés retirado' }[d] : r.type === 'transfer' ? 'Transferencia cancelada' : { aprobado: 'Solicitud aprobada', rechazado: 'Solicitud rechazada', cancelado: 'Solicitud cancelada' }[d]); },
-  async rosterRm(el){ const c = DB.get('charros', el.dataset.id); if (!c) return; const self = c.userId === State.user.id, t = DB.get('teams', c.teamId);
+  async equipoPublico(el){ const c = DB.get('charros', el.dataset.id), t = DB.get('teams', el.dataset.t); if (!c || !t) return; await safe(async () => { await DB.backend.equipoPublico(c, t.id); await audit('roster', `${c.name} muestra al público el equipo ${t.name}`); }, 'Equipo público actualizado'); },
+  async rosterRm(el){ const c = DB.get('charros', el.dataset.id); if (!c) return; const self = c.userId === State.user.id, tid = el.dataset.t || c.teamId, t = DB.get('teams', tid);
     if (!(await ask(self ? 'Salir del equipo' : 'Quitar del roster', self ? `Dejarás de ser parte oficial de ${t ? t.name : 'tu equipo'}.` : `${c.name} dejará de ser parte oficial de ${t ? t.name : 'el equipo'}.`, self ? 'Salir' : 'Quitar', true))) return;
-    await safe(async () => { await DB.backend.rosterRemove(c); await audit('roster', self ? `${c.name} salió de ${t ? t.name : 'su equipo'}` : `Quitó a ${c.name} del roster de ${t ? t.name : 'un equipo'}`); }, self ? 'Saliste del equipo' : 'Charro quitado del roster'); },
+    await safe(async () => { await DB.backend.rosterRemove(c, tid); await audit('roster', self ? `${c.name} salió de ${t ? t.name : 'su equipo'}` : `Quitó a ${c.name} del roster de ${t ? t.name : 'un equipo'}`); }, self ? 'Saliste del equipo' : 'Charro quitado del roster'); },
   async photoUrl(el){ const v = await ask('Foto desde internet', 'Pega la dirección de la imagen. Debe empezar con https://', 'Usar foto', false, 'https://…'); if (!v) return;
     if (!safeImg(v) || !/^https:/i.test(v)) return toast('La dirección debe empezar con https:// y no llevar espacios', 'err');
     await safe(() => savePhoto(el.dataset.k, v), 'Foto actualizada'); },
