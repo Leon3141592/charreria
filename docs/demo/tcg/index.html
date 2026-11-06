@@ -612,7 +612,7 @@ const CONFIG = {"APP_NAME":"Charrería Pro","MODE":"demo","SITE":"tcg","SUPABASE
 const TCG = CONFIG.SITE === 'tcg';   // el mismo código sirve Charrería Pro y su sitio satélite CharreríaTCG
 const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
 const CATEGORIAS = ['Libre','Juvenil'];
-const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust','tcg_cards','notifs','horse_rides','croquis'];
+const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust','tcg_cards','notifs','horse_rides','croquis','tcg_mis_cartas','tcg_jugadores','tcg_partidas'];
 RULES.F.escaramuza = { name: 'Rutina de escaramuza', short: 'Escaramuza', inf: [], eq: [] };
 const FN = k => RULES.F[k].name;
 
@@ -682,7 +682,7 @@ const DB = {
   }
 };
 const fotoMem = {};
-const LS_KEY = 'charreriapro_demo_v25', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v26', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -711,6 +711,7 @@ const Local = {
     const id = 'u' + uid(); const prof = await createAccount(id, payload, { passHash: demoHash(pass) });
     this.sessionSet(id); return { profile: prof };
   },
+  tcg(fn, args){ return TcgLocal[fn](args); },
   async lienzoAgregar(lid, correo){ const l = DB.get('lienzos', lid), p = DB.all('profiles').find(x => norm(x.email) === norm(correo)), a = l.admins || [], q = l.pendientes || [];
     if (!p) throw new Error('Esa persona primero debe crear su cuenta'); if (p.id === l.ownerId || a.includes(p.id) || q.includes(p.id)) throw new Error('Ya es parte del lienzo'); if (a.length + q.length >= LIENZO_MAX - 1) throw new Error(`Máximo ${LIENZO_MAX} personas por lienzo`);
     await DB.put('lienzos', { ...l, pendientes: [...q, p.id], adminNames: { ...(l.adminNames || {}), [p.id]: p.name } }); return p.name; },
@@ -796,6 +797,7 @@ const Remote = {
     if (!data.session) return { needsConfirm: true };
     await this.refetch(); return { profile: await this.ensureProfile(data.user) };
   },
+  async tcg(fn, args){ const { data, error } = await this.sb.rpc('tcg_' + fn, args); if (error) throw new Error(error.message); await this.refetch(); return data; },
   async lienzoAgregar(lid, correo){ const { data, error } = await this.sb.rpc('lienzo_agregar', { lid, correo }); if (error) throw new Error(error.message); await this.refetch(); return data; },
   async lienzoDecidir(lid, pid, ok){ const { error } = await this.sb.rpc('lienzo_decidir', { lid, pid, ok }); if (error) throw new Error(error.message); await this.refetch(); },
   async lienzoQuitar(lid, pid){ const { error } = await this.sb.rpc('lienzo_quitar', { lid, pid }); if (error) throw new Error(error.message); await this.refetch(); },
@@ -1042,17 +1044,27 @@ function seed(){
   CH.push({ id:'hmariana', name:'Mariana Ríos', alias:'', state:'Jalisco', category:'Libre', disciplina:'escaramuza', photo:'', teamId:'qesc', userId:'ucapi', createdAt: Date.now()-90*864e5 });
   const dosEq = CH.find(x => x.id === 'hfausto'); if (dosEq) { dosEq.teamId = 'q0'; dosEq.teamIds = ['q0', 'q5']; }   // charro en dos equipos
   const esc1 = HS.find(x => x.id === 'cb6'); if (esc1) esc1.discipline = 'Escaramuza';
+  // Más ejemplares y dueños con carta para llenar la tienda
+  const MAS = ['Azabache','Trueno','Cometa','Gitano','Rocío','Sultán','Lucero del Alba','Tizón','Cascabel','Palomo','Duende','Jilguero','Coyote','Sereno','Perla','Rayo','Barón','Tequila','Mezcal','Rebelde','Valiente','Bravo','Plateado','Sol de Oro','Nube','Cenzontle','Faraón','Tornado','Vendaval','Ocelote'];
+  const COAT = ['Alazán','Tordillo','Moro','Bayo','Palomino','Prieto','Retinto','Grullo'], RAZA = ['Cuarto de milla','Azteca','Criollo','Pura sangre'], SEXO = ['Macho','Hembra','Castrado'];
+  const UX = CH.filter(c => !c.userId); UX.forEach((c, i) => { const id = 'ux' + i; prof(id, c.name, `charro${i}@demo.mx`, 'charro', 'aprobado', null); c.userId = id; });
+  MAS.forEach((n, i) => { const o = UX[i % UX.length]; horse('cx' + i, n, DISCIPLINAS[i % DISCIPLINAS.length], SEXO[i % 3], 4 + i % 12, RAZA[i % 4], COAT[i % 8], `FMCH-${40000 + i}`, o.userId, o.name, true, true, i % 3 === 0); });
   // Imágenes del demo: viven en fotos-demo/ y build.mjs las copia a docs/demo/fotos/
   const fotoDemo = n => `demo:${n}.jpg`, hashN = t => [...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   const FOTO_PERSONA = { 'Ernesto Villaseñor':'charro-1', 'Alberto Fidencio Ramírez':'charro-2', 'Lorenzo Vázquez':'charro-3', 'Gerardo Solís':'charro-4', 'Octavio Rentería':'charro-5', 'Fausto Herrera':'charro-6', 'Rubén Escamilla':'charro-7', 'Mariana Ríos':'escaramuza-1', 'Daniela Ochoa':'escaramuza-2' };
   const retrato = n => fotoDemo(FOTO_PERSONA[n] || (/\b(Ana|Mariana|Daniela|Lucía|Fernanda)\b/.test(n) ? `mujer-${hashN(n) % 6 + 1}` : `hombre-${hashN(n) % 12 + 1}`));
   const FOTO_EQUIPO = { q0:'equipo-1', q1:'equipo-2', q2:'equipo-3', q3:'equipo-4', q4:'equipo-5', q5:'equipo-6', qesc:'escaramuza-1', qesc2:'escaramuza-2' }, FOTO_LIENZO = { lvilla:'lienzo-villa', lstm:'lienzo-santa-maria', lherr:'lienzo-herradero' };
   const FOTO_CABALLO = { cb1:'lucero', cb2:'relampago', cb3:'canelo', cb4:'tormenta', cb5:'el-moro', cb6:'centella', cb7:'diamante' }, FOTO_GANADO = { s1:'el-diablo', s2:'toros-terna', s3:'yeguas', s4:'la-guera', s5:'novillos' };
-  HS.forEach(x => { if (FOTO_CABALLO[x.id]) x.photo = fotoDemo(FOTO_CABALLO[x.id]); }); ST.forEach(x => { if (FOTO_GANADO[x.id]) x.photo = fotoDemo(FOTO_GANADO[x.id]); });
+  HS.forEach((x, i) => { x.photo = fotoDemo(FOTO_CABALLO[x.id] || `caballo-${i % 12 + 1}`); }); ST.forEach(x => { if (FOTO_GANADO[x.id]) x.photo = fotoDemo(FOTO_GANADO[x.id]); });
   CH.forEach(x => { x.photo = retrato(x.name); }); T.forEach((x, i) => { x.photo = fotoDemo(FOTO_EQUIPO[x.id] || `escudo-${i % 6 + 1}`); });
   L.forEach(x => { if (FOTO_LIENZO[x.id]) x.photo = fotoDemo(FOTO_LIENZO[x.id]); }); RA.forEach((x, i) => { x.photo = fotoDemo(`ganaderia-${i % 2 + 1}`); });
   P.forEach(x => { const l = L.findIndex(y => y.ownerId === x.id); x.photo = l >= 0 ? L[l].photo : retrato(x.name); });
-  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, croquis:CR, notifs:N, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }] };
+  // Todos los charros, caballos y ganado por unidad del demo tienen carta: dueño con Pro, autorización y registro oficial.
+  const conCarta = id => { const p = P.find(x => x.id === id); if (p) Object.assign(p, { subscriptionStatus: 'pro', proUntil: Date.now() + 90 * 864e5, tcgConsent: { at: Date.now(), v: TCG_CONSENT_V } }); };
+  const oficial = (kind, d) => { d.verif = 'oficial'; d.verifKey = verifKeyOf(kind, d); };
+  CH.forEach(c => { if (c.userId) { conCarta(c.userId); oficial('charro', c); } }); HS.forEach(x => { conCarta(x.ownerId); oficial('horse', x); }); ST.filter(x => x.mode === 'unidad').forEach(x => { conCarta(x.ownerId); oficial('stock', x); });
+  const JG = P.filter(x => x.role === 'charro').slice(0, 12).map((x, i) => ({ id: x.id, name: x.name, partidas: 40 - i * 3, victorias: 24 - i * 2, puntos: 180 - i * 13, dia: '', premiosDia: 0 }));
+  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, croquis:CR, notifs:N, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }, { id:'tcg_banco', plata:100, oro:50 }], tcg_jugadores:JG, tcg_mis_cartas:[], tcg_partidas:[] };
 }
 
 /* ------------------------- LÓGICA ------------------------- */
@@ -1593,33 +1605,193 @@ function tcgCardHTML(c){
   if (c.kind === 'horse') { const d = DB.get('horses', c.refId); return d ? horseCardHTML(d, horseStats(d)) : ''; }
   const d = DB.get('stock', c.refId); return d ? stockCardHTML(d) : '';
 }
+/* ---------- JUEGO DE CHARRERÍATCG ----------
+   Reglas iguales a tcg_jugar() en actualizacion_juego_tcg.sql. Si cambia una, cambia la otra.
+   Contra la IA se juega en el navegador; las partidas en línea y los premios se deciden en el servidor. */
+const JC = [{"id": "c01", "tipo": "charro", "nombre": "Pancho Novato", "tier": "basica", "reata": 3, "rienda": 3, "jineteo": 2}, {"id": "c02", "tipo": "charro", "nombre": "Lupe Aprendiz", "tier": "basica", "reata": 3, "rienda": 2, "jineteo": 3}, {"id": "c03", "tipo": "charro", "nombre": "Toñito Rancho", "tier": "basica", "reata": 2, "rienda": 3, "jineteo": 3}, {"id": "c04", "tipo": "charro", "nombre": "Beto Corral", "tier": "basica", "reata": 4, "rienda": 2, "jineteo": 2}, {"id": "c05", "tipo": "charro", "nombre": "Ramón Potrero", "tier": "basica", "reata": 2, "rienda": 4, "jineteo": 2}, {"id": "c06", "tipo": "charro", "nombre": "Goyito Silla", "tier": "basica", "reata": 2, "rienda": 2, "jineteo": 4}, {"id": "c07", "tipo": "charro", "nombre": "Chente Campo", "tier": "basica", "reata": 3, "rienda": 3, "jineteo": 3}, {"id": "c08", "tipo": "charro", "nombre": "Nacho Lazada", "tier": "basica", "reata": 4, "rienda": 3, "jineteo": 1}, {"id": "c09", "tipo": "charro", "nombre": "Memín Soga", "tier": "basica", "reata": 3, "rienda": 4, "jineteo": 1}, {"id": "c10", "tipo": "charro", "nombre": "Julián Cerca", "tier": "basica", "reata": 1, "rienda": 3, "jineteo": 4}, {"id": "c11", "tipo": "charro", "nombre": "Rafa Establo", "tier": "basica", "reata": 3, "rienda": 2, "jineteo": 3}, {"id": "c12", "tipo": "charro", "nombre": "Tacho Pastura", "tier": "basica", "reata": 2, "rienda": 3, "jineteo": 3}, {"id": "c13", "tipo": "charro", "nombre": "Chuy Lazadas", "tier": "bronce", "reata": 6, "rienda": 4, "jineteo": 2}, {"id": "c14", "tipo": "charro", "nombre": "Toño Rienditas", "tier": "bronce", "reata": 3, "rienda": 6, "jineteo": 3}, {"id": "c15", "tipo": "charro", "nombre": "Memo Aguante", "tier": "bronce", "reata": 2, "rienda": 4, "jineteo": 6}, {"id": "c16", "tipo": "charro", "nombre": "Paco Pialín", "tier": "bronce", "reata": 6, "rienda": 3, "jineteo": 3}, {"id": "c17", "tipo": "charro", "nombre": "Lalo Galope", "tier": "bronce", "reata": 4, "rienda": 6, "jineteo": 2}, {"id": "c18", "tipo": "charro", "nombre": "Rudy Montado", "tier": "bronce", "reata": 3, "rienda": 3, "jineteo": 6}, {"id": "c19", "tipo": "charro", "nombre": "Nico Soguilla", "tier": "bronce", "reata": 5, "rienda": 4, "jineteo": 3}, {"id": "c20", "tipo": "charro", "nombre": "Beto Estribo", "tier": "bronce", "reata": 4, "rienda": 5, "jineteo": 3}, {"id": "c21", "tipo": "charro", "nombre": "Quique Brinco", "tier": "bronce", "reata": 4, "rienda": 3, "jineteo": 5}, {"id": "c22", "tipo": "charro", "nombre": "Tavo Parejo", "tier": "bronce", "reata": 4, "rienda": 4, "jineteo": 4}, {"id": "c23", "tipo": "charro", "nombre": "Lencho Reatazo", "tier": "plata", "reata": 8, "rienda": 4, "jineteo": 3}, {"id": "c24", "tipo": "charro", "nombre": "Chema Espuela", "tier": "plata", "reata": 4, "rienda": 8, "jineteo": 3}, {"id": "c25", "tipo": "charro", "nombre": "Goyo Bronco", "tier": "plata", "reata": 3, "rienda": 4, "jineteo": 8}, {"id": "c26", "tipo": "charro", "nombre": "Santi Floreo", "tier": "plata", "reata": 7, "rienda": 5, "jineteo": 3}, {"id": "c27", "tipo": "charro", "nombre": "Mateo Freno", "tier": "plata", "reata": 5, "rienda": 7, "jineteo": 3}, {"id": "c28", "tipo": "charro", "nombre": "Ramiro Toretes", "tier": "plata", "reata": 3, "rienda": 5, "jineteo": 7}, {"id": "c29", "tipo": "charro", "nombre": "Fermín Cabal", "tier": "plata", "reata": 5, "rienda": 5, "jineteo": 5}, {"id": "c30", "tipo": "charro", "nombre": "Nacho Ligero", "tier": "plata", "reata": 6, "rienda": 6, "jineteo": 3}, {"id": "c31", "tipo": "charro", "nombre": "El Zurdo de la Loma", "tier": "oro", "reata": 9, "rienda": 5, "jineteo": 4}, {"id": "c32", "tipo": "charro", "nombre": "Don Crispín", "tier": "oro", "reata": 5, "rienda": 9, "jineteo": 4}, {"id": "c33", "tipo": "charro", "nombre": "Tiburcio Trueno", "tier": "oro", "reata": 4, "rienda": 5, "jineteo": 9}, {"id": "c34", "tipo": "charro", "nombre": "El Güero Sogas", "tier": "oro", "reata": 8, "rienda": 6, "jineteo": 4}, {"id": "c35", "tipo": "charro", "nombre": "Rosendo Valiente", "tier": "oro", "reata": 6, "rienda": 6, "jineteo": 6}, {"id": "c36", "tipo": "charro", "nombre": "Don Maximino", "tier": "oro", "reata": 8, "rienda": 7, "jineteo": 6}, {"id": "h01", "tipo": "caballo", "nombre": "Prieto", "tier": "basica", "rienda": 1, "reata": 0, "jineteo": 0}, {"id": "h02", "tipo": "caballo", "nombre": "Pinto", "tier": "basica", "rienda": 0, "reata": 1, "jineteo": 0}, {"id": "h03", "tipo": "caballo", "nombre": "Tostado", "tier": "basica", "rienda": 1, "reata": 0, "jineteo": 0}, {"id": "h04", "tipo": "caballo", "nombre": "Rucio", "tier": "basica", "rienda": 0, "reata": 1, "jineteo": 0}, {"id": "h05", "tipo": "caballo", "nombre": "Canelita", "tier": "basica", "rienda": 1, "reata": 1, "jineteo": 0}, {"id": "h06", "tipo": "caballo", "nombre": "Bayito", "tier": "basica", "rienda": 1, "reata": 0, "jineteo": 0}, {"id": "h07", "tipo": "caballo", "nombre": "Canelo Viejo", "tier": "bronce", "rienda": 1, "reata": 1, "jineteo": 0}, {"id": "h08", "tipo": "caballo", "nombre": "Tordillo", "tier": "bronce", "rienda": 2, "reata": 0, "jineteo": 0}, {"id": "h09", "tipo": "caballo", "nombre": "Pinolillo", "tier": "bronce", "rienda": 0, "reata": 2, "jineteo": 0}, {"id": "h10", "tipo": "caballo", "nombre": "Sombra", "tier": "bronce", "rienda": 1, "reata": 1, "jineteo": 0}, {"id": "h11", "tipo": "caballo", "nombre": "Relámpago Bayo", "tier": "plata", "rienda": 3, "reata": 0, "jineteo": 0}, {"id": "h12", "tipo": "caballo", "nombre": "Cuerdas", "tier": "plata", "rienda": 0, "reata": 3, "jineteo": 0}, {"id": "h13", "tipo": "caballo", "nombre": "Mezquite", "tier": "plata", "rienda": 2, "reata": 1, "jineteo": 0}, {"id": "h14", "tipo": "caballo", "nombre": "Alba", "tier": "plata", "rienda": 1, "reata": 2, "jineteo": 0}, {"id": "h15", "tipo": "caballo", "nombre": "Rey de Copas", "tier": "oro", "rienda": 3, "reata": 1, "jineteo": 0}, {"id": "h16", "tipo": "caballo", "nombre": "Tempestad", "tier": "oro", "rienda": 1, "reata": 3, "jineteo": 0}];
+const JCX = Object.fromEntries(JC.map(c => [c.id, c]));
+const JF = [{ n:'Cala de caballo', stat:'rienda', caballo:1, s:1, b:0 }, { n:'Piales en el lienzo', stat:'reata', caballo:1, s:1, b:0 }, { n:'Coleadero', stat:'rienda', caballo:1, s:1, b:0 }, { n:'Jineteo de toro', stat:'jineteo', caballo:0, s:1, b:6 }, { n:'Manganas a pie', stat:'reata', caballo:0, s:1, b:0 }, { n:'Manganas a caballo', stat:'reata', caballo:1, s:1, b:0 }, { n:'Paso de la muerte', stat:'jineteo', caballo:1, s:3, b:7 }];
+const J_SUERTES = [-2,-2,-2,0,0,0,1,1,1,2,2,2,4,4,4,6];
+const J_STAT = { reata:'Reata', rienda:'Rienda', jineteo:'Jineteo' };
+const J_TIER = { basica:'Básica', bronce:'Bronce', plata:'Plata', oro:'Oro' };
+const J_NIVEL = { 1:'Chalán', 2:'Charro', 3:'Charro completo' };
+const jMezcla = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const jCosto = c => ({ plata:2, oro:3 }[c.tier] || 1), jPoder = c => c.reata + c.rienda + c.jineteo;
+const jBono = (h, stat) => h ? h[stat === 'jineteo' ? 'rienda' : stat] : 0;
+const jValor = (c, h, f) => c[f.stat] + jBono(h, f.stat);
+function jMazo(ids){   // 8 charros y 4 caballos, los más fuertes que quepan en un costo de 20
+  const u = [...new Set(ids)].map(i => JCX[i]).filter(Boolean).sort((a, b) => jPoder(b) - jPoder(a));
+  const cs = u.filter(c => c.tipo === 'charro'), hs = u.filter(c => c.tipo === 'caballo');
+  if (cs.length < 8 || hs.length < 4) return null;
+  const m = [...cs.slice(0, 8), ...hs.slice(0, 4)], fuera = [...cs.slice(8), ...hs.slice(4)];
+  while (m.reduce((t, c) => t + jCosto(c), 0) > 20) { m.sort((a, b) => jCosto(b) - jCosto(a) || jPoder(a) - jPoder(b)); const x = m[0], y = fuera.find(c => c.tipo === x.tipo && jCosto(c) < jCosto(x)); if (!y) return null; m[0] = y; fuera.splice(fuera.indexOf(y), 1); }
+  return m.map(c => c.id);
+}
+function jMazoIA(nivel){
+  // La dificultad viene de cómo juega: los mazos son parejos a los de un jugador nuevo, con pocas cartas mejores en el nivel alto.
+  const de = (tier, tipo, n) => jMezcla(JC.filter(c => c.tier === tier && c.tipo === tipo)).slice(0, n).map(c => c.id), extra = nivel === 3 ? 2 : 0;
+  return [...de('bronce', 'charro', extra), ...de('basica', 'charro', 8 - extra), ...de('basica', 'caballo', 4)];
+}
+function jFaena(st){ return JF[st.modo === 'suerte' ? st.faena : st.ronda]; }
+function jFuturo(st){ const out = []; for (let r = st.ronda + 1; r < st.total; r++) out.push(JF[st.modo === 'suerte' ? st.faena : r]); return out; }
+function jIA(st){   // 1: al azar · 2: la mejor carta para esta faena · 3: guarda sus mejores cartas para donde más valen
+  const f = jFaena(st), cs = st.ic.map(i => JCX[i]), hs = st.ih.map(i => JCX[i]), azar = l => l[Math.floor(Math.random() * l.length)];
+  if (st.nivel === 1) return [azar(cs).id, f.caballo && hs.length ? azar(hs).id : null];
+  const fut = st.nivel === 3 ? jFuturo(st) : [], peso = x => fut.reduce((t, g) => t + (x[g.stat] || 0) * g.s, 0) / Math.max(fut.length, 1);
+  const c = cs.slice().sort((a, b) => (b[f.stat] * f.s - peso(b) * .5) - (a[f.stat] * f.s - peso(a) * .5))[0];
+  const h = f.caballo && hs.length ? hs.slice().sort((a, b) => jBono(b, f.stat) - jBono(a, f.stat))[0] : null;
+  return [c.id, h ? h.id : null];
+}
+function jResolver(st, ca, ha, cb, hb){
+  const f = jFaena(st), ua = J_SUERTES[Math.floor(Math.random() * 16)], ub = J_SUERTES[Math.floor(Math.random() * 16)];
+  const ta = jValor(JCX[ca], JCX[ha], f) + ua, tb = jValor(JCX[cb], JCX[hb], f) + ub, oa = ta >= f.b, ob = tb >= f.b, s = st.modo === 'suerte' ? 1 : f.s;
+  const w = oa && !ob ? 'a' : ob && !oa ? 'b' : oa && ob && ta > tb ? 'a' : oa && ob && tb > ta ? 'b' : null;
+  st.bote += s; if (w === 'a') { st.sa += st.bote; st.bote = 0; } if (w === 'b') { st.sb += st.bote; st.bote = 0; }
+  st.log.push({ ronda: st.ronda, ca, ha, cb, hb, ua, ub, ta, tb, w }); st.ronda++;
+}
+const TcgLocal = {
+  yo(){ if (!State.user || !isApproved(State.user)) throw new Error('Inicia sesión para jugar'); return State.user; },
+  async dar(id, cardId, origen){ const m = 'm' + uid(); await DB.put('tcg_mis_cartas', { id: m, ownerId: id, cardId, origen, at: Date.now() }); return cardId; },
+  azar(t){ const l = JC.filter(c => c.tier === t); return l[Math.floor(Math.random() * l.length)].id; },
+  async inicio(){ const u = this.yo(), j = DB.get('tcg_jugadores', u.id); if (j && j.starter) return j;
+    const n = { id: u.id, name: u.name, partidas: 0, victorias: 0, puntos: 0, dia: '', premiosDia: 0, ...j, starter: true }; await DB.put('tcg_jugadores', n);
+    for (const c of [...jMezcla(JC.filter(c => c.tier === 'basica' && c.tipo === 'charro')).slice(0, 8), ...jMezcla(JC.filter(c => c.tier === 'basica' && c.tipo === 'caballo')).slice(0, 4)]) await this.dar(u.id, c.id, 'inicial');
+    return n; },
+  async resultado(id, gano, pts){ const j = DB.get('tcg_jugadores', id); if (!j) return null; const hoy = localISO(Date.now()); let n = j.dia === hoy ? j.premiosDia : 0, c = null;
+    if (n < 6 && (gano || Math.random() < .3)) { c = await this.dar(id, this.azar(gano && Math.random() < .15 ? 'bronce' : 'basica'), 'regalo'); n++; }
+    await DB.put('tcg_jugadores', { ...j, dia: hoy, premiosDia: n, partidas: j.partidas + 1, victorias: j.victorias + (gano ? 1 : 0), puntos: j.puntos + (n < 6 || c ? pts : 0) }); return c; },
+  async premio({ p_gano, p_nivel }){ await this.inicio(); return this.resultado(State.user.id, p_gano, 1 + (p_gano ? p_nivel : 0)); },
+  async crear_partida({ p_modo, p_faena, p_mazo }){ const u = this.yo(); await this.inicio(); const id = 'p' + uid(), codigo = 'RETA-' + uid().slice(0, 8).toUpperCase();
+    await DB.put('tcg_partidas', { id, codigo, modo: p_modo, faena: p_faena, a: u.id, aNombre: u.name, b: null, estado: 'esperando', ronda: 0, mazoA: p_mazo, usadosA: [], usadosB: [], listoA: false, listoB: false, sa: 0, sb: 0, bote: 0, log: [], at: Date.now() }); return id; },
+  async unirse({ p_codigo, p_mazo }){ const u = this.yo(); await this.inicio(); const p = DB.all('tcg_partidas').find(x => x.codigo === String(p_codigo).trim().toUpperCase() && x.estado === 'esperando');
+    if (!p) throw new Error('Código inválido o partida ya iniciada'); if (p.a === u.id) throw new Error('No puedes jugar contra ti mismo');
+    await DB.put('tcg_partidas', { ...p, b: u.id, bNombre: u.name, mazoB: p_mazo, estado: 'jugando' }); return p.id; },
+  async jugar({ p_id, p_c, p_h }){ const u = this.yo(), p = { ...DB.get('tcg_partidas', p_id) }, L = u.id === p.a ? 'A' : u.id === p.b ? 'B' : null; if (!L) throw new Error('No juegas en esta partida'); if (p['listo' + L]) throw new Error('Ya jugaste esta faena');
+    p['listo' + L] = true; p['usados' + L] = [...p['usados' + L], p_c, ...(p_h ? [p_h] : [])]; p['jugada' + L] = [p_c, p_h];
+    if (p.listoA && p.listoB) { p.total = p.modo === 'suerte' ? 3 : 7; p.log = [...p.log]; jResolver(p, p.jugadaA[0], p.jugadaA[1], p.jugadaB[0], p.jugadaB[1]); p.listoA = p.listoB = false; delete p.jugadaA; delete p.jugadaB;
+      if (p.ronda >= p.total) { p.estado = 'fin'; p.ganador = p.sa > p.sb ? p.a : p.sb > p.sa ? p.b : null; await this.resultado(p.a, p.ganador === p.a, p.ganador === p.a ? 10 : 2); await this.resultado(p.b, p.ganador === p.b, p.ganador === p.b ? 10 : 2); } }
+    await DB.put('tcg_partidas', p); },
+  async abandonar({ p_id }){ const u = this.yo(), p = DB.get('tcg_partidas', p_id); if (!p || p.estado === 'fin') return; await DB.put('tcg_partidas', { ...p, estado: 'fin', ganador: u.id === p.a ? p.b : p.a, abandono: u.id }); },
+  async transferir({ p_id }){ const u = this.yo(), k = DB.get('tcg_mis_cartas', p_id); if (!k || k.ownerId !== u.id) throw new Error('Esa carta no es tuya'); const t = JCX[k.cardId].tipo, q = new Set(jMias(u).filter(x => x.id !== k.id && JCX[x.cardId].tipo === t).map(x => x.cardId)); if (q.size < (t === 'charro' ? 8 : 4)) throw new Error('Necesitas conservar 8 charros y 4 caballos distintos para jugar'); const codigo = 'CARTA-' + uid().slice(0, 8).toUpperCase(); await DB.put('tcg_mis_cartas', { ...k, codigo }); return codigo; },
+  async recibir({ p_codigo }){ const u = this.yo(); await this.inicio(); const c = String(p_codigo).trim().toUpperCase(), k = DB.all('tcg_mis_cartas').find(x => x.codigo === c);
+    if (k) { if (k.ownerId === u.id) throw new Error('Esa carta ya es tuya'); const { codigo, ...r } = k; await DB.put('tcg_mis_cartas', { ...r, ownerId: u.id, origen: 'intercambio' }); return k.cardId; }
+    const s = (DB.get('settings', 'tcg_codigos') || { id: 'tcg_codigos', lista: {} }), x = s.lista[c]; if (!x || x.usado) throw new Error('Código inválido o ya usado');
+    await DB.put('settings', { ...s, lista: { ...s.lista, [c]: { ...x, usado: true } } }); return this.dar(u.id, x.cardId, 'impresa'); },
+  async crear_codigo({ p_carta }){ if (!isSuper(State.user)) throw new Error('Solo el súper usuario'); const c = 'REAL-' + uid().slice(0, 8).toUpperCase(), s = (DB.get('settings', 'tcg_codigos') || { id: 'tcg_codigos', lista: {} }); await DB.put('settings', { ...s, lista: { ...s.lista, [c]: { cardId: p_carta, usado: false } } }); return c; },
+  async repartir({ p_plata, p_oro }){ if (!isSuper(State.user)) throw new Error('Solo el súper usuario'); const b = jBanco(), pl = Math.min(p_plata, b.plata), ou = Math.min(p_oro, b.oro); let dp = 0, d = 0;
+    for (const j of jRanking().slice(0, Math.max(pl, ou))) { if (dp < pl) { await this.dar(j.id, this.azar('plata'), 'premio'); dp++; } if (d < ou) { await this.dar(j.id, this.azar('oro'), 'premio'); d++; } }
+    await DB.put('settings', { ...b, plata: b.plata - dp, oro: b.oro - d }); return { plata: dp, oro: d }; }
+};
+const jBanco = () => DB.get('settings', 'tcg_banco') || { id: 'tcg_banco', plata: 100, oro: 50 };
+const jRanking = () => DB.all('tcg_jugadores').slice().sort((a, b) => b.puntos - a.puntos || b.partidas - a.partidas);
+const jMias = u => u ? DB.all('tcg_mis_cartas').filter(k => k.ownerId === u.id) : [];
+const jTcg = (fn, args = {}) => DB.backend.tcg(fn, args);
+function jCarta(c, n){
+  return `<div class="tc-wrap"><div class="tc ${c.tier === 'basica' ? 'bronce' : c.tier}"><div class="in"><div class="pic"><span style="width:92px;height:92px;color:var(--t1);opacity:.8">${c.tipo === 'caballo' ? I.horse : I.user}</span><div class="ovr"><b>${jPoder(c)}</b><span>Poder</span></div><span class="tier">${J_TIER[c.tier]}</span></div>
+    <div class="band"><div class="nm">${esc(c.nombre)}</div><div class="sb">${c.tipo === 'caballo' ? 'Caballo' : 'Charro'}${n > 1 ? ` · tienes ${n}` : ''}</div></div>
+    <div class="st"><div><b>${c.reata}</b><span>Reata</span></div><div><b>${c.rienda}</b><span>Rienda</span></div><div><b>${c.tipo === 'caballo' ? '—' : c.jineteo}</b><span>Jineteo</span></div></div>
+    <div class="ft"><span>CharreríaTCG</span><span>${esc(c.id.toUpperCase())}</span></div></div></div></div>`;
+}
+function jMarcador(a, b, sa, sb, bote){ return `<div class="card mt"><div class="row between"><div><div class="small mut">${esc(a)}</div><div class="score-big">${sa}</div></div><div class="small mut" style="text-align:center">🤠 sombreros${bote ? `<br>${bote} en juego` : ''}</div><div style="text-align:right"><div class="small mut">${esc(b)}</div><div class="score-big">${sb}</div></div></div></div>`; }
+function jRevela(e, a, b, f){ if (!e) return ''; const nm = i => i ? JCX[i].nombre : '';
+  const lado = (n, c, h, u, t) => `<div class="small"><b>${esc(n)}:</b> ${esc(nm(c))}${h ? ' + ' + esc(nm(h)) : ''} · suerte ${u > 0 ? '+' : ''}${u} · <b style="color:var(--gold2)">${t}</b></div>`;
+  return `<div class="banner ${e.w ? 'ok' : 'warn'} mt"><span>${e.w ? `Ganó ${esc(e.w === 'a' ? a : b)}` : 'Nadie ganó: los sombreros se suman a la siguiente'}${f.b ? ` (había que llegar a ${f.b})` : ''}</span></div><div class="card mt">${lado(a, e.ca, e.ha, e.ua, e.ta)}${lado(b, e.cb, e.hb, e.ub, e.tb)}</div>`; }
+function jMano(cs, hs, f, listo){
+  const S = State.jgSel || (State.jgSel = {}), boton = (c, k) => `<button type="button" data-act="jgSel" data-k="${k}" data-id="${c.id}" style="all:unset;cursor:pointer;display:block;outline:${S[k] === c.id ? '3px solid var(--gold2)' : 'none'};border-radius:12px" aria-pressed="${S[k] === c.id}" aria-label="${esc(c.nombre)}, ${J_STAT[f.stat]} ${k === 'c' ? c[f.stat] : '+' + jBono(c, f.stat)}">${jCarta(c)}</button>`;
+  const orden = (l, g) => l.slice().sort((a, b) => g(b) - g(a));
+  return `<div class="h2">Tu charro · cuenta ${J_STAT[f.stat]}</div><div class="tcg-grid">${orden(cs, c => c[f.stat]).map(c => boton(c, 'c')).join('')}</div>
+    ${f.caballo && hs.length ? `<div class="h2">Tu caballo · suma a ${J_STAT[f.stat === 'jineteo' ? 'rienda' : f.stat]}</div><div class="tcg-grid">${orden(hs, c => jBono(c, f.stat)).map(c => boton(c, 'h')).join('')}</div>` : ''}
+    <button class="btn pri block mt2" style="min-height:56px;font-size:17px;position:sticky;bottom:calc(var(--navh,64px) + 8px)" data-act="${listo}" ${S.c && (!f.caballo || !hs.length || S.h) ? '' : 'disabled'}>Jugar esta faena</button>`;
+}
+function jFaenaHTML(f, r, total, s){ return `<div class="hero mt" style="border-color:var(--line2)"><div class="small mut">Ronda ${r + 1} de ${total}${s ? ` · vale ${s} ${s === 1 ? 'sombrero' : 'sombreros'}` : ''}</div><div class="h1" style="margin-top:6px">${esc(f.n)}</div><div class="sub" style="margin-top:4px">Cuenta ${J_STAT[f.stat]}${f.caballo ? ' con caballo' : ' sin caballo'}${f.b ? `. Hay que llegar a ${f.b}` : ''}.</div><div class="pattern"></div></div>`; }
+function jMesaIA(){
+  const st = State.jg, a = (State.user && State.user.name) || 'Tú', b = `IA ${J_NIVEL[st.nivel]}`;
+  const ult = st.log[st.log.length - 1], fIdx = ult && (st.modo === 'suerte' ? st.faena : ult.ronda);
+  let h = `<div class="row between"><div class="h1">${b}</div><button class="btn ghost sm" data-act="jgSalir">Salir</button></div>` + jMarcador(a, b, st.sa, st.sb, st.bote) + (ult ? jRevela(ult, a, b, JF[fIdx]) : '');
+  if (st.ronda >= st.total) { const g = st.sa > st.sb, e = st.sa === st.sb, c = st.premio && JCX[st.premio];
+    return h + `<div class="hero mt" style="border-color:var(--line2)"><div class="h1">${e ? '¡Empate!' : g ? '¡Ganaste!' : 'Ganó la IA'}</div><div class="sub" style="margin-top:6px">${State.user ? (c ? 'Te llevas esta carta:' : 'Hoy ya no quedan cartas de regalo o esta vez no hubo carta.') : 'Crea una cuenta para ganar cartas.'}</div><div class="pattern"></div></div>${c ? `<div class="mt">${jCarta(c)}</div>` : ''}<button class="btn pri block mt2" data-act="jgOtra">Jugar otra vez</button>`; }
+  const f = jFaena(st); return h + jFaenaHTML(f, st.ronda, st.total, st.modo === 'suerte' ? 1 : f.s) + jMano(st.c.map(i => JCX[i]), st.h.map(i => JCX[i]), f, 'jgJugar');
+}
+function jMesaOn(){
+  const p = DB.get('tcg_partidas', State.jgOn), u = State.user; if (!p) { State.jgOn = null; return vJuego(); }
+  const yoA = u.id === p.a, L = yoA ? 'A' : 'B', a = p.aNombre, b = p.bNombre || 'Esperando rival', total = p.modo === 'suerte' ? 3 : 7;
+  clearTimeout(State.jgT); if (p.estado !== 'fin') State.jgT = setTimeout(async () => { if (State.route !== 'juego' || !State.jgOn) return; if (DB.backend.refetch) await DB.backend.refetch(); render(); }, 3000);
+  let h = `<div class="row between"><div class="h1">Partida en línea</div><button class="btn ghost sm" data-act="jgDejar">${p.estado === 'fin' ? 'Salir' : 'Abandonar'}</button></div>`;
+  if (p.estado === 'esperando') return h + `<div class="card mt" style="text-align:center"><div class="small mut">Comparte este código con tu rival</div><div class="score-big" style="font-size:26px;margin-top:8px">${esc(p.codigo)}</div><div class="small mut mt">Esperando a que entre…</div></div>`;
+  const ult = p.log[p.log.length - 1], fi = ult && (p.modo === 'suerte' ? p.faena : ult.ronda);
+  h += jMarcador(a, b, p.sa, p.sb, p.bote) + (ult ? jRevela(ult, a, b, JF[fi]) : '');
+  if (p.estado === 'fin') return h + `<div class="hero mt" style="border-color:var(--line2)"><div class="h1">${!p.ganador ? '¡Empate!' : p.ganador === u.id ? '¡Ganaste!' : 'Ganó tu rival'}</div><div class="sub" style="margin-top:6px">${p.abandono ? 'La partida terminó por abandono. ' : ''}Revisa si ganaste carta en Mis cartas.</div><div class="pattern"></div></div>`;
+  const f = JF[p.modo === 'suerte' ? p.faena : p.ronda], usados = p['usados' + L], m = p['mazo' + L].filter(i => !usados.includes(i)).map(i => JCX[i]);
+  h += jFaenaHTML(f, p.ronda, total, p.modo === 'suerte' ? 1 : f.s);
+  return h + (p['listo' + L] ? `<div class="card mt small mut" style="text-align:center">Ya jugaste. Esperando a tu rival…</div>` : jMano(m.filter(c => c.tipo === 'charro'), m.filter(c => c.tipo === 'caballo'), f, 'jgOnJugar'));
+}
+function vJuego(){
+  if (State.jg) return jMesaIA(); if (State.jgOn) return jMesaOn();
+  const u = State.user, modo = State.jgModo || 'charreada', nivel = State.jgNivel || 1, faena = +(State.jgFaena || 0), R = jRanking().slice(0, 10), abiertas = u ? DB.all('tcg_partidas').filter(p => p.estado !== 'fin' && [p.a, p.b].includes(u.id)) : [];
+  const seg = (k, v, l) => `<button class="${k ? 'on' : ''}" data-act="jgOpc" data-k="${v[0]}" data-v="${v[1]}">${l}</button>`;
+  return `<div class="hero" style="border-color:var(--line2)"><div class="h1">La Charreada</div><div class="sub" style="margin-top:6px">Elige charro y caballo en cada faena. Gana quien junte más sombreros.</div><div class="pattern"></div></div>
+    ${u ? '' : `<div class="banner warn mt">${I.info}<span>Puedes jugar sin cuenta. <a href="../#cuenta" style="color:inherit">Entra a tu cuenta</a> para guardar tus cartas y jugar en línea.</span></div>`}
+    <div class="h2">Partida</div><div class="card"><div class="seg">${seg(modo === 'charreada', ['jgModo', 'charreada'], 'Charreada completa')}${seg(modo === 'suerte', ['jgModo', 'suerte'], 'Una suerte')}</div>
+      ${modo === 'suerte' ? `<label class="f">Suerte</label><select class="in" data-model="jgFaena">${JF.map((f, i) => `<option value="${i}" ${i === faena ? 'selected' : ''}>${esc(f.n)}</option>`).join('')}</select><div class="small mut2 mt">Tres rondas de la misma suerte.</div>` : '<div class="small mut2 mt">Siete faenas, unos 3 minutos.</div>'}</div>
+    <div class="h2">Contra la computadora</div><div class="card"><div class="seg">${[1, 2, 3].map(n => seg(nivel === n, ['jgNivel', n], J_NIVEL[n])).join('')}</div><button class="btn pri block mt" data-act="jgIA">Jugar contra la IA</button></div>
+    <div class="h2">En línea</div><div class="card">${u ? `<button class="btn block" data-act="jgCrear">Crear partida y compartir código</button><form data-form="jgUnir" class="mt"><label class="f">Unirme con un código</label><div class="row" style="gap:8px"><input class="in" name="codigo" placeholder="RETA-XXXXXXXX" style="text-transform:uppercase" required><button class="btn sm" style="min-height:46px">Entrar</button></div></form>${abiertas.map(p => `<button class="btn ghost block mt" data-act="jgVolver" data-id="${esc(p.id)}">Volver a tu partida ${esc(p.codigo)}</button>`).join('')}` : '<div class="small mut">Necesitas una cuenta para jugar en línea.</div>'}</div>
+    <div class="h2">Mejores jugadores</div>${R.length ? `<div class="card pad0">${R.map((j, i) => `<div class="rank"><b style="min-width:24px">${i + 1}</b><div class="grow"><div class="ell" style="font-weight:700">${esc(j.name)}</div><div class="small mut">${j.victorias} victorias · ${j.partidas} partidas</div></div><div class="pts">${j.puntos}<small>pts</small></div></div>`).join('')}</div>` : '<div class="card small mut">Aún no hay jugadores.</div>'}
+    <div class="small mut2 mt">Quedan ${jBanco().plata} cartas de plata y ${jBanco().oro} de oro para los mejores jugadores.</div>`;
+}
+function vColeccion(){
+  const u = State.user; if (!u) return `<div class="h1">Mis cartas</div>` + emptyState(I.trophy, 'Entra para ver tus cartas', 'Tus cartas se guardan en tu cuenta.', `<a class="btn pri" href="../#cuenta">Entrar</a>`);
+  const K = jMias(u), g = {}; K.forEach(k => { (g[k.cardId] = g[k.cardId] || []).push(k); });
+  const orden = Object.keys(g).sort((a, b) => jPoder(JCX[b]) - jPoder(JCX[a])), n = K.length;
+  return `<div class="h1">Mis cartas</div><div class="sub" style="margin-top:4px">${n} ${n === 1 ? 'carta' : 'cartas'}. Ganas más jugando; hasta 6 de regalo al día.</div>
+    <div class="h2">Agregar carta</div><form class="card" data-form="jgCanje"><label class="f" style="margin-top:0">Código de carta impresa o de intercambio</label><div class="row" style="gap:8px"><input class="in" name="codigo" placeholder="REAL-XXXXXXXX" style="text-transform:uppercase" required><button class="btn sm" style="min-height:46px">Recibir</button></div></form>
+    ${n ? `<div class="h2">Colección</div><div class="tcg-grid">${orden.map(id => `<div>${jCarta(JCX[id], g[id].length)}${g[id].find(k => k.codigo) ? `<div class="small mt" style="text-align:center;font-family:monospace">${esc(g[id].find(k => k.codigo).codigo)}</div>` : `<button class="btn ghost sm block mt" data-act="jgDarCarta" data-id="${esc(g[id][0].id)}">Intercambiar</button>`}</div>`).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Aún no tienes cartas', 'Juega tu primera partida y recibe tu mazo inicial.', '<a class="btn pri" href="#juego">Jugar</a>')}</div>`}
+    ${isSuper(u) ? `<div class="h2">Administración</div><div class="card"><div class="small mut">Banco: ${jBanco().plata} de plata y ${jBanco().oro} de oro.</div><form data-form="jgReparto" class="mt"><div class="grid2"><div><label class="f">Plata a repartir</label><input class="in" name="plata" type="number" min="0" max="${jBanco().plata}" value="0"></div><div><label class="f">Oro a repartir</label><input class="in" name="oro" type="number" min="0" max="${jBanco().oro}" value="0"></div></div><button class="btn block mt2">Repartir a los mejores jugadores</button></form><form data-form="jgCodigo" class="mt"><label class="f">Crear código de carta impresa</label><select class="in" name="carta">${JC.map(c => `<option value="${c.id}">${esc(c.nombre)} · ${J_TIER[c.tier]}</option>`).join('')}</select><button class="btn block mt">Crear código</button></form></div>` : ''}`;
+}
+async function jPrepararMazo(){
+  const u = State.user; if (!u) return jMazo(JC.filter(c => c.tier === 'basica').map(c => c.id));
+  await jTcg('inicio'); await new Promise(r => setTimeout(r, 0)); return jMazo(jMias(u).map(k => k.cardId));
+}
+const jActs = {
+  jgOpc(el){ State[el.dataset.k] = el.dataset.k === 'jgNivel' ? +el.dataset.v : el.dataset.v; render(); },
+  jgSel(el){ const S = State.jgSel || (State.jgSel = {}); S[el.dataset.k] = el.dataset.id; render(); },
+  async jgIA(){ await safe(async () => { const m = await jPrepararMazo(); if (!m) throw new Error('Tu mazo está incompleto'); const n = State.jgNivel || 1, ia = jMazoIA(n), modo = State.jgModo || 'charreada', es = (l, p) => l.filter(i => i[0] === p);
+    State.jg = { modo, faena: +(State.jgFaena || 0), nivel: n, ronda: 0, total: modo === 'suerte' ? 3 : 7, c: es(m, 'c'), h: es(m, 'h'), ic: es(ia, 'c'), ih: es(ia, 'h'), sa: 0, sb: 0, bote: 0, log: [] }; State.jgSel = {}; render(); }); },
+  async jgJugar(){ const st = State.jg, S = State.jgSel || {}, f = jFaena(st), [ic, ih] = jIA(st); st.c = st.c.filter(i => i !== S.c); st.h = st.h.filter(i => i !== S.h); st.ic = st.ic.filter(i => i !== ic); st.ih = st.ih.filter(i => i !== ih);
+    jResolver(st, S.c, f.caballo ? S.h || null : null, ic, ih); State.jgSel = {}; if (st.ronda >= st.total && State.user) await safe(async () => { st.premio = await jTcg('premio', { p_gano: st.sa > st.sb, p_nivel: st.nivel }); }); render(); window.scrollTo(0, 0); },
+  jgSalir(){ State.jg = null; State.jgSel = {}; render(); }, jgOtra(){ State.jg = null; State.jgSel = {}; render(); },
+  async jgCrear(){ await safe(async () => { const m = await jPrepararMazo(); if (!m) throw new Error('Tu mazo está incompleto'); State.jgOn = await jTcg('crear_partida', { p_modo: State.jgModo || 'charreada', p_faena: +(State.jgFaena || 0), p_mazo: m }); State.jgSel = {}; render(); }); },
+  jgVolver(el){ State.jgOn = el.dataset.id; State.jgSel = {}; render(); },
+  async jgOnJugar(){ const S = State.jgSel || {}; await safe(async () => { await jTcg('jugar', { p_id: State.jgOn, p_c: S.c, p_h: S.h || null }); State.jgSel = {}; render(); window.scrollTo(0, 0); }); },
+  async jgDejar(){ const p = DB.get('tcg_partidas', State.jgOn); if (p && p.estado !== 'fin' && !(await ask('Abandonar partida', 'Tu rival ganará la partida.', 'Abandonar', true))) return; await safe(async () => { if (p && p.estado !== 'fin') await jTcg('abandonar', { p_id: State.jgOn }); State.jgOn = null; render(); }); },
+  async jgDarCarta(el){ await safe(async () => { const c = await jTcg('transferir', { p_id: el.dataset.id }); render(); await ask('Código de intercambio', `Compártelo con quien recibirá la carta: ${c}. Sigue siendo tuya hasta que lo use.`, 'Entendido'); }); }
+};
 function vTienda(){
   const tab = State.tcgTab || '', L = tcgCards().filter(c => !tab || c.kind === tab).sort((a, b) => a.name.localeCompare(b.name, 'es'));
   const tabs = [['', 'Todas'], ['charro', 'Charros'], ['horse', 'Caballos'], ['stock', 'Ganado']];
-  return `<div class="hero" style="border-color:var(--line2)"><div class="h1">Las cartas de la charrería.</div><div class="sub" style="margin-top:8px">Cada carta nace de las puntuaciones reales de Charrería Pro y se actualiza con cada charreada.</div><div class="btns mt2"><a class="btn pri" href="#jugar">Cómo se juega</a></div><div class="pattern"></div></div>
+  return `<div class="hero" style="border-color:var(--line2)"><div class="h1">Las cartas de la charrería.</div><div class="sub" style="margin-top:8px">Cada carta nace de las puntuaciones reales de Charrería Pro y se actualiza con cada charreada.</div><div class="btns mt2"><a class="btn pri" href="#juego">Jugar ahora</a><a class="btn" href="#jugar">Cómo se juega</a></div><div class="pattern"></div></div>
     <div class="btns mt2">${tabs.map(([k, l]) => `<button class="btn sm${k === tab ? ' pri' : ''}" data-act="tcgTab" data-k="${k}">${l}</button>`).join('')}</div>
     ${L.length ? `<div class="tcg-grid">${L.map(c => `<a href="#carta-${c.kind}-${c.refId}" aria-label="Ver carta de ${esc(c.name)}">${tcgCardHTML(c).replace(' id="tcard"', '')}</a>`).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Aún no hay cartas aquí', 'Las cartas aparecen cuando un usuario Pro verificado autoriza la suya.')}</div>`}
-    <div class="footer">CharreríaTCG · Venta de cartas y partidas en línea: próximamente</div>`;
+    <div class="footer">CharreríaTCG · Venta de cartas: próximamente</div>`;
 }
 function vCarta(){
   const kind = State.param, c = tcgCardOf(kind, State.param2), pro = { charro: 'ranking', horse: 'caballos', stock: 'ganado' }[kind] || 'inicio';
   if (!c) return `<a class="back" href="#tienda">${I.arrow} Cartas</a>` + emptyState(I.trophy, 'Esta carta no está disponible', 'Puede que su plan Pro haya terminado o que aún no esté publicada.');
   return `<a class="back" href="#tienda">${I.arrow} Cartas</a><div class="mt">${tcgCardHTML(c)}</div>
-    <div class="card mt"><div style="font-weight:800">Carta oficial</div><div class="small mut">Muy pronto podrás pedirla impresa y jugarla en línea.</div></div>
+    <div class="card mt"><div style="font-weight:800">Carta oficial</div><div class="small mut">Muy pronto podrás pedirla impresa.</div></div>
     <a class="btn block mt" href="../#${pro}">${I.trophy} Ver en Charrería Pro</a>`;
 }
 function vJugar(){
   const li = t => `<div class="upg-li">${I.check}<span>${t}</span></div>`;
-  return `<div class="h1">La Charreada</div><div class="sub" style="margin-top:6px">Dos jugadores, siete faenas y unos 15 minutos. Gana quien junte más sombreros.</div>
-    <div class="h2">En cada faena</div><div class="card">${li('Volteen la faena: dice qué habilidad cuenta y si hay caballo o ganado.')}${li('Cada quien elige en secreto un charro y, si la faena lo pide, un caballo.')}${li('Revelen y saquen una carta de Suerte.')}${li('Sumen habilidad, bono del caballo y Suerte. El total más alto gana los sombreros.')}</div>
-    <div class="h2">Reglas clave</div><div class="card">${li('Cada charro y cada caballo salen una sola vez.')}${li('En el jineteo de toro y en el Paso de la muerte hay que igualar o superar la Bravura del animal.')}${li('Si empatan, los sombreros se suman a la siguiente faena.')}${li('El Paso de la muerte vale 3 sombreros.')}</div>
-    <div class="footer">Reglas de prueba: pueden cambiar antes del lanzamiento.</div>`;
+  return `<div class="h1">La Charreada</div><div class="sub" style="margin-top:6px">Dos jugadores, unos 3 minutos. Gana quien junte más sombreros.</div>
+    <div class="h2">En cada faena</div><div class="card">${li('La faena dice qué habilidad cuenta: Reata, Rienda o Jineteo.')}${li('Eliges en secreto un charro y, si la faena lo pide, un caballo.')}${li('Se suma la habilidad, el bono del caballo y una Suerte al azar.')}${li('El total más alto gana los sombreros.')}</div>
+    <div class="h2">Reglas clave</div><div class="card">${li('Cada carta sale una sola vez por partida.')}${li('En el jineteo hay que llegar a 6 y en el Paso de la muerte a 7.')}${li('Si nadie gana, los sombreros se suman a la siguiente faena.')}${li('El Paso de la muerte vale 3 sombreros.')}</div>
+    <div class="h2">Cartas</div><div class="card">${li('Empiezas con 12 cartas básicas.')}${li('Al ganar recibes una carta; a veces sale de bronce.')}${li('Hay 100 de plata y 50 de oro para los mejores jugadores.')}${li('Tu mazo usa tus mejores 8 charros y 4 caballos, con un tope de 20 para que sea parejo.')}${li('Puedes intercambiar cartas con un código y registrar cartas impresas.')}</div>`;
 }
 function renderTcg(){
-  $('#top').innerHTML = `<a class="brand" href="#tienda"><span class="logo">${I.trophy}</span><b>Charrería <span>TCG</span></b></a>${DB.backend.mode === 'demo' ? '<span class="chip blue">DEMO</span>' : ''}<a class="avatar" href="../#cuenta" aria-label="Cuenta en Charrería Pro"><span style="width:18px;height:18px;display:block">${I.user}</span></a>`;
+  $('#top').innerHTML = `<a class="brand" href="#tienda"><span class="logo">${I.trophy}</span><b>Charrería <span>TCG</span></b></a>${DB.backend.mode === 'demo' ? '<span class="chip blue">DEMO</span>' : ''}<a class="avatar" href="../#cuenta" aria-label="Cuenta en Charrería Pro"><span style="width:18px;height:18px;display:block">${I.user}</span></a><a class="avatar" href="../" aria-label="Cerrar y volver a Charrería Pro" title="Volver a Charrería Pro" style="margin-left:6px;font-size:20px;line-height:1;text-decoration:none">×</a>`;
   const active = State.route === 'carta' ? 'tienda' : State.route;
-  $('#nav').innerHTML = [['#tienda', 'tienda', 'Cartas', I.trophy], ['#jugar', 'jugar', 'Cómo jugar', I.clock], ['../', '', 'Charrería Pro', I.horse]].map(([href, k, l, ic]) => `<a href="${href}" class="${k && active === k ? 'on' : ''}">${ic}<span>${l}</span></a>`).join('');
-  $('#view').className = 'wrap'; $('#view').innerHTML = ({ tienda: vTienda, jugar: vJugar, carta: vCarta }[State.route] || vTienda)();
+  $('#nav').innerHTML = [['#tienda', 'tienda', 'Cartas', I.trophy], ['#juego', 'juego', 'Jugar', I.live], ['#coleccion', 'coleccion', 'Mis cartas', I.shield], ['#jugar', 'jugar', 'Reglas', I.clock], ['../', '', 'Pro', I.horse]].map(([href, k, l, ic]) => `<a href="${href}" class="${k && active === k ? 'on' : ''}">${ic}<span>${l}</span></a>`).join('');
+  $('#view').className = 'wrap'; $('#view').innerHTML = ({ tienda: vTienda, jugar: vJugar, carta: vCarta, juego: vJuego, coleccion: vColeccion }[State.route] || vTienda)();
 }
 /* ---------- CABALLOS ---------- */
 const DISCIPLINAS = ['Cala de caballo','Piales en el lienzo','Coleadero','Jineteo','Terna en el ruedo','Manganas','Paso de la muerte','Escaramuza','Multidisciplina'];
@@ -3200,6 +3372,7 @@ const ACT = {
     if (k === 'equipo') { const name = await ask('Crear mi equipo', 'Escribe el nombre del equipo o escaramuza.', 'Crear', false, 'Nombre del equipo'); if (!name || !name.trim()) return; return safe(async () => { await DB.put('teams', { id: 'q' + uid(), name: name.trim(), state: '', assoc: '', photo: '', captainId: u.id, captainName: u.name, lienzoId: null, lienzoStatus: '', createdAt: Date.now() }); await audit('perfil', `${u.name} creó el equipo ${name.trim()}`); }, 'Equipo creado'); }
     return safe(async () => { State.user = await DB.put('profiles', { ...u, perfiles: [...new Set([...(u.perfiles || []), k])] }); }, 'Perfil agregado'); },
   async tvDone(el){ const r = DB.get('requests', el.dataset.id); if (!r) return; await safe(async () => { await DB.put('requests', { ...r, status: 'atendido', attendedBy: State.user.name, attendedAt: Date.now() }); await audit('charros-tv', `Atendió la solicitud de ${(r.contact || {}).name || r.createdByName}`); }, 'Solicitud atendida'); },
+  ...jActs,
   async kitQuote(el){ const r = DB.get('requests', el.dataset.id); if (!r) return; const v = await ask('Cotizar kit', `Precio total para ${r.targetName}, en pesos mexicanos.`, 'Guardar', false, 'Ej. 1500'); if (!v) return;
     const price = Math.round(Number(String(v).replace(/[$,\s]/g, ''))); if (!(price > 0)) return toast('Escribe un precio mayor a cero', 'err');
     await safe(async () => { await DB.put('requests', { ...r, price, cotizadoAt: Date.now(), cotizadoBy: State.user.name }); await audit('kit', `Cotizó en ${mxn(price)} el kit de ${r.targetName}`); }, 'Cotización guardada'); },
@@ -3383,6 +3556,10 @@ document.addEventListener('submit', async e => {
     return safe(async () => { const st = await DB.backend.registerChip(kind, x, d.uid); await audit('microchip', `Registró el chip ${fmtUid(d.uid)} en ${x.name}`); toast(st === 'validado' ? '¡Carnet validado! El chip coincide con tu kit.' : 'Chip registrado. Queda pendiente de validación.', 'ok'); if (st === 'validado') go('carnet-' + x.id); }); }
   if (k === 'prices') { const n = v => Math.max(0, Math.round(+v || 0)), pro = n(d.pro), kit = n(d.kit), tvKit = n(d.tvKit), tvMes = n(d.tvMes);
     return safe(async () => { await DB.put('settings', { id: 'precios', pro, kit, tvKit, tvMes, updatedAt: Date.now() }); await audit('precios', `Cambió precios: Pro ${mxn(pro)}/mes, kit ${mxn(kit)}, cámaras ${mxn(tvKit)}, Charros TV ${mxn(tvMes)}/mes`); }, 'Precios guardados'); }
+  if (k === 'jgUnir') return safe(async () => { const m = await jPrepararMazo(); if (!m) throw new Error('Tu mazo está incompleto'); State.jgOn = await jTcg('unirse', { p_codigo: d.codigo, p_mazo: m }); State.jgSel = {}; render(); });
+  if (k === 'jgCanje') return safe(async () => { const c = await jTcg('recibir', { p_codigo: d.codigo }); render(); toast(`Recibiste ${JCX[c].nombre}`, 'ok'); });
+  if (k === 'jgCodigo') return safe(async () => { const c = await jTcg('crear_codigo', { p_carta: d.carta }); render(); await ask('Código creado', `Imprímelo con la carta: ${c}`, 'Entendido'); });
+  if (k === 'jgReparto') return safe(async () => { const r = await jTcg('repartir', { p_plata: +d.plata || 0, p_oro: +d.oro || 0 }); render(); toast(`Repartidas ${r.plata} de plata y ${r.oro} de oro`, 'ok'); });
   if (k === 'lienzoAdd') { const lid = f.dataset.l, correo = d.correo.trim().toLowerCase(); return safe(async () => { const nombre = await DB.backend.lienzoAgregar(lid, correo); await audit('equipo', `Pidió agregar a ${nombre} al equipo del lienzo`); }, 'Falta la autorización del súper usuario'); }
   if (k === 'tvPedir') { const u = State.user, tipo = f.dataset.tipo; if (!u || !TV_TIPOS[tipo]) return;
     if (tvPendiente(u, tipo)) return toast('Ya tienes una solicitud en revisión', 'err');

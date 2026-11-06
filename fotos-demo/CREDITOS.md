@@ -22,7 +22,7 @@ Solo se publican en el demo. Antes de usar una imagen en otro lugar, revisa su l
 
 ## Generadas para este proyecto
 
-- hombre-*, mujer-*, escudo-* y ganaderia-*: ilustraciones; no representan a personas reales
+- hombre-*, mujer-*, escudo-*, ganaderia-* y caballo-*: ilustraciones; no representan a personas ni caballos reales
 
 ## Wikimedia Commons (atribución y compartir igual; recortadas y reducidas)
 
