@@ -1380,7 +1380,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 create or replace function public.chip_ok(hid text) returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from horses h where h.id = hid and h.data->>'chipStatus' = 'validado')
+  select exists (select 1 from horses h where h.id = hid and h.data->>'chipStatus' in ('validado', 'pendiente'))
 $$;
 
 drop policy if exists "horse_rides lectura" on public.horse_rides;
