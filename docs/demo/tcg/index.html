@@ -2045,6 +2045,17 @@ function wireCardModal(){
     card.onpointerleave = () => { card.style.transform = ''; };
   }
 }
+/* Giroscopio: la tarjeta abierta se inclina con el celular y el brillo la recorre. La posición inicial es la que traía la persona. */
+(() => { if (!('DeviceOrientationEvent' in window) || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+  let nodo = null, g0 = 0, b0 = 0, g = 0, b = 0, cuadro = 0;
+  const pinta = () => { cuadro = 0; const c = document.getElementById('tcard'); if (!c || c.dataset.quieta) return; const lim = v => Math.max(-1, Math.min(1, v));
+    const x = lim((g - g0) / 25), y = lim((b - b0) / 25); c.style.transform = `rotateY(${(x * 18).toFixed(1)}deg) rotateX(${(-y * 14).toFixed(1)}deg)`; c.style.setProperty('--mx', (50 + x * 50).toFixed(1) + '%'); c.style.setProperty('--my', (40 + y * 50).toFixed(1) + '%'); };
+  addEventListener('deviceorientation', e => { if (e.gamma === null || e.beta === null) return; const c = document.getElementById('tcard'); if (!c) { nodo = null; return; }
+    if (c !== nodo) { nodo = c; g0 = g = e.gamma; b0 = b = e.beta; return; }
+    g += (e.gamma - g) * .25; b += (e.beta - b) * .25; g0 += (g - g0) * .004; b0 += (b - b0) * .004; if (!cuadro) cuadro = requestAnimationFrame(pinta); });
+  // iPhone pide permiso una vez, al tocar para abrir una tarjeta
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') document.addEventListener('click', function pide(e){ if (!e.target.closest('[data-act="card"],[data-act="hcard"],[data-act="scard"],[href^="#carta-"]')) return; document.removeEventListener('click', pide, true); DeviceOrientationEvent.requestPermission().catch(() => {}); }, true);
+})();
 function horseRow(h){ const u = State.user, age = horseAge(h), R = horseStats(h);
   return `<div class="rank tap" data-act="hcard" data-id="${h.id}" role="button" tabindex="0">${av(h.photo, h.name, 44)}<div class="grow"><div class="ell" style="font-weight:700">${esc(h.name)}${featChip('horse', h.id)} ${h.forSale ? '<span class="chip gold" style="padding:1px 7px;font-size:10px">En venta</span>' : ''}${isOfficial('horse', h) ? '' : ' <span class="chip blue" style="padding:1px 7px;font-size:10px">Por verificar</span>'}</div><div class="small mut ell">${esc([h.discipline, age != null ? age + ' años' : '', ownerLabel(h, u)].filter(Boolean).join(' · '))}</div></div><div class="pts" style="font-size:15px">${canSeePrice(h, u) ? mxnK(R.val.value) : '<small>Privado</small>'}</div></div>`; }
 function vCaballos(){
@@ -3501,7 +3512,7 @@ const ACT = {
     await safe(async () => { await DB.put('scores', { id, eventId: ev.id, teamId: team.id, teamName: team.name, faena: 'escaramuza', input: clone(J.d), buenos: r.ejVal + r.adic + r.adEdad + r.puntas, malos: r.infTot, total: r.total, eq: 0, net: r.total, parts: [], judgeId: u.id, judgeName: u.name, createdAt: prev ? prev.createdAt : Date.now(), updatedAt: Date.now(), history: prev ? [...(prev.history || []), { total: prev.total, ts: prev.updatedAt }] : [] });
       await audit(prev ? 'corrige' : 'califica', `${prev ? 'Corrigió' : 'Calificó'} a ${team.name} en “${ev.title}”: ${r.total} pts`); J.dirty = false; }, prev ? 'Corrección publicada' : 'Calificación publicada'); escDraftDel(`${ev.id}-${team.id}-${u.id}`); },
   upgrade(el){ openUpgrade(el.dataset.why || ''); },
-  async cardHD(el){ if (needPro('La tarjeta en alta resolución es una función Pro.')) return; await safe(() => downloadNode($('#tcard'), `tarjeta-${slug(el.dataset.n)}.png`), 'Tarjeta descargada'); },
+  async cardHD(el){ if (needPro('La tarjeta en alta resolución es una función Pro.')) return; const c = $('#tcard'); c.dataset.quieta = '1'; c.style.transform = ''; await safe(() => downloadNode(c, `tarjeta-${slug(el.dataset.n)}.png`), 'Tarjeta descargada'); delete c.dataset.quieta; },
   report(el){ if (needPro('Los reportes en PDF son una función Pro.')) return; openReport(el.dataset.k, el.dataset.id); },
   async lienzoDecidir(el){ const l = DB.get('lienzos', el.dataset.l), id = el.dataset.id, ok = !!el.dataset.ok, n = ((l || {}).adminNames || {})[id] || 'Integrante'; if (!l || !isSuper(State.user)) return; await safe(async () => { await DB.backend.lienzoDecidir(l.id, id, ok); await audit('equipo', `${ok ? 'Autorizó' : 'Rechazó'} a ${n} en ${l.name}`); }, ok ? 'Integrante autorizado' : 'Solicitud rechazada'); },
   async lienzoQuitar(el){ const l = DB.get('lienzos', el.dataset.l), id = el.dataset.id, n = ((l || {}).adminNames || {})[id] || 'Integrante'; if (!l || !(await ask('Quitar del lienzo', `${n} ya no podrá hacer cambios en este lienzo.`, 'Quitar', true))) return; await safe(async () => { await DB.backend.lienzoQuitar(l.id, id); await audit('equipo', `Quitó a ${n} del equipo del lienzo`); }, 'Persona quitada'); },
