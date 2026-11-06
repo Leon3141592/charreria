@@ -682,7 +682,7 @@ const DB = {
   }
 };
 const fotoMem = {};
-const LS_KEY = 'charreriapro_demo_v21', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v24', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -711,6 +711,11 @@ const Local = {
     const id = 'u' + uid(); const prof = await createAccount(id, payload, { passHash: demoHash(pass) });
     this.sessionSet(id); return { profile: prof };
   },
+  async lienzoAgregar(lid, correo){ const l = DB.get('lienzos', lid), p = DB.all('profiles').find(x => norm(x.email) === norm(correo)), a = l.admins || [], q = l.pendientes || [];
+    if (!p) throw new Error('Esa persona primero debe crear su cuenta'); if (p.id === l.ownerId || a.includes(p.id) || q.includes(p.id)) throw new Error('Ya es parte del lienzo'); if (a.length + q.length >= LIENZO_MAX - 1) throw new Error(`Máximo ${LIENZO_MAX} personas por lienzo`);
+    await DB.put('lienzos', { ...l, pendientes: [...q, p.id], adminNames: { ...(l.adminNames || {}), [p.id]: p.name } }); return p.name; },
+  async lienzoDecidir(lid, pid, ok){ const l = DB.get('lienzos', lid), q = (l.pendientes || []).filter(x => x !== pid), n = { ...(l.adminNames || {}) }; if (!ok) delete n[pid]; await DB.put('lienzos', { ...l, pendientes: q, admins: ok ? [...(l.admins || []), pid] : (l.admins || []), adminNames: n }); },
+  async lienzoQuitar(lid, pid){ const l = DB.get('lienzos', lid), n = { ...(l.adminNames || {}) }; delete n[pid]; await DB.put('lienzos', { ...l, admins: (l.admins || []).filter(x => x !== pid), pendientes: (l.pendientes || []).filter(x => x !== pid), adminNames: n }); },
   async logout(){ this.sessionSet(null); },
   async requestReset(email){   // en la demo no hay correos: se abre directo la pantalla del enlace
     const p = DB.all('profiles').find(x => norm(x.email) === norm(email));
@@ -790,6 +795,9 @@ const Remote = {
     if (!data.session) return { needsConfirm: true };
     await this.refetch(); return { profile: await this.ensureProfile(data.user) };
   },
+  async lienzoAgregar(lid, correo){ const { data, error } = await this.sb.rpc('lienzo_agregar', { lid, correo }); if (error) throw new Error(error.message); await this.refetch(); return data; },
+  async lienzoDecidir(lid, pid, ok){ const { error } = await this.sb.rpc('lienzo_decidir', { lid, pid, ok }); if (error) throw new Error(error.message); await this.refetch(); },
+  async lienzoQuitar(lid, pid){ const { error } = await this.sb.rpc('lienzo_quitar', { lid, pid }); if (error) throw new Error(error.message); await this.refetch(); },
   async logout(){ await this.sb.auth.signOut(); await this.refetch(); },
   async requestReset(email){
     const { error } = await this.sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
@@ -837,12 +845,12 @@ async function createAccount(id, pl, extra){
     status = 'aprobado'; if (inv && inv.lienzoId) lienzoId = inv.lienzoId;
   }
   if (role === 'lienzo') lienzoId = 'l' + uid();
-  const prof = { id, name: pl.name, email: pl.email, phone: pl.phone || '', role, status, lienzoId, invite: pl.invite || null, createdAt: Date.now(), ...extra };
+  const prof = { id, name: pl.name, email: pl.email, phone: pl.phone || '', role, status, lienzoId, invite: pl.invite || null, termsAt: pl.termsAt || null, termsV: pl.termsV || null, createdAt: Date.now(), ...extra };
   await DB.put('profiles', prof);
   if (role === 'lienzo') await DB.put('lienzos', { id: lienzoId, name: pl.lienzoName, city: pl.city, state: pl.state, ownerId: id, status, createdAt: Date.now() });
   if (inv && DB.backend.mode === 'demo') await DB.put('invites', { ...inv, used: true, usedBy: id, usedAt: Date.now() });
   if (role === 'charro') { const cid = 'h' + uid();
-    await DB.put('charros', { id: cid, name: pl.name, alias: pl.alias || '', state: pl.state, category: pl.category || 'Libre', photo: '', teamId: null, userId: id, createdAt: Date.now() });
+    await DB.put('charros', { id: cid, name: pl.name, alias: pl.alias || '', state: pl.state, category: pl.category || 'Libre', disciplina: pl.disciplina || 'charreria', photo: '', teamId: null, userId: id, createdAt: Date.now() });
     if (pl.teamReq) await DB.put('requests', { id: 'r' + uid(), type: 'roster', charroId: cid, teamId: pl.teamReq, status: 'pendiente', createdBy: id, createdAt: Date.now() }); }
   if (role === 'ganadero') await DB.put('ranches', { id: 'g' + uid(), name: pl.ranchName, ownerId: id, ownerName: pl.name, state: pl.state, city: pl.city || '', location: '', whatsapp: pl.whatsapp || '', phone: pl.phone || '', about: '', photo: '', createdAt: Date.now() });
   if (role === 'equipo') { const tid = 'q' + uid();
@@ -969,6 +977,8 @@ function seed(){
     ch.forEach((n, k) => CH.push({ id: `h${i}x${k}`, name: n, alias: '', state, category: 'Libre', photo: '', teamId: id, userId: null, createdAt: Date.now() - 150*864e5 })); });
   prof('ucap','Ernesto Villaseñor','capitan@demo.mx','equipo','aprobado',null);
   prof('ucap2','Octavio Rentería','alazanes@demo.mx','equipo','aprobado',null);
+  prof('upublico','Público Demo','publico@demo.mx','publico','aprobado',null);
+  prof('uvilla2','Laura Méndez','villa2@demo.mx','publico','aprobado',null);
   prof('ucharro','Fausto Herrera','charro@demo.mx','charro','aprobado',null);
   prof('udueno','Gabriel Montaño','dueno@demo.mx','dueno','aprobado',null);
   CH.push({ id:'hfausto', name:'Fausto Herrera', alias:'El Güero', state:'Ciudad de México', category:'Libre', photo:'', teamId:null, userId:'ucharro', createdAt: Date.now()-3*864e5 });
@@ -1025,6 +1035,10 @@ function seed(){
   const N = [...['uvilla', 'ujuez'].map(u => ({ id: `cro~eescp-z1~${u}`, kind: 'croquis', userId: u, eventId: 'eescp', teamId: 'z1', teamName: ESCS[1][0], evTitle: prox.title, at: Date.now() - 864e5, read: false })),
     ...S.filter(x => x.eventId === 'eescv' && x.teamId === 'z0').slice(0, 1).map(x => ({ id: `${x.id}~ucapi`, userId: 'ucapi', scoreId: x.id, eventId: x.eventId, teamId: x.teamId, faena: x.faena, teamName: x.teamName, net: x.net, judgeName: x.judgeName, evTitle: 'Torneo de Escaramuzas Bicentenario', at: Date.now() - 36e5, read: false }))];
   E.forEach(e => { if (e.mode === 'equipos') e.teams.forEach(x => { const o = T.find(y => y.name === x.name); if (o) x.refId = o.id; }); (e.charros || []).forEach(c => { const o = CH.find(y => y.name === c.name); if (o) c.refId = o.id; }); });
+  L[0].admins = ['uvilla2']; L[0].pendientes = ['upublico']; L[0].adminNames = { uvilla2: 'Laura Méndez', upublico: 'Público Demo' };   // uno autorizado y otro por autorizar
+  const capCh = CH.find(x => x.name === 'Ernesto Villaseñor'); if (capCh) capCh.userId = 'ucap';   // capitán que también es charro
+  CH.push({ id:'hmariana', name:'Mariana Ríos', alias:'', state:'Jalisco', category:'Libre', disciplina:'escaramuza', photo:'', teamId:'qesc', userId:'ucapi', createdAt: Date.now()-90*864e5 });
+  const esc1 = HS.find(x => x.id === 'cb6'); if (esc1) esc1.discipline = 'Escaramuza';
   // Imágenes del demo: viven en fotos-demo/ y build.mjs las copia a docs/demo/fotos/
   const fotoDemo = n => `demo:${n}.jpg`, hashN = t => [...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   const FOTO_PERSONA = { 'Ernesto Villaseñor':'charro-1', 'Alberto Fidencio Ramírez':'charro-2', 'Lorenzo Vázquez':'charro-3', 'Gerardo Solís':'charro-4', 'Octavio Rentería':'charro-5', 'Fausto Herrera':'charro-6', 'Rubén Escamilla':'charro-7', 'Mariana Ríos':'escaramuza-1', 'Daniela Ochoa':'escaramuza-2' };
@@ -1039,8 +1053,8 @@ function seed(){
 }
 
 /* ------------------------- LÓGICA ------------------------- */
-const roleName = r => ({ superadmin:'Súper usuario', lienzo:'Lienzo', juez:'Juez', charro:'Charro', equipo:'Capitán de equipo', dueno:'Dueño de caballos', ganadero:'Ganadero' }[r] || r);
-const OPEN_ROLES = ['charro','equipo','dueno','ganadero'];   // cuentas activas al registrarse; lo oficial lo da una solicitud aprobada
+const roleName = r => ({ superadmin:'Súper usuario', lienzo:'Lienzo', juez:'Juez', charro:'Charro', equipo:'Capitán de equipo', dueno:'Dueño de caballos', ganadero:'Ganadero', publico:'Público' }[r] || r);
+const OPEN_ROLES = ['publico','charro','escaramuza','equipo','dueno','ganadero'];   // cuentas activas al registrarse; lo oficial lo da una solicitud aprobada
 const myCharro = u => u && DB.all('charros').find(c => c.userId === u.id);
 const myTeam = u => u && DB.all('teams').find(t => t.captainId === u.id);
 const rosterOf = tid => DB.all('charros').filter(c => c.teamId === tid).sort((a, b) => a.name.localeCompare(b.name));
@@ -1057,7 +1071,8 @@ function canDecide(u, r){
 const byName = (a, b) => a.name.localeCompare(b.name);
 /* ---------- PLAN PRO ---------- */
 const prices = () => { const c = DB.get('settings', 'precios') || {}; return { pro: +c.pro || 99, kit: +c.kit || 699, tvKit: +c.tvKit || 0, tvMes: +c.tvMes || 0 }; };
-const isPro = u => !!u && (isSuper(u) || (u.subscriptionStatus === 'pro' && (+u.proUntil || 0) > Date.now()));
+const proIncluido = u => !!u && u.status === 'aprobado' && (['lienzo', 'juez'].includes(u.role) || !!myLienzo(u));   // lienzos y jueces no pagan
+const isPro = u => !!u && (isSuper(u) || proIncluido(u) || (u.subscriptionStatus === 'pro' && (+u.proUntil || 0) > Date.now()));
 function needPro(why){ if (isPro(State.user)) return false; openUpgrade(why); return true; }
 function openUpgrade(why){
   const u = State.user, P = prices(), li = t => `<div class="upg-li">${I.check}<span>${t}</span></div>`;
@@ -1156,7 +1171,7 @@ function verifNote(kind, d, what){
 }
 function canVerify(u, kind, d){
   if (!d || !isApproved(u)) return false; if (isSuper(u)) return true;
-  if (u.role !== 'lienzo' || !ownsLienzo(u, u.lienzoId)) return false; const L = u.lienzoId, aff = t => !!t && t.lienzoId === L && t.lienzoStatus === 'aprobado';
+  const miL = myLienzo(u); if (!miL || !ownsLienzo(u, miL.id)) return false; const L = miL.id, aff = t => !!t && t.lienzoId === L && t.lienzoStatus === 'aprobado';
   if (kind === 'team') return aff(d);
   if (kind === 'charro') return aff(DB.get('teams', d.teamId));
   if (kind === 'horse') return DB.all('events').some(e => e.lienzoId === L && e.charros.some(c => c.horseId === d.id));
@@ -1198,8 +1213,8 @@ const photoBox = (kind, id, src, name, px = 64) => `<div class="row" style="gap:
 const lienzo = id => DB.get('lienzos', id) || { name:'Lienzo', state:'', city:'' };
 const isApproved = u => u && u.status === 'aprobado';
 const isSuper = u => u && u.role === 'superadmin' && isApproved(u);
-const myLienzo = u => u && u.role === 'lienzo' ? DB.get('lienzos', u.lienzoId) : null;
-const ownsLienzo = (u, lid) => isApproved(u) && u.role === 'lienzo' && u.lienzoId === lid && lienzo(lid).status === 'aprobado';
+const myLienzo = u => !u ? null : u.role === 'lienzo' ? DB.get('lienzos', u.lienzoId) : DB.all('lienzos').find(l => (l.admins || []).includes(u.id)) || null;   // dueño o integrante del equipo del lienzo
+const ownsLienzo = (u, lid) => isApproved(u) && (myLienzo(u) || {}).id === lid && lienzo(lid).status === 'aprobado';
 const isJudgeOf = (u, lid) => isApproved(u) && u.role === 'juez' && u.lienzoId === lid;
 const canManage = (u, ev) => isSuper(u) || ownsLienzo(u, ev.lienzoId);
 const canScore = (u, ev) => ev && ev.status === 'en_vivo' && (isSuper(u) || ownsLienzo(u, ev.lienzoId) || isJudgeOf(u, ev.lienzoId));
@@ -1266,8 +1281,8 @@ function charroStandings(ev){
   return Object.values(m).sort((a, b) => b.pts - a.pts);
 }
 async function audit(action, detail, actorId, actorName){
-  const u = State.user;
-  try { await DB.put('audit', { id: 'a' + uid(), actorId: actorId || (u && u.id) || null, actorName: actorName || (u && u.name) || 'Sistema', action, detail, ts: Date.now() }); } catch(e){}
+  const u = State.user, L = u && myLienzo(u);
+  try { await DB.put('audit', { id: 'a' + uid(), actorId: actorId || (u && u.id) || null, actorName: actorName || (u && u.name) || 'Sistema', lienzoId: L ? L.id : null, action, detail, ts: Date.now() }); } catch(e){}
 }
 
 /* ------------------------- ESTADO ------------------------- */
@@ -1298,7 +1313,7 @@ function render(){
   const tabs = [['inicio','Inicio',I.home],['vivo','En vivo',I.live,liveN],['historial','Historial',I.clock],['ranking','Ranking',I.trophy],['cuenta', u ? (isSuper(u) ? 'Admin' : 'Mi panel') : 'Entrar', isSuper(u) ? I.shield : I.user, 0, pend]];
   const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta', solicitudes:'cuenta', caballos:'ranking', caballo:'cuenta', ganado:'inicio', ganaderia:'inicio', res:'cuenta' }[State.route] || State.route;
   $('#nav').innerHTML = tabs.map(([k, l, ic, dot, badge]) => `<a href="#${k === 'cuenta' && isSuper(u) ? 'admin' : k}" class="${active === k ? 'on' : ''}">${ic}${dot ? '<span class="dot"></span>' : ''}${badge ? `<span class="badge-n" style="position:absolute;top:0;right:calc(50% - 22px)">${badge}</span>` : ''}<span>${l}</span></a>`).join('');
-  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes, avisos: vAvisos, pdf: vPdf, microchip: vMicrochip, camaras: vCamaras, charrostv: vCharrosTv, tv: vTv, solicitar: vSolicitar, comprar: vComprar, pedido: vPedido, carnet: vCarnet, croquis: vCroquis };
+  const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes, avisos: vAvisos, pdf: vPdf, microchip: vMicrochip, terminos: vTerminos, camaras: vCamaras, charrostv: vCharrosTv, tv: vTv, solicitar: vSolicitar, comprar: vComprar, pedido: vPedido, carnet: vCarnet, croquis: vCroquis };
   $('#view').className = 'wrap' + (State.route === 'hoja' ? ' wide' : '');
   $('#view').innerHTML = State.recovery ? vNewPass() : (views[State.route] || vInicio)();
   fitSheet();
@@ -1326,6 +1341,30 @@ function statusChip(ev){
 const officialChip = ev => ev.official ? `<span class="chip gold">${I.shield}Oficial</span>` : '';
 const modeChip = ev => ev.mode === 'completo' ? '<span class="chip">Charro completo</span>' : ev.mode === 'escaramuza' ? '<span class="chip">Escaramuzas</span>' : `<span class="chip">${esc(ev.category || 'Libre')}</span>`;
 function dateBox(iso){ const [y,m,d] = iso.split('-').map(Number); return `<div class="datebox"><b>${d}</b><span>${MESES[m-1]}</span></div>`; }
+/* ---------- BUSCADOR POR ZONA Y LIENZOS FAVORITOS ---------- */
+// Con cuenta se guardan en el perfil; sin cuenta, en este navegador.
+const FAV_KEY = 'charreriapro_fav_lienzos';
+function favLienzos(){ if (State.user) return State.user.favLienzos || []; try { return JSON.parse(localStorage.getItem(FAV_KEY)) || []; } catch (e) { return []; } }
+async function favAlternar(id){
+  const f = favLienzos(), n = f.includes(id) ? f.filter(x => x !== id) : [...f, id];
+  if (State.user) await safe(async () => { State.user = await DB.put('profiles', { ...State.user, favLienzos: n }); });
+  else { try { localStorage.setItem(FAV_KEY, JSON.stringify(n)); } catch (e) {} render(); }
+}
+function zonaFiltro(evs){
+  const q = norm(State.zonaQ || ''), favs = favLienzos();
+  return evs.filter(e => { const L = lienzo(e.lienzoId); return (!State.zonaEstado || L.state === State.zonaEstado) && (!State.zonaLienzo || e.lienzoId === State.zonaLienzo) && (!State.zonaFav || favs.includes(e.lienzoId)) && (!q || norm(`${e.title} ${L.name} ${L.city} ${L.state}`).includes(q)); })
+    .sort((a, b) => favs.includes(b.lienzoId) - favs.includes(a.lienzoId));   // tus lienzos primero
+}
+function buscadorZona(){
+  const favs = favLienzos(), q = norm(State.zonaQ || ''), Ls = DB.all('lienzos').filter(l => l.status === 'aprobado').sort((a, b) => a.name.localeCompare(b.name)), estados = [...new Set(Ls.map(l => l.state).filter(Boolean))].sort();
+  const activo = !!(q || State.zonaEstado), vis = Ls.filter(l => activo ? (!State.zonaEstado || l.state === State.zonaEstado) && (!q || norm(`${l.name} ${l.city} ${l.state}`).includes(q)) : favs.includes(l.id));
+  const hay = activo || State.zonaFav || State.zonaLienzo;
+  const fila = l => `<div class="row between" style="gap:8px;padding:6px 0"><button class="grow" style="all:unset;cursor:pointer;flex:1;min-width:0" data-act="zonaLienzo" data-id="${esc(l.id)}"><div class="ell" style="font-weight:700;color:${State.zonaLienzo === l.id ? 'var(--gold2)' : 'inherit'}">${esc(l.name)}</div><div class="small mut ell">${esc([l.city, l.state].filter(Boolean).join(', '))}</div></button><button class="btn ghost sm" data-act="favLienzo" data-id="${esc(l.id)}" aria-pressed="${favs.includes(l.id)}" aria-label="${favs.includes(l.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}: ${esc(l.name)}" style="color:var(--gold2);font-size:18px;min-width:44px">${favs.includes(l.id) ? '★' : '☆'}</button></div>`;
+  return `<div class="card mt"><input class="in" placeholder="Buscar lienzo, ciudad o charreada…" value="${esc(State.zonaQ || '')}" data-model="zonaQ" aria-label="Buscar lienzo, ciudad o charreada">
+    <div class="row mt" style="gap:8px"><select class="in" data-model="zonaEstado" aria-label="Estado"><option value="">Todo México</option>${estados.map(x => `<option ${x === State.zonaEstado ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select><button class="tog ${State.zonaFav ? 'on' : ''}" data-act="zonaFav" style="white-space:nowrap">★ Favoritos</button></div>
+    ${vis.length ? `<div class="mt">${vis.slice(0, 8).map(fila).join('')}</div>${vis.length > 8 ? `<div class="small mut2">Y ${vis.length - 8} lienzos más. Escribe para afinar la búsqueda.</div>` : ''}` : activo ? '<div class="small mut mt">No encontramos lienzos con esa búsqueda.</div>' : '<div class="small mut mt">Busca tu lienzo y márcalo con ☆ para tenerlo siempre a la mano.</div>'}
+    ${hay ? `<button class="btn ghost sm mt" data-act="zonaLimpiar">Quitar filtros</button>` : ''}</div>`;
+}
 function eventCard(ev){
   const L = lienzo(ev.lienzoId), st = ev.status !== 'programado' ? teamStandings(ev) : [], lead = st[0] && st[0].n ? st[0] : null;
   return `<a class="card evc" href="#evento-${ev.id}"><div class="row" style="align-items:flex-start">${dateBox(ev.date)}
@@ -1356,8 +1395,9 @@ function rankRow(i, name, meta, pts, unit, card){
 
 /* ---------- INICIO ---------- */
 function vInicio(){
-  const evs = publicEvents(), live = evs.filter(e => e.status === 'en_vivo');
-  const next = evs.filter(e => e.status === 'programado').sort((a, b) => a.date.localeCompare(b.date)).slice(0, 4);
+  const evs = zonaFiltro(publicEvents()), live = evs.filter(e => e.status === 'en_vivo');
+  const favs = favLienzos(), orden = (a, b) => favs.includes(b.lienzoId) - favs.includes(a.lienzoId) || a.date.localeCompare(b.date);
+  const next = evs.filter(e => e.status === 'programado').sort(orden).slice(0, 4);
   const past = evs.filter(e => e.status === 'finalizado').sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
   const top = rankingCharros({ year: String(new Date().getFullYear()), oficial: true }).slice(0, 5);
   let h = '';
@@ -1374,6 +1414,8 @@ function vInicio(){
     h += `<div class="hero" style="border-color:var(--line2)"><div class="h1">La charrería, en vivo y con historia.</div><div class="sub" style="margin-top:8px">Calificaciones al momento conforme al reglamento, hojas oficiales digitales y el ranking nacional.</div>
       <div class="btns mt2"><a class="btn pri" href="#ranking">${I.trophy} Ver ranking</a><a class="btn" href="#historial">${I.clock} Historial</a></div><div class="pattern"></div></div>`;
   }
+  h += buscadorZona();
+  if ((State.zonaEstado || State.zonaQ || State.zonaFav || State.zonaLienzo) && !evs.length) h += `<div class="mt">${emptyState(I.clock, 'Sin charreadas con ese filtro', 'Prueba con otra zona o quita los filtros.')}</div>`;
   h += tcgBanner() + chipBanner() + tvBanners(State.user);
   h += `<div class="h2">Próximas charreadas</div>` + (next.length ? `<div class="list">${next.map(eventCard).join('')}</div>` : emptyState(I.clock, 'Sin charreadas programadas', 'Cuando un lienzo publique su próxima charreada aparecerá aquí.'));
   h += `<div class="h2">Top charros ${new Date().getFullYear()}<a href="#ranking">Ver todo</a></div>` + (top.length ? `<div class="card pad0">${top.map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.n} faenas`, c.pts, 'pts', true)).join('')}</div>` : emptyState(I.trophy, 'Aún sin ranking', 'Se forma con las charreadas oficiales finalizadas.'));
@@ -1389,8 +1431,8 @@ function vInicio(){
 
 /* ---------- EN VIVO ---------- */
 function vVivo(){
-  const evs = publicEvents(), live = evs.filter(e => e.status === 'en_vivo'), next = evs.filter(e => e.status === 'programado').sort((a, b) => a.date.localeCompare(b.date));
-  return `<div class="h1">En vivo</div><div class="sub" style="margin-top:4px">Charreadas calificándose en este momento.</div><div class="h2">Ahora</div>` +
+  const favs = favLienzos(), evs = zonaFiltro(publicEvents()), live = evs.filter(e => e.status === 'en_vivo'), next = evs.filter(e => e.status === 'programado').sort((a, b) => favs.includes(b.lienzoId) - favs.includes(a.lienzoId) || a.date.localeCompare(b.date));
+  return `<div class="h1">En vivo</div><div class="sub" style="margin-top:4px">Charreadas calificándose en este momento.</div>${buscadorZona()}<div class="h2">Ahora</div>` +
     (live.length ? `<div class="list">${live.map(eventCard).join('')}</div>` : emptyState(I.live, 'No hay charreadas en vivo', 'Aquí aparecerán las que inicien.')) + `<a class="btn block mt" href="#tv">Ver transmisiones y videos</a>` + tvBanner('tv') + tvBanner('kit') +
     `<div class="h2">Próximas</div>` + (next.length ? `<div class="list">${next.map(eventCard).join('')}</div>` : emptyState(I.clock, 'Sin próximas', ''));
 }
@@ -1462,7 +1504,7 @@ function vHistorial(){
 }
 
 /* ---------- RANKING ---------- */
-const rankingEvents = ({ year, oficial, estado, mode }) => publicEvents().filter(e => e.status === 'finalizado' && (!oficial || e.official) && (!year || e.date.startsWith(year)) && (!estado || lienzo(e.lienzoId).state === estado) && (!mode || (e.mode || 'equipos') === mode));
+const rankingEvents = ({ year, oficial, estado, lienzoId, mode }) => publicEvents().filter(e => e.status === 'finalizado' && (!oficial || e.official) && (!year || e.date.startsWith(year)) && (!estado || lienzo(e.lienzoId).state === estado) && (!lienzoId || e.lienzoId === lienzoId) && (!mode || (e.mode || 'equipos') === mode));
 function rankingCharros(opt){
   const evm = new Map(rankingEvents(opt).map(e => [e.id, e])), m = {};
   DB.all('scores').filter(s => evm.has(s.eventId) && (!opt.suerte || s.faena === opt.suerte)).forEach(s => s.parts.forEach(p => {
@@ -1574,7 +1616,7 @@ function renderTcg(){
   $('#view').className = 'wrap'; $('#view').innerHTML = ({ tienda: vTienda, jugar: vJugar, carta: vCarta }[State.route] || vTienda)();
 }
 /* ---------- CABALLOS ---------- */
-const DISCIPLINAS = ['Cala de caballo','Piales en el lienzo','Coleadero','Jineteo','Terna en el ruedo','Manganas','Paso de la muerte','Multidisciplina'];
+const DISCIPLINAS = ['Cala de caballo','Piales en el lienzo','Coleadero','Jineteo','Terna en el ruedo','Manganas','Paso de la muerte','Escaramuza','Multidisciplina'];
 const SEXOS = ['Macho','Hembra','Castrado'];
 const mxn = v => '$' + Math.round(v).toLocaleString('es-MX');
 const mxnK = v => v >= 1e6 ? '$' + (v / 1e6).toFixed(1).replace('.0', '') + ' M' : '$' + Math.round(v / 1000) + ' mil';
@@ -1613,7 +1655,7 @@ function horseStats(h){
 const VAL_MIN = 20000;
 const TRAINING = [['Potro / sin domar', .5], ['En doma', .75], ['Rienda terminada', 1], ['Alto nivel / competencia', 1.35]];
 const BREED_F = [[/pura raza espa|\bpre\b|andaluz|español/i, 1.4], [/árabe|arabe/i, 1.1], [/cuarto de milla|quarter/i, 1], [/azteca/i, .95], [/appaloosa|paint|pinto/i, .9], [/criollo|cruza|rancho|mestizo/i, .75]];
-const DISC_F = { 'Cala de caballo': 1.3, 'Piales en el lienzo': 1.1, 'Coleadero': 1.05, 'Jineteo': .7, 'Terna en el ruedo': 1.1, 'Manganas': 1.1, 'Paso de la muerte': .95, 'Multidisciplina': 1.2 };
+const DISC_F = { 'Cala de caballo': 1.3, 'Piales en el lienzo': 1.1, 'Coleadero': 1.05, 'Jineteo': .7, 'Terna en el ruedo': 1.1, 'Manganas': 1.1, 'Paso de la muerte': .95, 'Escaramuza': 1.05, 'Multidisciplina': 1.2 };
 const SEX_F = { Macho: 1.1, Hembra: 1, Castrado: .95 };
 function ageFactor(a){ if (a == null) return .9; if (a < 2) return .6; if (a <= 3) return .8; if (a <= 5) return .95; if (a <= 12) return 1; if (a <= 15) return .8; if (a <= 18) return .55; return .35; }
 const isVerifiedBuyer = p => !!p && p.status === 'aprobado' && (p.role === 'lienzo' || (['charro','equipo'].includes(p.role) && !!p.verified));
@@ -1752,12 +1794,23 @@ function chipSection(kind, x){
   if (!open && st !== 'validado') h += `<a class="btn pri block mt" href="#microchip-${kind}-${x.id}">${KIT_COTIZA ? 'Apartar kit de microchip' : `Comprar kit de microchip · ${mxn(prices().kit)}`}</a>`;
   return h + '</div>';
 }
+/* ---------- TÉRMINOS DE IMAGEN Y CONTENIDO ---------- */
+// Si cambian, sube TERMINOS_V para saber quién aceptó cada versión. Deben revisarlos un abogado antes de operar con fotos reales.
+const TERMINOS_V = 1;
+const AVISO_BOLETOS = 'Este evento se transmite en vivo y se graba. Las grabaciones, fotografías y recortes podrán difundirse y usarse con fines comerciales por el lienzo y Charrería Pro. Al asistir, aceptas que podrías aparecer en tomas generales del público.';
+function vTerminos(){
+  const li = t => `<div class="upg-li">${I.check}<span>${t}</span></div>`;
+  return `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="h1">Uso de imagen y contenido</div><div class="sub" style="margin-top:4px">Versión ${TERMINOS_V}</div>
+    <div class="h2">Grabaciones</div><div class="card">${li('Las charreadas pueden transmitirse en vivo y grabarse.')}${li('La grabación de una charreada es pública.')}${li('Lo grabado puede difundirse y usarse con fines comerciales por el lienzo y Charrería Pro.')}</div>
+    <div class="h2">Fotos de participantes</div><div class="card">${li('Una foto puede etiquetarse al perfil del charro y a su equipo.')}${li('El charro y el equipo pueden cambiar sus fotos entre públicas y privadas.')}${li('Las fotos se borran de Charrería Pro al mes, salvo las que un usuario Pro descargue a su historial.')}${li('El público solo ve las fotos públicas del mes. Las estadísticas básicas son gratis y las avanzadas requieren Pro.')}</div>
+    <div class="h2">Lienzos</div><div class="card">${li('El lienzo recibe todo el material de sus charreadas, sin importar quién tenga Pro.')}${li('El lienzo debe avisar en sus boletos que el evento se transmite y se graba.')}${li('Quien asiste como público puede aparecer en tomas generales.')}</div>`;
+}
 /* ---------- CHARROS TV: el kit de cámaras se paga una vez; Charros TV es suscripción ---------- */
 const tvPendiente = (u, tipo) => !!u && DB.all('requests').some(r => r.type === tipo && r.createdBy === u.id && r.status === 'pendiente');
 const tvPrecioKit = () => prices().tvKit ? `${mxn(prices().tvKit)} · pago único` : 'Precio por cotizar';
 const tvPrecioMes = () => prices().tvMes ? `${mxn(prices().tvMes)} al mes` : 'Precio por confirmar';
 const tvBanner = tipo => { const kit = tipo === 'kit'; return `<a class="card tcg-ban mt" href="#${kit ? 'camaras' : 'charrostv'}"><span class="logo" style="width:44px;height:44px;flex:none">${kit ? I.video : I.live}</span><div class="grow"><div style="font-family:'Cinzel',serif;font-weight:800;font-size:17px;color:var(--gold2)">${kit ? 'Kit de cámaras' : 'Charros TV'}</div><div class="small" style="margin-top:2px">${kit ? 'Lleva tu lienzo a la pantalla de todos. Un solo pago.' : (esLienzo(State.user) ? 'Tu equipo de producción de IA: transmisión, gráficos, reels y marketing. Pago mensual.' : '¿Tienes un lienzo? Un equipo de IA se encarga de tus transmisiones por una mensualidad.')}</div></div><span class="marrow">${I.arrow}</span></a>`; };
-const esLienzo = u => !!u && u.role === 'lienzo';
+const esLienzo = u => !!myLienzo(u);
 const tvBanners = u => (esLienzo(u) ? tvBanner('kit') : '') + tvBanner('tv');
 const tvLi = t => `<div class="upg-li">${I.check}<span>${t}</span></div>`, tvQ = (t, r) => `<details class="lp-q"><summary>${t}</summary><div class="small" style="padding-bottom:10px;line-height:1.5">${r}</div></details>`;
 const tvEnviada = t => `<div class="banner ok mt">${I.check}<span>${t}</span></div>`;
@@ -1778,10 +1831,11 @@ function vCharrosTv(){
     <div class="h2">Tu equipo de IA</div><div class="card">${tvLi('<b>Camarógrafos.</b> Manejan las cámaras y saben qué suerte está en el lienzo: graban el centro del ruedo, la manga o los cajones, y siguen al jinete o al ganado.')}${tvLi('<b>Sonidista.</b> Cuida el audio de la transmisión y de las grabaciones.')}${tvLi('<b>Editor y medios.</b> Encuentran los mejores momentos y fotografías de cada grabación.')}${tvLi('<b>Marketing.</b> Publica y hace campañas para llevar público a tus transmisiones en YouTube y otras plataformas monetizables.')}</div>
     <div class="h2">Conoce la charrería y a tu gente</div><div class="card">${tvLi('<b>Entiende la charreada.</b> Conoce las suertes, el orden y lo que debe grabar en cada momento.')}${tvLi('<b>Sabe quién participa.</b> Aprende de Charrería Pro quién es cada charro, escaramuza y equipo.')}${tvLi('<b>Reconoce y enfoca a los participantes.</b> Va aprendiendo quién es quién, con autorización de cada uno.')}${tvLi('<b>Contenido personalizado.</b> Genera fotos y contenido de cada charro o equipo que compite.')}</div>
     <div class="h2">En vivo y después</div><div class="card">${tvLi('<b>Transmisión completa.</b> Sale al aire y la sube a tus plataformas.')}${tvLi('<b>Puntuaciones y diseño en vivo.</b> Agrega las calificaciones de tus jueces, el logo de tu lienzo y los gráficos.')}${tvLi('<b>Recortes y reels.</b> Corta los mejores momentos, sin gráficos, y los publica.')}</div>
-    <div class="h2">Beneficios para tu lienzo</div><div class="card">${tvLi('<b>Tu drive, bien organizado.</b> Todas las fotos y el contenido de cada charreada quedan guardados y ordenados para ti.')}${tvLi('<b>Todo el material es para el lienzo.</b> No importa si los participantes tienen Pro o no.')}${tvLi('<b>Más razones para participar.</b> Cada charreada deja contenido para tu lienzo y para sus competidores.')}</div>
-    <div class="h2">Beneficios para los participantes Pro</div><div class="card">${tvLi('<b>Sus mejores fotos del mes.</b> Quien participa y tiene Charrería Pro elige sus fotos favoritas.')}${tvLi('<b>Directo a su perfil.</b> Aparecen en el perfil del charro, del equipo o de quien haya participado.')}</div>
+    <div class="h2">Beneficios para tu lienzo</div><div class="card">${tvLi('<b>Tu drive, bien organizado.</b> Todas las fotos y el contenido de cada charreada quedan guardados y ordenados para ti.')}${tvLi('<b>Todo el material es para el lienzo.</b> No importa si los participantes tienen Pro o no.')}${tvLi('<b>Pro incluido.</b> Lienzos y jueces tienen Charrería Pro sin costo.')}${tvLi('<b>Más razones para participar.</b> Cada charreada deja contenido para tu lienzo y para sus competidores.')}</div>
+    <div class="h2">Beneficios para los participantes Pro</div><div class="card">${tvLi('<b>Sus fotos de cada charreada.</b> Quien participa y tiene Charrería Pro accede a las fotos etiquetadas a su perfil o equipo.')}${tvLi('<b>Las guarda para siempre.</b> Las fotos se borran al mes, pero con Pro puede descargarlas y quedan en su historial.')}${tvLi('<b>Decide qué se ve.</b> El charro y el equipo eligen qué fotos son públicas o privadas.')}</div>
+    <div class="h2">Para el público</div><div class="card">${tvLi('<b>Grabación pública.</b> Cualquiera puede ver la charreada.')}${tvLi('<b>Fotos del mes.</b> El público ve las fotos que los participantes dejaron públicas.')}${tvLi('<b>Estadísticas.</b> Las básicas son gratis y las avanzadas son con Pro.')}</div>
     <div class="h2">Cómo funcionará</div><div class="card lp-steps"><div>Contratas la mensualidad y conectas las cuentas de tu lienzo.</div><div>Conectas tus cámaras a la aplicación y a internet.</div><div>El equipo de IA toma de Charrería Pro quién participa y qué suerte sigue.</div><div>Graba, transmite y pone los gráficos durante la charreada.</div><div>Después ordena todo en tu drive, corta reels y manda las mejores fotos a los participantes Pro.</div><div>Tú autorizas campañas y gastos; las cuentas y las ganancias de las plataformas son de tu lienzo.</div></div>
-    <div class="h2">Preguntas frecuentes</div><div class="card">${tvQ('¿Tengo que pagar para transmitir?', 'No. Transmitir y ver en Charrería Pro es gratis. Charros TV es para quien quiere que un equipo de IA haga todo el trabajo.')}${tvQ('¿Ya está funcionando?', 'Todavía no. Estamos preparándolo: apartar tu lugar no tiene costo y te avisaremos antes de cualquier cobro.')}${tvQ('¿Reconoce rostros sin permiso?', 'No. Reconocer el rostro de alguien requerirá su autorización, y la de su madre, padre o tutor si es menor. Quien no autorice se identifica por el programa de la charreada.')}${tvQ('¿Qué recibe el lienzo y qué recibe un participante?', 'El lienzo recibe todo el material de su charreada en su drive. Quien tiene Charrería Pro además puede elegir sus mejores fotos del mes para su perfil.')}${tvQ('¿Necesito el kit de cámaras?', 'Necesitas cámaras conectadas a internet. Pueden ser tuyas o las del kit, que se paga aparte.')}${tvQ('¿Garantiza ganancias?', 'No. Lo que ganes depende de tu público y de las reglas de cada plataforma.')}${tvQ('¿Los marcadores siguen gratis?', 'Sí. Los marcadores en vivo y la mesa del juez son libres, con o sin Charros TV.')}</div>
+    <div class="h2">Preguntas frecuentes</div><div class="card">${tvQ('¿Tengo que pagar para transmitir?', 'No. Transmitir y ver en Charrería Pro es gratis. Charros TV es para quien quiere que un equipo de IA haga todo el trabajo.')}${tvQ('¿Ya está funcionando?', 'Todavía no. Estamos preparándolo: apartar tu lugar no tiene costo y te avisaremos antes de cualquier cobro.')}${tvQ('¿Reconoce rostros sin permiso?', 'No. Reconocer el rostro de alguien requerirá su autorización, y la de su madre, padre o tutor si es menor. Quien no autorice se identifica por el programa de la charreada.')}${tvQ('¿Qué recibe el lienzo y qué recibe un participante?', 'El lienzo recibe todo el material de su charreada en su drive. Quien tiene Charrería Pro accede a sus fotos, y puede descargarlas para conservarlas en su historial.')}${tvQ('¿Necesito el kit de cámaras?', 'Necesitas cámaras conectadas a internet. Pueden ser tuyas o las del kit, que se paga aparte.')}${tvQ('¿Garantiza ganancias?', 'No. Lo que ganes depende de tu público y de las reglas de cada plataforma.')}${tvQ('¿Los marcadores siguen gratis?', 'Sí. Los marcadores en vivo y la mesa del juez son libres, con o sin Charros TV.')}</div>
     <a class="btn block mt" href="#camaras">Conocer el kit de cámaras</a>`;
 }
 function vTv(){
@@ -2102,13 +2156,19 @@ function rankingEquipos(opt, mode){
 }
 function vRanking(){
   const years = [...new Set(publicEvents().map(e => e.date.slice(0, 4)))].sort().reverse(), estados = [...new Set(publicEvents().map(e => lienzo(e.lienzoId).state))].sort();
-  const opt = { year: State.rankYear, oficial: State.rankOficial, suerte: State.rankSuerte, estado: State.rankEstado };
-  let h = `<div class="h1">Ranking nacional</div><div class="sub" style="margin-top:4px">Puntos netos (buenos menos malos) en charreadas ${State.rankOficial ? 'oficiales ' : ''}finalizadas.</div>
+  const lzs = [...new Set(publicEvents().map(e => e.lienzoId))].map(id => lienzo(id) && { ...lienzo(id), id }).filter(l => !State.rankEstado || l.state === State.rankEstado).sort((a, b) => a.name.localeCompare(b.name));
+  if (State.rankLienzo && !lzs.some(l => l.id === State.rankLienzo)) State.rankLienzo = '';
+  const opt = { year: State.rankYear, oficial: State.rankOficial, suerte: State.rankSuerte, estado: State.rankEstado, lienzoId: State.rankLienzo };
+  const porLienzo = !!State.rankLienzo, sinFiltro = ['caballos', 'ganado'].includes(State.rankTab) && porLienzo;
+  let h = `<div class="h1">${porLienzo ? esc(lienzo(State.rankLienzo).name) : 'Ranking nacional'}</div><div class="sub" style="margin-top:4px">Puntos netos (buenos menos malos) en charreadas ${State.rankOficial ? 'oficiales ' : ''}finalizadas${porLienzo ? ' de este lienzo' : ''}.</div>
+    <div class="seg mt"><button class="${porLienzo ? '' : 'on'}" data-act="rankLienzoNac">Nacional</button><button class="${porLienzo ? 'on' : ''}" data-act="rankLienzoSel">Por lienzo</button></div>
     <div class="scroller mt">${[['charros','Charros'],['equipos','Equipos'],['completo','Charro completo'],['escaramuzas','Escaramuzas'],['caballos','Caballos'],['ganado','Ganado']].map(([k, l]) => `<button class="tog ${State.rankTab === k ? 'on' : ''}" data-act="ranktab" data-k="${k}">${l}</button>`).join('')}</div>
     <div class="row mt" style="gap:8px"><select class="in" data-model="rankYear"><option value="">Histórico</option>${years.map(y => `<option ${y === State.rankYear ? 'selected' : ''}>${y}</option>`).join('')}</select>
     <select class="in" data-model="rankSuerte"><option value="">Todas las faenas</option>${RULES.ORDER_EQ.map(k => `<option value="${k}" ${k === State.rankSuerte ? 'selected' : ''}>${esc(FN(k))}</option>`).join('')}</select></div>
     <div class="row mt" style="gap:8px"><select class="in" data-model="rankEstado"><option value="">Todo México</option>${estados.map(s => `<option ${s === State.rankEstado ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
-    <button class="tog ${State.rankOficial ? 'on' : ''}" data-act="rankOficial" style="white-space:nowrap">Solo oficiales</button></div>`;
+    <button class="tog ${State.rankOficial ? 'on' : ''}" data-act="rankOficial" style="white-space:nowrap">Solo oficiales</button></div>
+    ${porLienzo || State.rankVerLienzos ? `<select class="in mt" data-model="rankLienzo" aria-label="Lienzo"><option value="">Elige un lienzo</option>${lzs.map(l => `<option value="${esc(l.id)}" ${l.id === State.rankLienzo ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>` : ''}
+    ${sinFiltro ? '<div class="small mut mt">Caballos y ganado se muestran a nivel nacional.</div>' : ''}`;
   if (State.rankTab === 'charros') { const r = rankingCharros(opt); h += r.length ? `<div class="card pad0 mt">${r.slice(0, 100).map((c, i) => rankRow(i, c.name, `${esc(c.team)} · ${c.evs.size} charreadas · mejor ${c.best}${unverMark(!c.off && !isOfficial('charro', regCharro(c.name)))}${adjMark(c.adj)}`, c.pts, 'pts', true)).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin datos para este filtro', '')}</div>`; }
   else if (State.rankTab === 'escaramuzas') { const r = rankingEsc(opt);
     h += r.length ? `<div class="small mut mt">Promedio de la calificación oficial de cada escaramuza en sus competencias (desempate: menos infracciones).</div><div class="card pad0 mt">${r.map((x, i) => rankRow(i, x.name, `${esc(x.state || '')} · ${x.evs} ${x.evs === 1 ? 'competencia' : 'competencias'} · mejor ${x.best}${unverMark(!x.off)}`, x.avg, 'pts')).join('')}</div>` : `<div class="mt">${emptyState(I.trophy, 'Sin escaramuzas para este filtro', 'Aparecen cuando un lienzo registra una competencia de escaramuzas y las juezas la califican.')}</div>`; }
@@ -2131,28 +2191,29 @@ function vCuenta(){
   const L = myLienzo(u) || (u.lienzoId ? lienzo(u.lienzoId) : null);
   let h = `<div class="card"><div class="row">${av(u.role === 'charro' && myCharro(u) ? myCharro(u).photo : u.photo, u.name, 52)}
     <div class="grow"><div style="font-weight:800;font-size:17px" class="ell">${esc(u.name)}</div><div class="small mut ell">${esc(u.email)}</div>
-    <div class="row wrapf" style="gap:6px;margin-top:6px"><span class="chip gold">${roleName(u.role)}</span>${isPro(u) && !isSuper(u) ? '<span class="upg-badge" style="font-size:9px;padding:2px 8px">PRO</span>' : ''}${u.status === 'aprobado' ? `<span class="chip green">${I.check}Verificada</span>` : u.status === 'pendiente' ? '<span class="chip blue">En revisión</span>' : `<span class="chip red">${esc(u.status)}</span>`}</div></div></div>
+    <div class="row wrapf" style="gap:6px;margin-top:6px">${rolesDe(u).map(x => `<span class="chip gold">${esc(x)}</span>`).join(' ')}${isPro(u) && !isSuper(u) ? '<span class="upg-badge" style="font-size:9px;padding:2px 8px">PRO</span>' : ''}${u.status === 'aprobado' ? `<span class="chip green">${I.check}Verificada</span>` : u.status === 'pendiente' ? '<span class="chip blue">En revisión</span>' : `<span class="chip red">${esc(u.status)}</span>`}</div></div></div>
     ${L && u.role !== 'superadmin' ? `<div class="sep"></div><div class="small mut">Lienzo</div><div style="font-weight:700">${esc(L.name)} ${verifiedMark(L)}</div><div class="small mut">${esc(L.city || '')}${L.city ? ', ' : ''}${esc(L.state || '')}</div>` : ''}</div>`;
   if (u.status === 'pendiente') h += `<div class="banner warn mt">${I.info}<span>Tu cuenta está en revisión. El administrador la verificará para que puedas ${u.role === 'juez' ? 'calificar' : 'publicar charreadas'}.</span></div>`;
   if (u.status === 'rechazado' || u.status === 'suspendido') h += `<div class="banner err mt">${I.info}<span>Tu cuenta está ${esc(u.status)}. Contacta al administrador.</span></div>`;
   if (isApproved(u)) {
     const staff = ['superadmin','lienzo','juez'].includes(u.role), nReq = myRequests(u).length + verifQueue(u).length; let tools = '';
     if (u.role === 'superadmin') tools += menuItem('#admin', I.shield, 'Panel de súper usuario', `${pendingCount()} pendientes por autorizar`);
-    if (u.role === 'lienzo' || u.role === 'superadmin') tools += menuItem('#panel', I.horse, u.role === 'superadmin' ? 'Charreadas (todas)' : 'Mis charreadas', 'Crear, transmitir, subir video');
+    if (myLienzo(u) || u.role === 'superadmin') tools += menuItem('#panel', I.horse, u.role === 'superadmin' ? 'Charreadas (todas)' : 'Mis charreadas', 'Crear, transmitir, subir video');
     if (staff) tools += menuItem('#juez', I.gavel, 'Mesa del juez', 'Calificar por faena y entregar la hoja oficial');
-    if (staff || u.role === 'equipo') tools += menuItem('#solicitudes', I.check, 'Solicitudes', nReq ? `${nReq} por revisar` : 'Rosters, afiliaciones y verificaciones');
+    if (staff || u.role === 'equipo' || myTeam(u)) tools += menuItem('#solicitudes', I.check, 'Solicitudes', nReq ? `${nReq} por revisar` : 'Rosters, afiliaciones y verificaciones');
     if (tools) h += `<div class="h2">Herramientas</div><div class="list">${tools}</div>`;
-    if (u.role === 'charro') h += charroSection(u);
-    if (u.role === 'equipo') h += teamSection(u);
+    if (u.role === 'charro' || myCharro(u)) h += charroSection(u);
+    if (u.role === 'equipo' || myTeam(u)) h += teamSection(u);
     if (u.role === 'ganadero') h += ranchSection(u);
-    if (u.role !== 'juez') h += horsesSection(u);
-    if (u.role !== 'juez' && u.role !== 'ganadero') h += ranchSection(u);
-    if (u.role === 'lienzo' && L) h += `<div class="h2">Foto del lienzo</div><div class="card">${photoBox('lienzo', L.id, L.photo, L.name)}</div>`;
+    if (!['juez', 'publico'].includes(u.role) || tienePerfil(u, 'caballos')) h += horsesSection(u);
+    if (!['juez', 'ganadero', 'publico'].includes(u.role) || (u.role !== 'ganadero' && tienePerfil(u, 'ganado'))) h += ranchSection(u);
+    if (myLienzo(u)) h += `<div class="h2">Foto del lienzo</div><div class="card">${photoBox('lienzo', L.id, L.photo, L.name)}</div>`;
   }
+  h += perfilesExtra(u);
   h += capCroquis(u);
   h += tcgSection(u);
   h += tvBanners(u);
-  h += `<div class="h2">Mi plan</div><div class="card"><div class="row between" style="gap:8px"><div><div style="font-weight:800">${isPro(u) ? 'Pro' : 'Gratis'}</div><div class="small mut">${isSuper(u) ? 'El súper usuario tiene todas las funciones.' : isPro(u) ? `Activo hasta el ${fdate(localISO(+u.proUntil))}` : 'Marcadores, rankings y mesa del juez sin costo.'}</div></div>${isPro(u) ? '<span class="upg-badge">PRO</span>' : `<button class="btn pri sm" data-act="upgrade">Conocer Pro</button>`}</div>${isPro(u) && !isSuper(u) ? `<button class="btn ghost sm mt" data-act="upgrade">Renovar 30 días</button>` : ''}</div>`;
+  h += `<div class="h2">Mi plan</div><div class="card"><div class="row between" style="gap:8px"><div><div style="font-weight:800">${isPro(u) ? 'Pro' : 'Gratis'}</div><div class="small mut">${isSuper(u) ? 'El súper usuario tiene todas las funciones.' : proIncluido(u) ? 'Incluido sin costo para lienzos y jueces.' : isPro(u) ? `Activo hasta el ${fdate(localISO(+u.proUntil))}` : 'Marcadores, rankings y mesa del juez sin costo.'}</div></div>${isPro(u) ? '<span class="upg-badge">PRO</span>' : `<button class="btn pri sm" data-act="upgrade">Conocer Pro</button>`}</div>${isPro(u) && !isSuper(u) && !proIncluido(u) ? `<button class="btn ghost sm mt" data-act="upgrade">Renovar 30 días</button>` : ''}</div>`;
   if (u.role !== 'charro') h += `<div class="h2">Foto de perfil</div><div class="card">${photoBox('profile', u.id, u.photo, u.name)}</div>`;
   h += `<div class="h2">Seguridad</div>` + (State.changePass ? passForm(true) : `<button class="btn block" data-act="changepass">${I.key} Cambiar contraseña</button>`);
   h += `<button class="btn block mt2" data-act="logout">${I.logout} Cerrar sesión</button>`;
@@ -2161,7 +2222,7 @@ function vCuenta(){
 const menuItem = (href, ic, t, d) => `<a class="card evc row" style="display:flex" href="${href}"><span class="logo" style="width:40px;height:40px">${ic}</span><div class="grow"><div class="t">${t}</div><div class="meta">${d}</div></div><span class="marrow">${I.arrow}</span></a>`;
 function demoBox(){
   return `<div class="h2">Modo demostración</div><div class="card"><div class="small mut">Entra con una cuenta de prueba para ver cada rol. Abre la app en dos pestañas para ver las calificaciones llegar en vivo.</div>
-    <div class="btns mt"><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez</button><button class="btn sm" data-act="demo" data-e="capitan@demo.mx" data-p="demo123">Capitán</button><button class="btn sm" data-act="demo" data-e="charro@demo.mx" data-p="demo123">Charro</button><button class="btn sm" data-act="demo" data-e="dueno@demo.mx" data-p="demo123">Dueño</button></div>
+    <div class="btns mt"><button class="btn sm" data-act="demo" data-e="publico@demo.mx" data-p="demo123">Público</button><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez</button><button class="btn sm" data-act="demo" data-e="capitan@demo.mx" data-p="demo123">Capitán</button><button class="btn sm" data-act="demo" data-e="charro@demo.mx" data-p="demo123">Charro</button><button class="btn sm" data-act="demo" data-e="dueno@demo.mx" data-p="demo123">Dueño</button></div>
     <button class="btn ghost sm block mt" data-act="reset">Restablecer datos de ejemplo</button></div>
     <div class="h2">Ejemplo: croquis de escaramuzas</div><div class="card"><div class="small mut">Cada cuenta muestra una etapa. Después de entrar, ve a Mi panel.</div>
     ${[['capitana@demo.mx', 'Capitana por llenar', 'Tiene dos charreadas por llenar: Libre y Charra Mayor'], ['capitana3@demo.mx', 'Capitana en borrador', 'Lleva 5 dibujos; solo ella lo ve'], ['capitana2@demo.mx', 'Capitana que ya entregó', 'Su croquis está bloqueado'], ['juez@demo.mx', 'Jueza', 'Mesa del juez › Torneo de Escaramuzas Bicentenario, con los dibujos de referencia'], ['villa@demo.mx', 'Lienzo', 'Copa Primavera: ve cada etapa; en las finalizadas baja el paquete para federación']].map(([e, t, x]) => `<button class="btn block mt" style="height:auto;text-align:left;display:block;padding:10px 12px" data-act="demo" data-e="${e}" data-p="demo123"><b>${t}</b><div class="small mut" style="font-weight:500">${x}</div></button>`).join('')}</div>`;
@@ -2227,7 +2288,7 @@ function vSolicitudes(){
   const R = DB.all('requests').slice().sort((a, b) => b.createdAt - a.createdAt), dec = R.filter(r => canDecide(u, r)), mine = R.filter(r => r.createdBy === u.id && r.type !== 'transfer' && !TV_TIPOS[r.type]), done = R.filter(r => r.status !== 'pendiente' && r.decidedBy === u.id && r.createdBy !== u.id).slice(0, 20);
   const VQ = verifQueue(u);
   let h = `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="h1">Solicitudes</div><div class="sub" style="margin-top:4px">Rosters de equipos, afiliaciones a lienzos e interesados en tus caballos.</div>`;
-  if (VQ.length || isSuper(u) || u.role === 'lienzo') h += `<div class="h2">Verificaciones</div>` + (VQ.length ? `<div class="small mut" style="margin-bottom:8px">Solo lo verificado aparece en rankings, vitrina y precios públicos. Revisa que los datos sean reales.</div><div class="list">${VQ.map(verifCard).join('')}</div>` : `<div class="card small mut">No hay registros por verificar. ✓</div>`);
+  if (VQ.length || isSuper(u) || myLienzo(u)) h += `<div class="h2">Verificaciones</div>` + (VQ.length ? `<div class="small mut" style="margin-bottom:8px">Solo lo verificado aparece en rankings, vitrina y precios públicos. Revisa que los datos sean reales.</div><div class="list">${VQ.map(verifCard).join('')}</div>` : `<div class="card small mut">No hay registros por verificar. ✓</div>`);
   h += `<div class="h2">Por revisar</div>` + (dec.length ? `<div class="list">${dec.map(r => reqCard(r, true)).join('')}</div>` : `<div class="card small mut">No hay solicitudes pendientes. ✓</div>`);
   if (mine.length) h += `<div class="h2">Enviadas por mí</div><div class="list">${mine.map(r => reqCard(r, false)).join('')}</div>`;
   if (done.length) h += `<div class="h2">Resueltas por mí</div><div class="list">${done.map(r => reqCard(r, false)).join('')}</div>`;
@@ -2252,9 +2313,11 @@ function vAuth(){
   else if (m === 'forgot') h += `<form class="card mt" data-form="forgot"><div style="font-weight:800">Recuperar contraseña</div><div class="small mut" style="margin-top:4px">Escribe el correo de tu cuenta. Te enviaremos un enlace para crear una contraseña nueva.</div>
     <label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required><button class="btn pri block mt2">Enviarme el enlace</button><button type="button" class="btn ghost sm block mt" data-act="authmode" data-k="login">Volver a entrar</button></form>`;
   else { const r = State.regRole, teamsAll = DB.all('teams').slice().sort((a, b) => a.name.localeCompare(b.name));
-    const ROLES = [['lienzo','Lienzo charro'],['juez','Juez'],['charro','Charro'],['equipo','Equipo'],['dueno','Dueño de caballos'],['ganadero','Ganadería']];
-    const help = { lienzo: 'El administrador revisa y autoriza cada lienzo.', juez: 'El administrador autoriza a cada juez para su lienzo.',
-      charro: 'Tu cuenta queda activa al instante. Para ser parte oficial de un equipo, su capitán, el lienzo o un juez aprueba tu solicitud.',
+    // Cambiar a true cuando actualizacion_publico.sql esté instalado: sin él, el registro falla y deja la cuenta a medias.
+    const PUBLICO_LISTO = CONFIG.MODE === 'demo';
+    const ROLES = [...(PUBLICO_LISTO ? [['publico','Público']] : []),['lienzo','Lienzo charro'],['juez','Juez'],['charro','Charro'],['escaramuza','Escaramuza'],['equipo','Equipo'],['dueno','Dueño de caballos'],['ganadero','Ganadería']];
+    const help = { publico: 'Para seguir charreadas, estadísticas básicas y las fotos públicas del mes. Con Pro ves las estadísticas avanzadas. Tu cuenta queda activa al instante.', lienzo: 'El administrador revisa y autoriza cada lienzo. Incluye Pro sin costo.', juez: 'El administrador autoriza a cada juez para su lienzo. Incluye Pro sin costo.',
+      escaramuza: 'Tu cuenta queda activa al instante. Después puedes agregar caballos, ganado o tu equipo como capitana.', charro: 'Tu cuenta queda activa al instante. Para ser parte oficial de un equipo, su capitán, el lienzo o un juez aprueba tu solicitud.',
       equipo: 'Registras tu equipo como capitán. El lienzo al que te afilies aprueba la afiliación, y tú apruebas a los charros de tu roster.',
       dueno: 'Tu cuenta queda activa al instante. Registra tus caballos desde Mi cuenta.',
       ganadero: 'Registra tu ganadería para rentar toros y yeguas a lienzos y charreadas. Tu ganado aparece en la sección pública cuando el súper usuario o un lienzo lo verifique.' }[r];
@@ -2267,26 +2330,56 @@ function vAuth(){
         <label class="f">Lienzo al que te afilias (opcional)</label><select class="in" name="lienzoAfil"><option value="">— Después —</option>${lienzosOk.map(l => `<option value="${l.id}">${esc(l.name)} · ${esc(l.state)}</option>`).join('')}</select>`,
       dueno: `<label class="f">Estado</label>${selState('')}`,
       ganadero: `<label class="f">Nombre de la ganadería</label><input class="in" name="ranchName" required><div class="row" style="gap:8px"><div class="grow"><label class="f">Municipio</label><input class="in" name="city" required></div><div class="grow"><label class="f">Estado</label>${selState('')}</div></div>
-        <label class="f">WhatsApp para renta</label><input class="in" name="whatsapp" type="tel" placeholder="10 dígitos" required>` }[r];
+        <label class="f">WhatsApp para renta</label><input class="in" name="whatsapp" type="tel" placeholder="10 dígitos" required>` }[r === 'escaramuza' ? 'charro' : r];
     h += `<form class="card mt" data-form="register"><label class="f">Tipo de cuenta</label><div class="chips">${ROLES.map(([k, l]) => `<button type="button" class="tog ${r === k ? 'on' : ''}" data-act="regrole" data-k="${k}">${l}</button>`).join('')}</div>
       <div class="small mut" style="margin-top:8px">${help}</div>
       <label class="f">${{ lienzo: 'Nombre del responsable', equipo: 'Nombre del capitán' }[r] || 'Nombre completo'}</label><input class="in" name="name" required><label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required>
       <label class="f">Teléfono / WhatsApp</label><input class="in" name="phone" type="tel" autocomplete="tel"><label class="f">Contraseña</label><input class="in" name="pass" type="password" minlength="6" autocomplete="new-password" required>
       ${extra}
       ${OPEN_ROLES.includes(r) ? '' : `<label class="f">Código de invitación (opcional)</label><input class="in" name="invite" placeholder="Ej. JUEZ-AB12CD" style="text-transform:uppercase"><div class="small mut" style="margin-top:6px">Con un código del administrador tu cuenta queda aprobada al instante.</div>`}
+      <label class="row small mt2" style="gap:8px;align-items:flex-start"><input type="checkbox" name="terminos" required style="margin-top:3px"><span>Acepto los <a href="#terminos" target="_blank" rel="noopener">términos de uso de imagen y contenido</a>. Si participo en charreadas, las fotos y videos pueden etiquetarse a mi perfil y a mi equipo.</span></label>
       <button class="btn pri block mt2">Crear cuenta</button></form>`; }
   return h + (DB.backend.mode === 'demo' ? demoBox() : '');
 }
 
 /* ---------- PANEL DEL LIENZO ---------- */
+const LIENZO_MAX = 4;
+function lienzoEquipo(u, L){
+  const dueno = L.ownerId === u.id || isSuper(u), a = L.admins || [], q = L.pendientes || [], nombres = L.adminNames || {}, A = DB.all('audit').filter(x => x.lienzoId === L.id).sort((x, y) => y.ts - x.ts).slice(0, 30);
+  return `<div class="h2">Equipo del lienzo</div><div class="card"><div class="small mut">Hasta ${LIENZO_MAX} personas, cada una con su propio correo. Cada integrante necesita autorización del súper usuario, y todo queda registrado con su nombre.</div>
+    <div class="row between mt" style="gap:8px"><b>${esc((DB.get('profiles', L.ownerId) || {}).name || 'Responsable')}</b><span class="chip gold">Responsable</span></div>
+    ${a.map(id => `<div class="row between mt" style="gap:8px"><span>${esc(nombres[id] || 'Integrante')}</span>${dueno ? `<button class="btn ghost sm" data-act="lienzoQuitar" data-id="${esc(id)}" data-l="${esc(L.id)}">Quitar</button>` : ''}</div>`).join('')}
+    ${q.map(id => `<div class="row between mt" style="gap:8px"><span>${esc(nombres[id] || 'Integrante')}</span><span class="chip blue">Falta autorización</span></div>`).join('')}
+    ${dueno && a.length + q.length < LIENZO_MAX - 1 ? `<form data-form="lienzoAdd" data-l="${esc(L.id)}" class="mt"><label class="f">Agregar por correo</label><div class="row" style="gap:8px"><input class="in" name="correo" type="email" placeholder="Correo de su cuenta" required><button class="btn sm" style="min-height:46px">Agregar</button></div><div class="small mut2" style="margin-top:6px">Primero debe crear su cuenta, de cualquier tipo.</div></form>` : ''}</div>
+    <div class="h2">Quién hizo qué</div>${A.length ? `<div class="card pad0">${A.map(x => `<div class="rank" style="align-items:flex-start"><span class="chip" style="min-width:76px;justify-content:center">${esc(x.action)}</span><div class="grow"><div class="small" style="color:var(--text)">${esc(x.detail)}</div><div class="small mut2">${esc(x.actorName)} · ${fdt(x.ts)}</div></div></div>`).join('')}</div>` : '<div class="card small mut">Aún no hay movimientos registrados.</div>'}`;
+}
+const tienePerfil = (u, k) => (u.perfiles || []).includes(k);
+function rolesDe(u){
+  const c = myCharro(u), r = [];
+  if (!['charro', 'equipo', 'publico'].includes(u.role) || (u.role === 'publico' && !c && !myTeam(u) && !(u.perfiles || []).length)) r.push(roleName(u.role));
+  if (c) r.push(c.disciplina === 'escaramuza' ? 'Escaramuza' : 'Charro');
+  if (myTeam(u)) r.push(c && c.disciplina === 'escaramuza' ? 'Capitana' : 'Capitán');
+  if (tienePerfil(u, 'caballos') || (u.role !== 'dueno' && DB.all('horses').some(x => x.ownerId === u.id))) r.push('Dueño de caballos');
+  if (tienePerfil(u, 'ganado') || (u.role !== 'ganadero' && DB.all('ranches').some(x => x.ownerId === u.id))) r.push('Ganadería');
+  const L = myLienzo(u); if (L && u.role !== 'lienzo') r.push('Equipo del lienzo');
+  return r.length ? r : [roleName(u.role)];
+}
+function perfilesExtra(u){
+  const c = myCharro(u), op = [];
+  if (!c) op.push(['charro', 'Charro'], ['escaramuza', 'Escaramuza']);
+  if (!myTeam(u)) op.push(['equipo', 'Capitán de equipo']);
+  if (['juez', 'publico'].includes(u.role) && !tienePerfil(u, 'caballos')) op.push(['caballos', 'Dueño de caballos']);
+  if (['juez', 'publico'].includes(u.role) && !tienePerfil(u, 'ganado')) op.push(['ganado', 'Ganadería']);
+  return op.length ? `<div class="h2">Agregar otro perfil</div><div class="card"><div class="small mut">Eres charro, escaramuza o público, y además puedes ser capitán o tener caballos y ganado.</div><div class="btns mt">${op.map(([k, l]) => `<button class="btn sm" data-act="addPerfil" data-k="${k}">${I.plus} ${l}</button>`).join('')}</div></div>` : '';
+}
 const needLogin = () => emptyState(I.user, 'Inicia sesión', 'Necesitas una cuenta para esta sección.', `<a class="btn pri" href="#cuenta">Entrar</a>`);
 function vPanel(){
   const u = State.user; if (!u) return needLogin();
-  if (!isApproved(u) || !(u.role === 'lienzo' || isSuper(u))) return `<a class="back" href="#cuenta">${I.arrow} Cuenta</a>` + emptyState(I.shield, 'Sin acceso', 'Tu cuenta debe ser un lienzo verificado.');
+  if (!isApproved(u) || !(myLienzo(u) || isSuper(u))) return `<a class="back" href="#cuenta">${I.arrow} Cuenta</a>` + emptyState(I.shield, 'Sin acceso', 'Tu cuenta debe ser un lienzo verificado.');
   const L = myLienzo(u), order = { en_vivo: 0, programado: 1, borrador: 2, finalizado: 3 };
-  const evs = DB.all('events').filter(e => isSuper(u) || e.lienzoId === u.lienzoId).sort((a, b) => order[a.status] - order[b.status] || b.date.localeCompare(a.date));
+  const evs = DB.all('events').filter(e => isSuper(u) || (L && e.lienzoId === L.id)).sort((a, b) => order[a.status] - order[b.status] || b.date.localeCompare(a.date));
   const judges = L ? DB.all('profiles').filter(p => p.role === 'juez' && p.lienzoId === L.id) : [];
-  let h = `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="row between"><div class="h1">${isSuper(u) ? 'Charreadas' : 'Mis charreadas'}</div>${L ? `<button class="btn pri sm" data-act="newEvent">${I.plus} Nueva</button>` : ''}</div>${L ? `<div class="sub" style="margin-top:4px">${esc(L.name)} ${verifiedMark(L)}</div>` : ''}${tvBanner('kit')}${tvBanner('tv')}`;
+  let h = `<a class="back" href="#cuenta">${I.arrow} Cuenta</a><div class="row between"><div class="h1">${isSuper(u) ? 'Charreadas' : 'Mis charreadas'}</div>${L ? `<button class="btn pri sm" data-act="newEvent">${I.plus} Nueva</button>` : ''}</div>${L ? `<div class="sub" style="margin-top:4px">${esc(L.name)} ${verifiedMark(L)}</div>` : ''}${tvBanner('kit')}${tvBanner('tv')}<div class="h2">Aviso para tus boletos</div><div class="card"><div class="small mut">Inclúyelo en tus boletos y en la entrada del lienzo.</div><textarea class="in mt" readonly rows="5" aria-label="Aviso para boletos">${esc(AVISO_BOLETOS)}</textarea></div>${L ? lienzoEquipo(u, L) : ''}`;
   h += evs.length ? `<div class="list mt">${evs.map(ev => `<a class="card evc" href="#panel-evento-${ev.id}"><div class="row">${dateBox(ev.date)}<div class="grow"><div class="row wrapf" style="gap:6px;margin-bottom:4px">${statusChip(ev)}${officialChip(ev)}${modeChip(ev)}</div><div class="t">${esc(ev.title)}</div><div class="meta">${isSuper(u) ? esc(lienzo(ev.lienzoId).name) + ' · ' : ''}${ev.teams.length} ${ev.mode === 'completo' ? 'charros' : 'equipos'} · ${evScores(ev.id).length} faenas calificadas</div></div></div></a>`).join('')}</div>`
     : `<div class="mt">${emptyState(I.horse, 'Aún no tienes charreadas', 'Crea tu primera charreada.', `<button class="btn pri" data-act="newEvent">${I.plus} Crear charreada</button>`)}</div>`;
   if (L) { h += `<div class="h2">Jueces de tu lienzo</div>` + (judges.length ? `<div class="card pad0">${judges.map(j => `<div class="rank"><div class="avatar">${esc(initials(j.name))}</div><div class="grow"><div style="font-weight:700">${esc(j.name)}</div><div class="small mut">${esc(j.email)}</div></div>${j.status === 'aprobado' ? '<span class="chip green">Activo</span>' : `<span class="chip ${j.status === 'pendiente' ? 'blue' : 'red'}">${esc(j.status)}</span>`}</div>`).join('')}</div>` : `<div class="card small mut">Pide a tus jueces que se registren como “Juez” eligiendo tu lienzo; el administrador los autoriza.</div>`); }
@@ -2964,6 +3057,8 @@ function vAdmin(){
     <div class="scroller mt">${[['solicitudes','Solicitudes',pend.length + offReq.length + DB.all('requests').filter(r => r.status === 'pendiente' && r.type !== 'transfer' && r.type !== 'interes').length + verifQueue(u).length],['lienzos','Lienzos'],['usuarios','Usuarios'],['eventos','Charreadas'],['invitaciones','Invitaciones'],['valuacion','Valuación'],['ajustes','Ajustes'],['microchips','Pro y kits'],['bitacora','Bitácora']].map(([k, l, n]) => `<button class="tog ${t === k ? 'on' : ''}" data-act="admintab" data-k="${k}">${l}${n ? ` <span class="badge-n">${n}</span>` : ''}</button>`).join('')}</div>`;
   if (t === 'solicitudes') { const nr = DB.all('requests').filter(r => r.status === 'pendiente' && r.type !== 'transfer' && r.type !== 'interes').length, nv = verifQueue(u).length;
     h += `<div class="h2">Verificaciones y equipos</div><div class="list">${menuItem('#solicitudes', I.check, 'Verificar charros, equipos y caballos', nv ? `${nv} por verificar` : 'Sin pendientes')}${menuItem('#solicitudes', I.user, 'Rosters y afiliaciones', nr ? `${nr} pendientes` : 'Sin pendientes')}</div>`;
+    const LQ = DB.all('lienzos').flatMap(l => (l.pendientes || []).map(id => [l, id]));
+    if (LQ.length) h += `<div class="h2">Equipos de lienzo por autorizar</div><div class="list">${LQ.map(([l, id]) => `<div class="card"><div style="font-weight:800">${esc((l.adminNames || {})[id] || 'Integrante')}</div><div class="small mut">Quiere entrar al panel de ${esc(l.name)}</div><div class="btns mt"><button class="btn pri sm" data-act="lienzoDecidir" data-l="${esc(l.id)}" data-id="${esc(id)}" data-ok="1">${I.check} Autorizar</button><button class="btn sm" data-act="lienzoDecidir" data-l="${esc(l.id)}" data-id="${esc(id)}" data-ok="">${I.x} Rechazar</button></div></div>`).join('')}</div>`;
     h += `<div class="h2">Cuentas por autorizar</div>` + (pend.length ? `<div class="list">${pend.map(p => { const L = p.role === 'lienzo' ? DB.get('lienzos', p.lienzoId) : lienzo(p.lienzoId); return `<div class="card"><div class="row"><div class="avatar">${esc(initials(p.name))}</div><div class="grow"><div style="font-weight:800">${esc(p.name)}</div><div class="small mut">${roleName(p.role)} · ${esc(p.email)}${p.phone ? ' · ' + esc(p.phone) : ''}</div></div></div>
       <div class="small" style="margin-top:8px">${p.role === 'lienzo' ? `Lienzo: <b>${esc(L && L.name)}</b> · ${esc(L && L.city)}, ${esc(L && L.state)}` : `Juez en: <b>${esc(L.name)}</b>`}</div><div class="small mut2" style="margin-top:2px">Solicitado ${fdt(p.createdAt)}</div>
       <div class="btns mt"><button class="btn pri sm" data-act="approve" data-id="${p.id}">${I.check} Autorizar</button><button class="btn sm" data-act="reject" data-id="${p.id}">${I.x} Rechazar</button></div></div>`; }).join('')}</div>` : `<div class="card small mut">No hay cuentas pendientes. ✓</div>`);
@@ -3068,6 +3163,12 @@ const ACT = {
   rankOficial(){ State.rankOficial = !State.rankOficial; render(); }, histOficial(){ State.histOficial = !State.histOficial; render(); },
   authmode(el){ State.authMode = el.dataset.k; render(); },
   card(el){ openCard(el.dataset.n); },
+  rankLienzoNac(){ State.rankLienzo = ''; State.rankVerLienzos = false; render(); },
+  rankLienzoSel(){ State.rankVerLienzos = true; render(); },
+  favLienzo(el){ return favAlternar(el.dataset.id); },
+  zonaLienzo(el){ State.zonaLienzo = State.zonaLienzo === el.dataset.id ? '' : el.dataset.id; render(); },
+  zonaFav(){ State.zonaFav = !State.zonaFav; render(); },
+  zonaLimpiar(){ Object.assign(State, { zonaQ: '', zonaEstado: '', zonaFav: false, zonaLienzo: '' }); render(); },
   hcard(el){ openHorse(el.dataset.id); },
   async cardPhotoDel(el){ const key = el.dataset.k; await safe(async () => { await savePhoto(key, ''); reabrirCarta(key); }, 'La tarjeta usa tu foto de perfil'); },
   async cqGo(el){ const Q = State.cq; try { await cqPersist(); } catch (e) { return toast(e.message || 'No se pudo guardar', 'err'); } Q.step = +el.dataset.k; render(); window.scrollTo(0, 0); }, cqVia(el){ State.cq.d.via = el.dataset.k; State.cq.step = 1; render(); window.scrollTo(0, 0); }, cqDraw(el){ openDraw(+el.dataset.i); },
@@ -3087,6 +3188,12 @@ const ACT = {
   upgrade(el){ openUpgrade(el.dataset.why || ''); },
   async cardHD(el){ if (needPro('La tarjeta en alta resolución es una función Pro.')) return; await safe(() => downloadNode($('#tcard'), `tarjeta-${slug(el.dataset.n)}.png`), 'Tarjeta descargada'); },
   report(el){ if (needPro('Los reportes en PDF son una función Pro.')) return; openReport(el.dataset.k, el.dataset.id); },
+  async lienzoDecidir(el){ const l = DB.get('lienzos', el.dataset.l), id = el.dataset.id, ok = !!el.dataset.ok, n = ((l || {}).adminNames || {})[id] || 'Integrante'; if (!l || !isSuper(State.user)) return; await safe(async () => { await DB.backend.lienzoDecidir(l.id, id, ok); await audit('equipo', `${ok ? 'Autorizó' : 'Rechazó'} a ${n} en ${l.name}`); }, ok ? 'Integrante autorizado' : 'Solicitud rechazada'); },
+  async lienzoQuitar(el){ const l = DB.get('lienzos', el.dataset.l), id = el.dataset.id, n = ((l || {}).adminNames || {})[id] || 'Integrante'; if (!l || !(await ask('Quitar del lienzo', `${n} ya no podrá hacer cambios en este lienzo.`, 'Quitar', true))) return; await safe(async () => { await DB.backend.lienzoQuitar(l.id, id); await audit('equipo', `Quitó a ${n} del equipo del lienzo`); }, 'Persona quitada'); },
+  async addPerfil(el){ const u = State.user, k = el.dataset.k; if (!u) return;
+    if (k === 'charro' || k === 'escaramuza') { if (myCharro(u)) return toast('Una cuenta es charro o escaramuza, no ambos', 'err'); return safe(async () => { await DB.put('charros', { id: 'h' + uid(), name: u.name, alias: '', state: '', category: 'Libre', disciplina: k === 'escaramuza' ? 'escaramuza' : 'charreria', photo: u.photo || '', teamId: null, userId: u.id, createdAt: Date.now() }); await audit('perfil', `${u.name} agregó su perfil de ${k}`); }, 'Perfil agregado'); }
+    if (k === 'equipo') { const name = await ask('Crear mi equipo', 'Escribe el nombre del equipo o escaramuza.', 'Crear', false, 'Nombre del equipo'); if (!name || !name.trim()) return; return safe(async () => { await DB.put('teams', { id: 'q' + uid(), name: name.trim(), state: '', assoc: '', photo: '', captainId: u.id, captainName: u.name, lienzoId: null, lienzoStatus: '', createdAt: Date.now() }); await audit('perfil', `${u.name} creó el equipo ${name.trim()}`); }, 'Equipo creado'); }
+    return safe(async () => { State.user = await DB.put('profiles', { ...u, perfiles: [...new Set([...(u.perfiles || []), k])] }); }, 'Perfil agregado'); },
   async tvDone(el){ const r = DB.get('requests', el.dataset.id); if (!r) return; await safe(async () => { await DB.put('requests', { ...r, status: 'atendido', attendedBy: State.user.name, attendedAt: Date.now() }); await audit('charros-tv', `Atendió la solicitud de ${(r.contact || {}).name || r.createdByName}`); }, 'Solicitud atendida'); },
   async kitQuote(el){ const r = DB.get('requests', el.dataset.id); if (!r) return; const v = await ask('Cotizar kit', `Precio total para ${r.targetName}, en pesos mexicanos.`, 'Guardar', false, 'Ej. 1500'); if (!v) return;
     const price = Math.round(Number(String(v).replace(/[$,\s]/g, ''))); if (!(price > 0)) return toast('Escribe un precio mayor a cero', 'err');
@@ -3256,6 +3363,7 @@ document.addEventListener('input', e => {
   const el = e.target;
   if (el.dataset.ep && State.ej && State.ej.d && el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'number') { setP(State.ej.d, el.dataset.ep, el.value); State.ej.dirty = true; escDraftSet(); return; }
   if (el.dataset.jp === 'notes') { setP(State.j.d, 'notes', el.value); State.j.dirty = true; return; }
+  if (el.dataset.model === 'zonaQ') { clearTimeout(searchT); searchT = setTimeout(() => { State.zonaQ = el.value; const pos = el.selectionStart; render(); const n = document.querySelector('[data-model="zonaQ"]'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 200); return; }
   if (el.dataset.model === 'histQ') { clearTimeout(searchT); searchT = setTimeout(() => { State.histQ = el.value; const pos = el.selectionStart; render(); const n = document.querySelector('[data-model="histQ"]'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 250); }
 });
 document.addEventListener('submit', async e => {
@@ -3269,6 +3377,7 @@ document.addEventListener('submit', async e => {
     return safe(async () => { const st = await DB.backend.registerChip(kind, x, d.uid); await audit('microchip', `Registró el chip ${fmtUid(d.uid)} en ${x.name}`); toast(st === 'validado' ? '¡Carnet validado! El chip coincide con tu kit.' : 'Chip registrado. Queda pendiente de validación.', 'ok'); if (st === 'validado') go('carnet-' + x.id); }); }
   if (k === 'prices') { const n = v => Math.max(0, Math.round(+v || 0)), pro = n(d.pro), kit = n(d.kit), tvKit = n(d.tvKit), tvMes = n(d.tvMes);
     return safe(async () => { await DB.put('settings', { id: 'precios', pro, kit, tvKit, tvMes, updatedAt: Date.now() }); await audit('precios', `Cambió precios: Pro ${mxn(pro)}/mes, kit ${mxn(kit)}, cámaras ${mxn(tvKit)}, Charros TV ${mxn(tvMes)}/mes`); }, 'Precios guardados'); }
+  if (k === 'lienzoAdd') { const lid = f.dataset.l, correo = d.correo.trim().toLowerCase(); return safe(async () => { const nombre = await DB.backend.lienzoAgregar(lid, correo); await audit('equipo', `Pidió agregar a ${nombre} al equipo del lienzo`); }, 'Falta la autorización del súper usuario'); }
   if (k === 'tvPedir') { const u = State.user, tipo = f.dataset.tipo; if (!u || !TV_TIPOS[tipo]) return;
     if (tvPendiente(u, tipo)) return toast('Ya tienes una solicitud en revisión', 'err');
     const contact = {}; ['name', 'phone', 'lienzo', 'city', 'notes'].forEach(q => { contact[q] = String(d[q] || '').trim(); });
@@ -3308,9 +3417,9 @@ document.addEventListener('submit', async e => {
       State.recovery = false; State.recoveryUser = null; State.changePass = false; State.authMode = 'login';
       if (p) { State.user = p; await audit('contrasena', `${p.name} cambió su contraseña`); }
       if (wasRecovery) go(p && isSuper(p) ? 'admin' : 'cuenta'); }, 'Contraseña actualizada'); }
-  if (k === 'register') { const payload = { role: State.regRole, name: d.name.trim(), email: d.email.trim().toLowerCase(), phone: d.phone || '', invite: (d.invite || '').trim().toUpperCase() || null, lienzoName: d.lienzoName, city: d.city, state: d.state, lienzoId: d.lienzoId,
+  if (k === 'register') { const payload = { role: State.regRole === 'escaramuza' ? 'charro' : State.regRole, disciplina: State.regRole === 'escaramuza' ? 'escaramuza' : 'charreria', name: d.name.trim(), email: d.email.trim().toLowerCase(), phone: d.phone || '', invite: (d.invite || '').trim().toUpperCase() || null, lienzoName: d.lienzoName, city: d.city, state: d.state, lienzoId: d.lienzoId,
       ranchName: (d.ranchName || '').trim(), whatsapp: (d.whatsapp || '').trim(),
-      alias: (d.alias || '').trim(), category: d.category, teamReq: d.teamReq || null, teamName: (d.teamName || '').trim(), assoc: (d.assoc || '').trim(), lienzoAfil: d.lienzoAfil || null };
+      termsAt: Date.now(), termsV: TERMINOS_V, alias: (d.alias || '').trim(), category: d.category, teamReq: d.teamReq || null, teamName: (d.teamName || '').trim(), assoc: (d.assoc || '').trim(), lienzoAfil: d.lienzoAfil || null };
     if (OPEN_ROLES.includes(payload.role)) payload.invite = null;
     return safe(async () => { const r = await DB.backend.register(payload, d.pass); if (r.needsConfirm) { toast('Revisa tu correo para confirmar la cuenta y luego entra.', 'ok'); State.authMode = 'login'; return; } State.user = r.profile; go('cuenta'); }); }
   if (k === 'evData') { const ev = curEv(); const patch = { title: d.title.trim(), date: d.date, category: d.category }; if (d.mode && d.mode !== (ev.mode || 'equipos')) { patch.mode = d.mode; patch.suertes = d.mode === 'escaramuza' ? [] : (d.mode === 'completo' ? RULES.ORDER_CC : RULES.ORDER_EQ).slice(); } return safe(() => updEv(patch), 'Datos guardados'); }
