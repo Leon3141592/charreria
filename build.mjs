@@ -22,6 +22,7 @@ cpSync('formatos', 'docs/formatos', { recursive: true });   // formatos oficiale
 // Las cartas del juego llevan foto también en la app real: solo imágenes CC0 o ilustraciones propias, nunca personas reales.
 const fotoJuego = src => /^fotos-demo(\/(hombre-\d+|foto-caballo-\d+|toro-[a-z]+|yegua-[a-z]+|el-diablo|la-guera)\.jpg)?$/.test(src);
 for (const d of ['docs/fotos-juego', 'docs/demo/fotos-juego']) cpSync('fotos-demo', d, { recursive: true, filter: fotoJuego });
+for (const d of ['docs', 'docs/demo']) cpSync('vendor/jsQR.js', d + '/jsQR.js');   // lector de QR para celulares sin BarcodeDetector
 cpSync('fotos-demo', 'docs/demo/fotos', { recursive: true });   // imágenes de ejemplo: solo existen en el demo
 build('docs/demo', { MODE: 'demo', SUPABASE_URL: '', SUPABASE_ANON_KEY: '' });
 build('docs/demo/tcg', { MODE: 'demo', SITE: 'tcg', SUPABASE_URL: '', SUPABASE_ANON_KEY: '' });

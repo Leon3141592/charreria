@@ -654,7 +654,7 @@ const CONFIG = {"APP_NAME":"Charrería Pro","SUPABASE_URL":"https://bezwxvslwhrj
 const TCG = CONFIG.SITE === 'tcg';   // el mismo código sirve Charrería Pro y su sitio satélite CharreríaTCG
 const ESTADOS = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas','Estados Unidos'];
 const CATEGORIAS = ['Libre','Juvenil'];
-const TABLES = ['profiles','lienzos','events','scores','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust','tcg_cards','notifs','horse_rides','croquis','tcg_mis_cartas','tcg_jugadores','tcg_partidas'];
+const TABLES = ['profiles','lienzos','events','scores','scores_juez','evento_lista','sheets','audit','invites','charros','teams','requests','horses','settings','horse_demand','ranches','stock','stock_ratings','adjust','tcg_cards','notifs','horse_rides','croquis','tcg_mis_cartas','tcg_jugadores','tcg_partidas'];
 RULES.F.escaramuza = { name: 'Rutina de escaramuza', short: 'Escaramuza', inf: [], eq: [] };
 const FN = k => RULES.F[k].name;
 
@@ -724,7 +724,7 @@ const DB = {
   }
 };
 const fotoMem = {};
-const LS_KEY = 'charreriapro_demo_v29', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v30', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -954,6 +954,7 @@ function seed(){
   prof('ujuez','Juez Ricardo Ponce','juez@demo.mx','juez','aprobado','lvilla');
   prof('ujuez2','Juez Ana Lucía Bravo','juez2@demo.mx','juez','aprobado','lstm');
   prof('ujuez3','Martín Esquivel','martin@demo.mx','juez','pendiente','lvilla');
+  prof('ujuez4','Juez Rosa Medina','juez4@demo.mx','juez','aprobado','lvilla'); prof('ujuez5','Juez Héctor Luna','juez5@demo.mx','juez','aprobado','lvilla'); prof('ujuez6','Juez Sofía Duarte','juez6@demo.mx','juez','aprobado','lvilla'); prof('ujuez7','Juez Iván Robles','juez7@demo.mx','juez','aprobado','lvilla');
   L.push({ id:'lvilla', name:'Lienzo Charro de la Villa', city:'Gustavo A. Madero', state:'Ciudad de México', ownerId:'uvilla', status:'aprobado', createdAt: Date.now()-200*864e5 });
   L.push({ id:'lstm', name:'Rancho Santa María', city:'Tlaquepaque', state:'Jalisco', ownerId:'ustm', status:'aprobado', createdAt: Date.now()-190*864e5 });
   L.push({ id:'lherr', name:'Lienzo El Herradero', city:'Fresnillo', state:'Zacatecas', ownerId:'uherr', status:'pendiente', createdAt: Date.now()-2*864e5 });
@@ -1011,6 +1012,11 @@ function seed(){
   const live = mkEvent('elive','Torneo Nacional Charro Bicentenario','lvilla',day(0),[0,1,2],'en_vivo',true,{ startedAt: Date.now() - 70*60000 });
   scoreAll(live, 3, false);
   S.filter(x => x.eventId === 'elive').forEach((x, i) => { x.createdAt = x.updatedAt = Date.now() - (60 - i * 6) * 60000; });
+  // Charreada en vivo con equipo de 5 jueces: 3 califican por separado y 2 escanean
+  const J3 = [['ujuez','Juez Ricardo Ponce'],['ujuez4','Juez Rosa Medina'],['ujuez5','Juez Héctor Luna']];
+  live.jueces = [...J3.map(([id, name]) => ({ id, name, fn:'califica' })), { id:'ujuez6', name:'Juez Sofía Duarte', fn:'escanea' }, { id:'ujuez7', name:'Juez Iván Robles', fn:'escanea' }];
+  const SJ = S.filter(x => x.eventId === 'elive').flatMap(x => J3.map(([jid, jn], n) => ({ ...x, id: `${x.id}-${jid}`, judgeId: jid, judgeName: jn, judgeN: n + 1 })));
+  S.filter(x => x.eventId === 'elive').forEach(x => { x.judgeName = '3 de 3 jueces'; x.jueces = J3.map(([id, name], n) => ({ id, name, n: n + 1, net: x.net })); });
   mkEvent('eguad','Gran Charreada Guadalupana','lstm',day(40),[3,4,5],'programado',false,{ requestOfficial: true });
   A.push({ id:'a1', actorId:'uadmin', actorName:'Súper Usuario', action:'aprobar', detail:'Aprobó el lienzo Rancho Santa María', ts: Date.now()-190*864e5 });
   A.push({ id:'a2', actorId:'uadmin', actorName:'Súper Usuario', action:'oficial', detail:'Marcó como oficial: Torneo Nacional Charro Bicentenario', ts: Date.now()-2*864e5 });
@@ -1109,7 +1115,7 @@ function seed(){
   const oficial = (kind, d) => { d.verif = 'oficial'; d.verifKey = verifKeyOf(kind, d); };
   CH.forEach(c => { if (c.userId) { conCarta(c.userId); oficial('charro', c); } }); HS.forEach(x => { conCarta(x.ownerId); oficial('horse', x); }); ST.filter(x => x.mode === 'unidad').forEach(x => { conCarta(x.ownerId); oficial('stock', x); });
   const JG = P.filter(x => x.role === 'charro').slice(0, 12).map((x, i) => ({ id: x.id, name: x.name, partidas: 40 - i * 3, victorias: 24 - i * 2, puntos: 180 - i * 13, dia: '', premiosDia: 0 }));
-  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, croquis:CR, notifs:N, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }, { id:'tcg_banco', plata:100, oro:50 }], tcg_jugadores:JG, tcg_mis_cartas:[], tcg_partidas:[] };
+  return { profiles:P, lienzos:L, events:E, scores:S, sheets:SH, audit:A, invites:IV, charros:CH, teams:T, requests:RQ, horses:HS, ranches:RA, stock:ST, stock_ratings:SR, croquis:CR, notifs:N, settings:[{ id:'valuacion', min:60000, max:800000 }, { id:'precios', pro:99, kit:699 }, { id:'tcg_banco', plata:100, oro:50 }], tcg_jugadores:JG, tcg_mis_cartas:[], tcg_partidas:[], scores_juez:SJ, evento_lista:[] };
 }
 
 /* ------------------------- LÓGICA ------------------------- */
@@ -1203,13 +1209,13 @@ const hasCarnet = x => !!x && x.chipStatus === 'validado' && !!x.chipUid;
 const hasNFC = () => 'NDEFReader' in window;
 const NFC_HELP = 'La lectura con el celular funciona en Chrome para Android con NFC encendido. En iPhone o computadora, escribe el UID impreso en la etiqueta del kit.';
 function nfcErr(e){ return new Error(e && e.name === 'NotAllowedError' ? 'No se dio permiso para usar NFC. Actívalo en el aviso del navegador o en Ajustes › Sitios › NFC.' : e && e.name === 'NotSupportedError' ? 'Este celular no tiene NFC o está apagado.' : (e && e.message) || 'No se pudo usar NFC'); }
-async function nfcRead(){
+async function nfcRead(completo = false){
   if (!hasNFC()) throw new Error(NFC_HELP);
   const r = new NDEFReader(), ctl = new AbortController();
   try { await r.scan({ signal: ctl.signal }); } catch (e) { throw nfcErr(e); }   // aquí el navegador pide el permiso de NFC
   toast('Acerca el celular al chip y no lo muevas…');
   return new Promise((ok, ko) => { const t = setTimeout(() => { ctl.abort(); ko(new Error('No se detectó ningún chip. Intenta de nuevo, más cerca.')); }, 25000);
-    r.onreading = e => { clearTimeout(t); ctl.abort(); ok(normUid(e.serialNumber)); };
+    r.onreading = e => { clearTimeout(t); ctl.abort(); const uidv = normUid(e.serialNumber), rec = [...((e.message && e.message.records) || [])].find(x => x.recordType === 'url'); ok(completo ? { uid: uidv, url: rec ? new TextDecoder().decode(rec.data) : '' } : uidv); };
     r.onreadingerror = () => { clearTimeout(t); ctl.abort(); ko(new Error('No se pudo leer el chip. Acércalo más y no lo muevas.')); }; });
 }
 async function nfcWrite(url){
@@ -1279,7 +1285,12 @@ const myLienzo = u => !u ? null : u.role === 'lienzo' ? DB.get('lienzos', u.lien
 const ownsLienzo = (u, lid) => isApproved(u) && (myLienzo(u) || {}).id === lid && lienzo(lid).status === 'aprobado';
 const isJudgeOf = (u, lid) => isApproved(u) && u.role === 'juez' && u.lienzoId === lid;
 const canManage = (u, ev) => isSuper(u) || ownsLienzo(u, ev.lienzoId);
-const canScore = (u, ev) => ev && ev.status === 'en_vivo' && (isSuper(u) || ownsLienzo(u, ev.lienzoId) || isJudgeOf(u, ev.lienzoId));
+const evJ = ev => (ev && ev.jueces) || [];
+const conTres = ev => !!ev && ev.mode !== 'escaramuza' && evJ(ev).some(j => j.fn === 'califica');   // charreada con jueces asignados por el lienzo
+const juezFn = (u, ev) => ((u && evJ(ev).find(j => j.id === u.id)) || {}).fn || null;
+const juezNum = (ev, id) => evJ(ev).filter(j => j.fn === 'califica').findIndex(j => j.id === id) + 1;
+const canLista = (u, ev) => !!ev && ev.status === 'en_vivo' && conTres(ev) && !!juezFn(u, ev) && isJudgeOf(u, ev.lienzoId);
+const canScore = (u, ev) => ev && ev.status === 'en_vivo' && (conTres(ev) ? juezFn(u, ev) === 'califica' && isJudgeOf(u, ev.lienzoId) : isSuper(u) || ownsLienzo(u, ev.lienzoId) || isJudgeOf(u, ev.lienzoId));
 const canSheet = (u, ev) => ev && ['en_vivo','finalizado'].includes(ev.status) && (isSuper(u) || ownsLienzo(u, ev.lienzoId) || isJudgeOf(u, ev.lienzoId));
 const publicEvents = () => DB.all('events').filter(e => e.status !== 'borrador' && lienzo(e.lienzoId).status === 'aprobado');
 const evScores = id => DB.all('scores').filter(s => s.eventId === id);
@@ -1386,7 +1397,7 @@ window.addEventListener('resize', fitSheet);
 function onRemoteChange(){
   if (State.user) State.user = DB.get('profiles', State.user.id) || State.user;
   const a = document.activeElement;
-  if (State.route === 'juez' && State.j) { State.pendingRender = true; return; }   // no interrumpir al juez mientras captura
+  if (State.route === 'juez' && State.j) { State.pendingRender = true; const box = document.getElementById('jlista'), ev = DB.get('events', State.j.eid); if (box && ev) box.innerHTML = jListaHTML(ev, State.j.tid, State.j.fk); return; }   // no interrumpir al juez mientras captura; la lista sí se actualiza
   if (a && ['INPUT','TEXTAREA','SELECT'].includes(a.tagName) && a.closest('#view')) { State.pendingRender = true; return; }
   render();
 }
@@ -2502,6 +2513,7 @@ function vCuenta(){
   h += capCroquis(u);
   h += tcgSection(u);
   h += tvBanners(u);
+  h += paseHTML(u);
   h += `<div class="h2">Mi plan</div><div class="card"><div class="row between" style="gap:8px"><div><div style="font-weight:800">${isPro(u) ? 'Pro' : 'Gratis'}</div><div class="small mut">${isSuper(u) ? 'El súper usuario tiene todas las funciones.' : proIncluido(u) ? 'Incluido sin costo para lienzos y jueces.' : isPro(u) ? `Activo hasta el ${fdate(localISO(+u.proUntil))}` : 'Marcadores, rankings y mesa del juez sin costo.'}</div></div>${isPro(u) ? '<span class="upg-badge">PRO</span>' : `<button class="btn pri sm" data-act="upgrade">Conocer Pro</button>`}</div>${isPro(u) && !isSuper(u) && !proIncluido(u) ? `<button class="btn ghost sm mt" data-act="upgrade">Renovar 30 días</button>` : ''}</div>`;
   if (u.role !== 'charro') h += `<div class="h2">Foto de perfil</div><div class="card">${photoBox('profile', u.id, u.photo, u.name)}</div>`;
   h += `<div class="h2">Seguridad</div>` + (State.changePass ? passForm(true) : `<button class="btn block" data-act="changepass">${I.key} Cambiar contraseña</button>`);
@@ -2511,7 +2523,7 @@ function vCuenta(){
 const menuItem = (href, ic, t, d) => `<a class="card evc row" style="display:flex" href="${href}"><span class="logo" style="width:40px;height:40px">${ic}</span><div class="grow"><div class="t">${t}</div><div class="meta">${d}</div></div><span class="marrow">${I.arrow}</span></a>`;
 function demoBox(){
   return `<div class="h2">Modo demostración</div><div class="card"><div class="small mut">Entra con una cuenta de prueba para ver cada rol. Abre la app en dos pestañas para ver las calificaciones llegar en vivo.</div>
-    <div class="btns mt"><button class="btn sm" data-act="demo" data-e="publico@demo.mx" data-p="demo123">Público</button><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez</button><button class="btn sm" data-act="demo" data-e="capitan@demo.mx" data-p="demo123">Capitán</button><button class="btn sm" data-act="demo" data-e="charro@demo.mx" data-p="demo123">Charro</button><button class="btn sm" data-act="demo" data-e="dueno@demo.mx" data-p="demo123">Dueño</button></div>
+    <div class="btns mt"><button class="btn sm" data-act="demo" data-e="publico@demo.mx" data-p="demo123">Público</button><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez que califica</button><button class="btn sm" data-act="demo" data-e="juez6@demo.mx" data-p="demo123">Juez de escaneo</button><button class="btn sm" data-act="demo" data-e="capitan@demo.mx" data-p="demo123">Capitán</button><button class="btn sm" data-act="demo" data-e="charro@demo.mx" data-p="demo123">Charro</button><button class="btn sm" data-act="demo" data-e="dueno@demo.mx" data-p="demo123">Dueño</button></div>
     <button class="btn ghost sm block mt" data-act="reset">Restablecer datos de ejemplo</button></div>
     <div class="h2">Ejemplo: croquis de escaramuzas</div><div class="card"><div class="small mut">Cada cuenta muestra una etapa. Después de entrar, ve a Mi panel.</div>
     ${[['capitana@demo.mx', 'Capitana por llenar', 'Tiene dos charreadas por llenar: Libre y Charra Mayor'], ['capitana3@demo.mx', 'Capitana en borrador', 'Lleva 5 dibujos; solo ella lo ve'], ['capitana2@demo.mx', 'Capitana que ya entregó', 'Su croquis está bloqueado'], ['juez@demo.mx', 'Jueza', 'Mesa del juez › Torneo de Escaramuzas Bicentenario, con los dibujos de referencia'], ['villa@demo.mx', 'Lienzo', 'Copa Primavera: ve cada etapa; en las finalizadas baja el paquete para federación']].map(([e, t, x]) => `<button class="btn block mt" style="height:auto;text-align:left;display:block;padding:10px 12px" data-act="demo" data-e="${e}" data-p="demo123"><b>${t}</b><div class="small mut" style="font-weight:500">${x}</div></button>`).join('')}</div>`;
@@ -2686,6 +2698,8 @@ function vPanelEvento(){
   if (ev.status === 'finalizado') h += `<div class="small mut">Charreada finalizada.${isSuper(u) ? '' : ' Solo el administrador puede reabrirla.'}</div><div class="btns mt"><a class="btn" href="#evento-${ev.id}">Ver resultados</a><a class="btn" href="#juez-${ev.id}">Hojas</a>${isSuper(u) ? `<button class="btn" data-act="evStatus" data-s="en_vivo">Reabrir</button>` : ''}</div>`;
   h += `<div class="sep"></div><div class="row between"><div><div style="font-weight:700">Charreada oficial</div><div class="small mut">${ev.official ? 'Cuenta para el ranking nacional.' : ev.requestOfficial ? 'Solicitud enviada al administrador.' : 'Solicita que cuente para el ranking.'}</div></div>
     ${isSuper(u) ? `<button class="tog ${ev.official ? 'on' : ''}" data-act="toggleOfficial" data-id="${ev.id}">${ev.official ? 'Oficial' : 'Hacer oficial'}</button>` : ev.official ? `<span class="chip gold">${I.shield}Oficial</span>` : `<button class="tog ${ev.requestOfficial ? 'on' : ''}" data-act="reqOfficial">${ev.requestOfficial ? 'Solicitado' : 'Solicitar'}</button>`}</div></div>`;
+  if (ev.mode !== 'escaramuza') { const JL = DB.all('profiles').filter(p => p.role === 'juez' && p.status === 'aprobado' && p.lienzoId === ev.lienzoId), fnOf = id => (evJ(ev).find(j => j.id === id) || {}).fn || '', nC = evJ(ev).filter(j => j.fn === 'califica').length, nE = evJ(ev).filter(j => j.fn === 'escanea').length;
+    h += `<div class="h2">Jueces de esta charreada</div><div class="card"><div class="small mut">Elige 3 que califican por separado y 2 que escanean y confirman la lista. Van ${nC} de 3 y ${nE} de 2.</div>${JL.length ? JL.map(p => `<div class="row between mt" style="gap:8px;align-items:center"><span class="grow ell">${esc(p.name)}</span><div class="chips">${[['califica', 'Califica'], ['escanea', 'Escanea'], ['', 'Sin función']].map(([k, l]) => `<button class="tog ${fnOf(p.id) === k ? 'on' : ''}" data-act="evJuez" data-id="${p.id}" data-fn="${k}" ${dis}>${l}</button>`).join('')}</div></div>`).join('') : '<div class="small mut mt">Tu lienzo aún no tiene jueces autorizados.</div>'}</div>`; }
   h += `<div class="h2">Datos</div><form class="card" data-form="evData"><label class="f" style="margin-top:0">Nombre de la charreada</label><input class="in" name="title" value="${esc(ev.title)}" required ${dis}>
     <div class="row" style="gap:8px"><div class="grow"><label class="f">Fecha</label><input class="in" type="date" name="date" value="${esc(ev.date)}" required ${dis}></div><div class="grow"><label class="f">Categoría</label><select class="in" name="category" ${dis}>${(ev.mode === 'escaramuza' ? ESC_CATS : CATEGORIAS).map(c => `<option ${c === ev.category ? 'selected' : ''}>${c}</option>`).join('')}</select></div></div>
     <label class="f">Modalidad</label><select class="in" name="mode" ${dis || hasScores || ev.teams.length ? 'disabled' : ''}><option value="equipos" ${!cc ? 'selected' : ''}>Charreada por equipos</option><option value="escaramuza" ${ev.mode === 'escaramuza' ? 'selected' : ''}>Escaramuzas</option><option value="completo" ${cc ? 'selected' : ''}>Charro completo</option></select>
@@ -2736,7 +2750,7 @@ function jSelWho(path, ev, tid, label){
 const RIDE_FAENAS = ['cala', 'piales', 'coleadero', 'terna', 'mcab', 'paso'];   // en toro, yegua y manganas a pie no se usa caballo
 const rideId = (eid, cid, fk) => `${eid}-${cid}-${fk}`;
 const rideOf = (eid, cid, fk) => DB.get('horse_rides', rideId(eid, cid, fk));
-const canRide = (u, ev) => !!ev && ev.status === 'en_vivo' && isJudgeOf(u, ev.lienzoId);
+const canRide = (u, ev) => !!ev && ev.status === 'en_vivo' && isJudgeOf(u, ev.lienzoId) && (!conTres(ev) || juezFn(u, ev) === 'escanea');
 function rideBox(ev, cid){ const fk = State.j.fk, u = State.user; if (!cid || cid === '__nuevo' || !RIDE_FAENAS.includes(fk)) return '';
   const r = rideOf(ev.id, cid, fk), c = ev.charros.find(x => x.id === cid) || {}, fijo = !r && c.horseId && DB.get('horses', c.horseId), can = canRide(u, ev) && !isLocked(ev, State.j.tid);
   return `<div class="row between small mt" style="gap:8px;align-items:center"><span class="grow">${r ? `${I.check.replace('<svg', '<svg style="width:14px;height:14px;vertical-align:-2px;color:var(--green)"')} <b>${esc(r.horseName)}</b> · escaneado` : fijo ? `Caballo asignado: ${esc(fijo.name)}` : '<span class="mut">Sin caballo registrado</span>'}</span>${can ? `${r ? `<button class="btn ghost sm" data-act="rideDel" data-c="${cid}" aria-label="Quitar caballo">Quitar</button>` : ''}<button class="btn pri sm" data-act="scanHorse" data-c="${cid}">${I.horse.replace('<svg', '<svg style="width:16px;height:16px"')} Escanear caballo</button>` : ''}</div>`; }
@@ -3202,18 +3216,20 @@ function vJuez(){
   if (!ev || !canSheet(u, ev)) return `<a class="back" href="#juez">${I.arrow} Mesa del juez</a>` + emptyState(I.shield, 'Sin acceso a esta charreada', 'No tienes permiso en este lienzo o la charreada no ha iniciado.');
   if (!ev.teams.length) return `<a class="back" href="#juez">${I.arrow} Mesa del juez</a>` + emptyState(I.info, 'Sin inscritos', 'La charreada no tiene equipos o charros.');
   if (ev.mode === 'escaramuza') return vJuezEsc(ev);
+  if (conTres(ev) && juezFn(u, ev) === 'escanea') return vEscaneo(ev);
   // estado de captura
   let j = State.j;
   if (!j || j.eid !== ev.id) j = State.j = { eid: ev.id, tid: ev.teams[0].id, fk: ev.suertes[0], d: null };
   if (!ev.teams.some(t => t.id === j.tid)) j.tid = ev.teams[0].id;
   if (!ev.suertes.includes(j.fk)) j.fk = ev.suertes[0];
-  const team = ev.teams.find(t => t.id === j.tid), sc = evScores(ev.id), existing = sc.find(s => s.teamId === j.tid && s.faena === j.fk);
+  const tres = conTres(ev), team = ev.teams.find(t => t.id === j.tid), sc = tres ? DB.all('scores_juez').filter(s => s.eventId === ev.id && s.judgeId === u.id) : evScores(ev.id), existing = sc.find(s => s.teamId === j.tid && s.faena === j.fk);
   if (!j.d) { j.d = existing ? clone(existing.input) : RULES.blank(j.fk, ev.mode); j.dirty = false; }
   const locked = isLocked(ev, team.id) && !isSuper(u), editable = canScore(u, ev) && !locked;
   const st = teamStandings(ev);
   let h = `<a class="back" href="#evento-${ev.id}">${I.arrow} Ver pública</a><div class="row between"><div class="grow"><div class="row" style="gap:6px">${statusChip(ev)}${modeChip(ev)}</div><div style="font-weight:800;font-size:17px;margin-top:6px" class="ell">${esc(ev.title)}</div></div></div>
     <label class="f">${teamLabel(ev)}</label><div class="scroller">${st.map(t => `<button class="tog ${t.id === j.tid ? 'on' : ''}" data-jteam="${t.id}">${esc(t.name)} · <b>${t.pts}</b>${isLocked(ev, t.id) ? ' 🔒' : ''}</button>`).join('')}</div>
     <label class="f">Faena</label><div class="scroller">${ev.suertes.map(fk => { const done = sc.some(s => s.teamId === j.tid && s.faena === fk); return `<button class="tog ${done ? 'done' : ''} ${fk === j.fk ? 'on' : ''}" data-jfaena="${fk}">${done ? '✓ ' : ''}${esc(RULES.F[fk].short)}</button>`; }).join('')}</div>`;
+  if (tres) h += `<div id="jlista">${jListaHTML(ev, j.tid, j.fk)}</div>`;
   if (locked) h += `<div class="banner ok mt">${I.check}<span>La hoja de ${esc(team.name)} ya fue entregada y firmada. Solo el súper usuario puede reabrirla.</span></div>`;
   else if (!canScore(u, ev)) h += `<div class="banner warn mt">${I.info}<span>La charreada no está en vivo: puedes revisar y entregar las hojas, pero no modificar calificaciones.</span></div>`;
   const { html, r } = faenaForm(ev, team, j.fk);
@@ -3233,8 +3249,15 @@ function infCodes(m, key){ const defs = DEFS(key); return (m || []).map(x => { c
 function infList(m, key){ const defs = DEFS(key); return (m || []).map(x => { const df = defs.find(y => y[0] === x.c); return df ? `${esc(df[1])}${x.n > 1 ? ' ×' + x.n : ''} (−${df[2] * (x.n || 1)})` : ''; }).filter(Boolean); }
 const cname = (ev, id) => (ev.charros.find(c => c.id === id) || {}).name || '';
 const nz = v => v ? v : '';
-function sheetFaena(ev, team, fk, s){
-  const d = s ? s.input : RULES.blank(fk, ev.mode), r = RULES.calc(fk, d), R = RULES; const ttl = FN(fk).toUpperCase();
+// Promedia casilla por casilla lo que capturó cada juez. Un texto solo se conserva si los jueces coinciden.
+function promCasillas(l, k){ const a = l[0]; if (a === null || a === undefined) return a;
+  if (Array.isArray(a)) return k === 'm' || k === 'eq' ? [] : a.map((_, i) => promCasillas(l.map(x => (x || [])[i]).filter(v => v !== undefined)));
+  if (typeof a === 'object') return Object.fromEntries(Object.keys(a).map(c => [c, promCasillas(l.map(x => (x || {})[c]).filter(v => v !== undefined), c)]));
+  if (typeof a === 'number') return Math.floor(l.reduce((t, v) => t + (+v || 0), 0) / l.length + .5);
+  if (l.every(v => v === a)) return a; if (l.every(v => v !== '' && !isNaN(v))) return String(+(l.reduce((t, v) => t + +v, 0) / l.length).toFixed(2));   // metros y minutos
+  return typeof a === 'boolean' ? a : ''; }
+function sheetFaena(ev, team, fk, s, filas){
+  const prom = !!(filas && filas.length), d = prom ? promCasillas(filas.map(x => x.input)) : s ? s.input : RULES.blank(fk, ev.mode), r = prom ? promCasillas(filas.map(x => RULES.calc(fk, x.input))) : RULES.calc(fk, d), R = RULES; const ttl = FN(fk).toUpperCase();
   const det = []; const add = (who, m, key) => { const l = infList(m, key); if (l.length) det.push(`<b>${esc(who)}</b>: ${l.join('; ')}`); };
   let t = '';
   const left = (rows, sup = true) => `<td class="fn" rowspan="${rows}" style="width:150px">${ttl}</td>`;
@@ -3269,7 +3292,7 @@ function sheetFaena(ev, team, fk, s){
     const cellVal = k => k === 'levSin' ? (r.cells.levSin || r.cells.levCon || 0) : r.cells[k];
     t = `<table><tr>${left(2)}<th>BASE</th>${cols.map(c => `<th style="font-size:7px">${c[1]}</th>`).join('')}<th class="g">TOTAL</th><th class="red">MALOS</th><th style="width:26px">T</th><th class="g" style="width:54px">TOTAL</th></tr>
       <tr><td>${nz(r.cells.base)}</td>${cols.map(c => `<td>${nz(cellVal(c[0]))}</td>`).join('')}<td class="g">${r.buenos}</td><td class="red">-${nz(r.malos)}</td><td>${nz(r.T)}</td><td class="gt">${r.total}</td></tr>
-      <tr><td class="who">${esc(cname(ev, d.who))}</td><td colspan="${cols.length + 5}" style="font-size:8px;text-align:left">${d.cls ? 'Jineteada ' + esc(R.CLS.find(x => x[0] === d.cls)[1]) : 'Sin calificación'}${other.length ? ' · Otros adicionales: ' + other.map(o => `${esc(o[1])} ${r.cells[o[0]]}`).join(', ') : ''}${r.desc ? ` · Descomponerse −${r.desc}` : ''}${r.timeInf ? ` · Tiempo −${r.timeInf}` : ''}${d.dq ? ' · DESCALIFICADA' : ''}</td></tr></table>
+      <tr><td class="who">${esc(cname(ev, d.who))}</td><td colspan="${cols.length + 5}" style="font-size:8px;text-align:left">${d.cls ? 'Jineteada ' + esc(R.CLS.find(x => x[0] === d.cls)[1]) : prom ? 'Promedio de los jueces' : 'Sin calificación'}${other.length ? ' · Otros adicionales: ' + other.map(o => `${esc(o[1])} ${r.cells[o[0]]}`).join(', ') : ''}${r.desc ? ` · Descomponerse −${r.desc}` : ''}${r.timeInf ? ` · Tiempo −${r.timeInf}` : ''}${d.dq ? ' · DESCALIFICADA' : ''}</td></tr></table>
       <div class="aux">TERMINADO EN <span class="box">${nz(d.tiempo)}</span> MIN.</div>`;
     add(cname(ev, d.who) || 'Jinete', d.m, 'inf:' + fk);
   }
@@ -3295,40 +3318,40 @@ function sheetFaena(ev, team, fk, s){
   return `<div class="blk">${t}<div class="aux">INFRACCIÓN AL EQUIPO <span class="box red">-${nz(r.eq)}</span> <span style="font-weight:400;color:#555">Suma puntos malos: ${r.malos + r.eq}</span></div>
     ${det.length || eqL.length ? `<div class="det">${det.join(' · ')}${eqL.length ? `${det.length ? ' · ' : ''}<b>Equipo</b>: ${eqL.join('; ')}` : ''}</div>` : ''}${d.notes ? `<div class="det"><i>Obs.: ${esc(d.notes)}</i></div>` : ''}${!s ? '<div class="det" style="color:#999">Faena sin calificar</div>' : ''}</div>`;
 }
-function sheetHTML(ev, team){
-  const L = lienzo(ev.lienzoId), sc = evScores(ev.id).filter(s => s.teamId === team.id), sh = sheetOf(ev.id, team.id) || {}, cc = ev.mode === 'completo';
+function sheetHTML(ev, team, filas, juez){
+  const L = lienzo(ev.lienzoId), sc = filas || evScores(ev.id).filter(s => s.teamId === team.id), sh = sheetOf(ev.id, team.id) || {}, cc = ev.mode === 'completo', tres = conTres(ev) && !juez, J3 = evJ(ev).filter(j => j.fn === 'califica');
   const totalMalos = sum(sc.map(s => s.malos + s.eq)), final = sum(sc.map(s => s.net));
-  const jueces = (sh.jueces || []).slice(0, 3);
+  const firmo = id => (sh.jueces || []).find(x => x.id === id), jueces = juez ? [0, 1, 2].map(i => i === juez.n - 1 ? { name: juez.name, ts: Math.max(0, ...sc.map(s => s.updatedAt)) } : null) : tres ? J3.map(j => ({ name: j.name, ts: (firmo(j.id) || {}).ts, pend: !firmo(j.id) })) : (sh.jueces || []).slice(0, 3);
   return `<div class="sheet" id="sheet">
-    <div class="hd"><div><div class="ttl">${cc ? 'HOJA DE CALIFICACIÓN · CHARRO COMPLETO' : 'HOJA DE CALIFICACIÓN · EQUIPO DE CHARROS'}</div>
+    <div class="hd"><div><div class="ttl">${cc ? 'HOJA DE CALIFICACIÓN · CHARRO COMPLETO' : 'HOJA DE CALIFICACIÓN · EQUIPO DE CHARROS'}${juez ? ` · JUEZ ${juez.n}` : tres ? ' · PROMEDIO DE LOS 3 JUECES' : ''}</div>
       <div class="stl">Conforme al Reglamento Oficial de Charros Libre y Juvenil 2024 – 2028 · Categoría ${esc(ev.category || 'Libre')}${ev.official ? ' · Competencia oficial' : ''}</div></div>
       <div style="text-align:right;font-size:9px;color:#444"><b>Folio</b> ${esc(ev.id + '-' + team.id).toUpperCase()}<br>${sh.entregada ? '<span class="stamp">ENTREGADA Y FIRMADA</span>' : 'BORRADOR'}</div></div>
     <div class="flds"><span>EVENTO: <em>${esc(ev.title)}</em></span><span>HORA: <em>${esc(sh.hora || '')}</em></span>
       ${cc ? `<span>NOMBRE: <em>${esc(team.name)}</em></span><span>FECHA: <em>${fdate(ev.date)}</em></span><span>EQUIPO: <em>${esc(team.assoc || '')}</em></span><span>LUGAR: <em>${esc(L.name)}, ${esc(L.city)}</em></span>`
       : `<span>EQUIPO: <em>${esc(team.name)}</em></span><span>FECHA: <em>${fdate(ev.date)}</em></span><span>CAPITÁN: <em>${esc(sh.capitan || team.capitan || '')}</em></span><span>LUGAR: <em>${esc(L.name)}, ${esc(L.city)}</em></span>`}</div>
-    ${ev.suertes.map(fk => sheetFaena(ev, team, fk, sc.find(s => s.faena === fk))).join('')}
+    ${ev.suertes.map(fk => sheetFaena(ev, team, fk, sc.find(s => s.faena === fk), tres ? DB.all('scores_juez').filter(x => x.eventId === ev.id && x.teamId === team.id && x.faena === fk).sort((a, b) => a.judgeN - b.judgeN) : null)).join('')}
     <div class="tot"><div><span class="box" style="background:#e3e3e3">${totalMalos}</span> <span class="red" style="font-weight:700">TOTAL, PUNTOS MALOS</span></div><div style="font-weight:800;font-size:13px">PUNTUACIÓN FINAL → <span class="box" style="background:#e3e3e3;font-size:18px">${final}</span></div></div>
     <div class="firmas" style="border-top:0">${['JUEZ','JUEZ','JUEZ', cc ? 'CHARRO COMPLETO' : 'CAPITÁN'].map(x => `<b>${x}</b>`).join('')}
-      ${[0,1,2].map(i => `<div>${jueces[i] ? `<span class="stamp">✓ ${esc(jueces[i].name)}</span><span>${fdt(jueces[i].ts)}</span>` : ''}</div>`).join('')}<div>${sh.capitanFirma ? `<span class="stamp">✓ ${esc(sh.capitanFirma)}</span><span>${sh.entregadaAt ? fdt(sh.entregadaAt) : ''}</span>` : ''}</div></div>
+      ${[0,1,2].map(i => `<div>${!jueces[i] ? '' : jueces[i].pend ? `<span>${esc(jueces[i].name)}</span><span>Falta firmar</span>` : `<span class="stamp">✓ ${esc(jueces[i].name)}</span><span>${fdt(jueces[i].ts)}</span>`}</div>`).join('')}<div>${sh.capitanFirma ? `<span class="stamp">✓ ${esc(sh.capitanFirma)}</span><span>${sh.entregadaAt ? fdt(sh.entregadaAt) : ''}</span>` : ''}</div></div>
     <div class="foot"><span>Documento digital generado por ${CONFIG.APP_NAME}. Las cifras se calculan automáticamente con los valores del reglamento y cada cambio queda registrado en bitácora.</span><span>${sh.entregadaAt ? 'Entregada ' + fdt(sh.entregadaAt) : 'Generada ' + fdt(Date.now())}</span></div></div>`;
 }
 function vHoja(){
   const ev = DB.get('events', State.param), team = ev && ev.teams.find(t => t.id === State.param2), u = State.user;
   if (!ev || !team) return emptyState(I.doc, 'Hoja no encontrada', '');
   const sh = sheetOf(ev.id, team.id), sc = evScores(ev.id).filter(s => s.teamId === team.id), can = canSheet(u, ev);
-  const missing = ev.suertes.filter(fk => !sc.some(s => s.faena === fk));
+  const tres = conTres(ev), JC3 = evJ(ev).filter(j => j.fn === 'califica'), missing = ev.suertes.filter(fk => tres ? JC3.some(j => !DB.get('scores_juez', `${ev.id}-${team.id}-${fk}-${j.id}`)) : !sc.some(s => s.faena === fk));
   let h = `<div class="noprint"><a class="back" href="#${can ? 'juez-' + ev.id : 'evento-' + ev.id}">${I.arrow} ${can ? 'Mesa del juez' : 'Charreada'}</a>
     <div class="row between wrapf" style="gap:8px"><div><div style="font-weight:800;font-size:17px">Hoja de ${esc(team.name)}</div><div class="small mut">${esc(ev.title)}</div></div>${sh && sh.entregada ? `<span class="chip green">${I.check}Entregada</span>` : '<span class="chip">Borrador</span>'}</div>
     <div class="btns mt">${canPdfDl(u, ev) ? `<button class="btn sm" data-act="print">${I.print} Imprimir / PDF</button>` : ''}<button class="btn sm" data-act="fit">${State.fit ? 'Tamaño real' : 'Ajustar a pantalla'}</button></div>`;
-  if (can && !(sh && sh.entregada)) h += `<div class="card mt">${missing.length ? `<div class="banner warn">${I.info}<span>Faltan por calificar: ${missing.map(FN).join(', ')}.</span></div>` : '<div class="banner ok">' + I.check + '<span>Todas las faenas están calificadas.</span></div>'}
+  if (can && !(sh && sh.entregada) && (!tres || juezFn(u, ev) === 'califica')) h += `<div class="card mt">${missing.length ? `<div class="banner warn">${I.info}<span>Faltan por calificar: ${missing.map(FN).join(', ')}.</span></div>` : '<div class="banner ok">' + I.check + '<span>Todas las faenas están calificadas.</span></div>'}
     <form data-form="entrega" class="mt"><div class="grid2"><div><label class="f" style="margin-top:0">${ev.mode === 'completo' ? 'Firma del charro' : 'Capitán que firma'}</label><input class="in" name="capitan" value="${esc((sh && sh.capitan) || team.capitan || (ev.mode === 'completo' ? team.name : ''))}" required></div>
     <div><label class="f" style="margin-top:0">Hora</label><input class="in" name="hora" type="time" value="${esc((sh && sh.hora) || '')}"></div></div>
     <label class="row mt small" style="gap:8px;align-items:flex-start"><input type="checkbox" name="ok" required style="margin-top:3px"> <span>Revisé la hoja con el ${ev.mode === 'completo' ? 'charro' : 'capitán'} y confirmo las calificaciones (Art. 14 y 26).</span></label>
     <button class="btn pri block mt">${I.check} Firmar y entregar hoja</button></form></div>`;
-  if (can && sh && sh.entregada && !sh.jueces.some(x => x.id === u.id) && sh.jueces.length < 3 && u.role !== 'lienzo') h += `<button class="btn block mt" data-act="cosign" data-id="${sh.id}">${I.gavel} Firmar también como juez</button>`;
+  if (can && sh && sh.entregada && !sh.jueces.some(x => x.id === u.id) && sh.jueces.length < 3 && u.role !== 'lienzo' && juezFn(u, ev) !== 'escanea') h += `<button class="btn block mt" data-act="cosign" data-id="${sh.id}">${I.gavel} Firmar también como juez</button>`;
   if (isSuper(u) && sh && sh.entregada) h += `<button class="btn ghost block mt" data-act="reopenSheet" data-id="${sh.id}">Reabrir hoja (súper usuario)</button>`;
   const nodl = canPdfDl(u, ev) ? '' : ' nodl';
-  h += ev.mode === 'escaramuza' ? `${canPdfDl(u, ev) ? `<button class="btn pri block mt" style="min-height:58px;font-size:17px" data-act="escPdfBtn" data-e="${ev.id}" data-t="${team.id}">${I.doc} Descargar hojas oficiales (PDF)</button>` : ''}<a class="btn block mt" href="#pdf-${ev.id}-${team.id}">${I.doc} Ver hoja oficial${ev.status === 'en_vivo' ? ' en vivo' : ''}</a>${canCro(u, ev) ? `<a class="btn block mt" href="#croquis-${ev.id}-${team.id}">${I.edit} ${croDone(croOf(ev.id, team.id)) ? 'Ver o cambiar croquis' : 'Capturar croquis'}</a>` : ''}</div><div class="mt${nodl}">${escSheetHTML(ev, team)}</div>` : `</div><div class="sheet-wrap mt${nodl}">${sheetHTML(ev, team)}</div>`;
+  h += ev.mode === 'escaramuza' ? `${canPdfDl(u, ev) ? `<button class="btn pri block mt" style="min-height:58px;font-size:17px" data-act="escPdfBtn" data-e="${ev.id}" data-t="${team.id}">${I.doc} Descargar hojas oficiales (PDF)</button>` : ''}<a class="btn block mt" href="#pdf-${ev.id}-${team.id}">${I.doc} Ver hoja oficial${ev.status === 'en_vivo' ? ' en vivo' : ''}</a>${canCro(u, ev) ? `<a class="btn block mt" href="#croquis-${ev.id}-${team.id}">${I.edit} ${croDone(croOf(ev.id, team.id)) ? 'Ver o cambiar croquis' : 'Capturar croquis'}</a>` : ''}</div><div class="mt${nodl}">${escSheetHTML(ev, team)}</div>` : `${tres ? `<div class="scroller mt">${[['tres', 'Hoja de los 3'], ...JC3.map((j, i) => [j.id, `Juez ${i + 1}`])].map(([k, l]) => `<button class="tog ${(State.hojaVer || 'tres') === k ? 'on' : ''}" data-act="hojaVer" data-k="${k}">${l}</button>`).join('')}</div>` : ''}</div><div class="sheet-wrap mt${nodl}">${(() => { const v = State.hojaVer || 'tres', i = JC3.findIndex(j => j.id === v); return !tres || i < 0 ? sheetHTML(ev, team) : sheetHTML(ev, team, DB.all('scores_juez').filter(s => s.eventId === ev.id && s.teamId === team.id && s.judgeId === v), { name: JC3[i].name, n: i + 1 }); })()}</div>`;
   return h;
 }
 
@@ -3583,6 +3606,29 @@ const ACT = {
   async delTeam(el){ const ev = curEv(); if (!(await ask('Quitar', 'Se quitará del registro de la charreada.', 'Quitar', true))) return; await safe(() => updEv({ teams: ev.teams.filter(t => t.id !== el.dataset.id), charros: ev.charros.filter(c => c.teamId !== el.dataset.id) })); },
   async delCharro(el){ const ev = curEv(); await safe(() => updEv({ charros: ev.charros.filter(c => c.id !== el.dataset.id) })); },
   async delEvent(){ const ev = curEv(); if (!(await ask('Eliminar charreada', 'Dejará de mostrarse en la plataforma.', 'Eliminar', true))) return; await safe(async () => { await DB.put('events', { ...ev, deleted: true, updatedAt: Date.now() }); await audit('eliminar', `Eliminó “${ev.title}”`); go('panel'); }); },
+  // ---- jueces asignados ----
+  async evJuez(el){ const ev = curEv(), p = DB.get('profiles', el.dataset.id), fn = el.dataset.fn, resto = evJ(ev).filter(j => j.id !== p.id), max = { califica: 3, escanea: 2 }[fn];
+    if (fn && resto.filter(j => j.fn === fn).length >= max) return toast(fn === 'califica' ? 'Ya hay 3 jueces que califican' : 'Ya hay 2 jueces que escanean', 'err');
+    await safe(async () => { await updEv({ jueces: fn ? [...resto, { id: p.id, name: p.name, fn }] : resto }); await audit('jueces', `${p.name}: ${fn || 'sin función'} en “${ev.title}”`); }); },
+  esTeam(el){ State.es.tid = el.dataset.id; render(); }, esFaena(el){ State.es.fk = el.dataset.id; render(); },
+  esCharro(el){ const e = State.es, S = e.sel[`${e.tid}|${e.fk}`], id = el.dataset.id; S.charros = S.charros.includes(id) ? S.charros.filter(x => x !== id) : [...S.charros, id]; render(); },
+  esStock(el){ const e = State.es, S = e.sel[`${e.tid}|${e.fk}`], x = DB.get('stock', el.dataset.id); S.stock = S.stock && S.stock.id === x.id ? null : { id: x.id, name: x.name }; render(); },
+  async esHorse(el){ const ev = curEv(), v = await jScan(ev); if (!v) return render(); const [k, x] = jResuelve(ev, v); if (k !== 'horse') return toast(k === 'no' ? x : 'Eso no es un caballo', 'err'); await safe(async () => { await rideSave(ev, el.dataset.c, State.es.fk, x.chipUid); render(); }, `${x.name} registrado`); },
+  async esScan(){ const ev = curEv(), e = State.es, v = await jScan(ev); if (!v) return render(); const [k, x] = jResuelve(ev, v); if (k === 'no') return toast(x, 'err');
+    if (k === 'team') { e.tid = x.id; await safe(() => DB.put('evento_lista', { id: `${ev.id}-${x.id}-equipo`, tipo: 'equipo', eventId: ev.id, teamId: x.id, byId: State.user.id, byName: State.user.name, at: Date.now() }), `${x.name} confirmado`); return render(); }
+    if (k === 'charro') { e.tid = x.teamId; const key = `${e.tid}|${e.fk}`, r = listaDe(ev.id, e.tid, e.fk); e.sel[key] = e.sel[key] || { charros: r ? r.charros.slice() : [], stock: r ? r.stock : null }; if (!e.sel[key].charros.includes(x.id)) e.sel[key].charros.push(x.id); toast(`${x.name} listo para ${FN(e.fk)}`, 'ok'); return render(); }
+    const S = e.sel[`${e.tid}|${e.fk}`]; if (k === 'stock') { S.stock = { id: x.id, name: x.name }; toast(`${x.name} listo`, 'ok'); return render(); }
+    const c = S.charros.find(id => !rideOf(ev.id, id, e.fk)); if (!c || !RIDE_FAENAS.includes(e.fk)) return toast('Primero elige al charro de una faena con caballo', 'err'); await safe(async () => { await rideSave(ev, c, e.fk, x.chipUid); render(); }, `${x.name} registrado`); },
+  async esOk(){ const ev = curEv(), e = State.es, u = State.user, S = e.sel[`${e.tid}|${e.fk}`], ant = listaDe(ev.id, e.tid, e.fk), team = ev.teams.find(t => t.id === e.tid), n = id => (ev.charros.find(c => c.id === id) || {}).name || ''; if (!S.charros.length) return toast('Elige quién hace la faena', 'err');
+    await safe(async () => { await DB.put('evento_lista', { id: listaId(ev.id, e.tid, e.fk), tipo: 'faena', eventId: ev.id, teamId: e.tid, faena: e.fk, charros: S.charros.slice(), stock: S.stock, byId: u.id, byName: u.name, at: Date.now() });
+      if (ant && (ant.charros.join() !== S.charros.join() || (ant.stock || {}).id !== (S.stock || {}).id)) await listaCambio(ev, `${FN(e.fk)} de ${team.name}: ahora ${S.charros.map(n).join(', ')}${S.stock ? ' con ' + S.stock.name : ''}`); render(); }, 'Faena confirmada'); },
+  async esAdd(){ const ev = curEv(), e = State.es, team = ev.teams.find(t => t.id === e.tid), r = await askCharro(team); if (!r) return render(); const u = State.user, rc = regCharro(r.name), name = rc ? rc.name : r.name; if (ev.charros.some(c => norm(c.name) === norm(name))) return toast('Ese charro ya está en la lista', 'err');
+    await safe(async () => { await DB.put('events', { ...ev, charros: [...ev.charros, { id: 'c' + uid(), name, teamId: e.tid, refId: rc ? rc.id : null, addedBy: u.id, addedByName: u.name, addedAt: Date.now(), note: r.note || '' }] });   // sin updatedAt: los jueces solo tocan la lista de charros
+      await listaCambio(ev, `${name} entra a ${team.name}${r.note ? ': ' + r.note : ''}`); render(); }, 'Charro agregado'); },
+  async jNombre(el){ const ev = curEv(), c = ev.charros.find(x => x.id === el.dataset.c); if (!c) return; const v = await ask('Cambiar nombre', `Nombre actual: ${c.name}. Todos los jueces verán el cambio.`, 'Guardar', false, 'Nombre correcto'); if (!v) return render();
+    await safe(async () => { await DB.put('events', { ...ev, charros: ev.charros.map(x => x.id === c.id ? { ...x, name: v } : x) }); await listaCambio(ev, `${c.name} ahora es ${v}`); render(); }, 'Nombre cambiado'); },
+  async paseNfc(el){ try { await nfcWrite(paseUrl(el.dataset.k, el.dataset.id)); toast('Pase grabado en la etiqueta', 'ok'); } catch (e) { toast(e.message, 'err'); } },
+  hojaVer(el){ State.hojaVer = el.dataset.k; render(); },
   // ---- juez ----
   async jPublish(){
     const j = State.j, ev = DB.get('events', j.eid), u = State.user, team = ev.teams.find(t => t.id === j.tid);
@@ -3590,6 +3636,9 @@ const ACT = {
     if (isLocked(ev, team.id) && !isSuper(u)) return toast('La hoja ya fue entregada', 'err');
     const d = j.d, r = RULES.calc(j.fk, d);
     if (!r.parts.length) return toast('Elige al competidor de la faena', 'err');
+    if (conTres(ev)) { const id = `${ev.id}-${team.id}-${j.fk}-${u.id}`, ant = DB.get('scores_juez', id), mia = { ...scoreRow(ev, team, j.fk, clone(d), [u.id, u.name], Date.now()), id, judgeN: juezNum(ev, u.id) };
+      if (ant) { mia.createdAt = ant.createdAt; mia.history = [...(ant.history || []), { net: ant.net, at: Date.now(), by: u.name }]; }
+      return safe(async () => { await DB.put('scores_juez', mia); if (DB.backend.mode === 'demo') await DB.put('scores', jCombina(ev, team, j.fk)); await audit(ant ? 'corregir' : 'calificar', `Juez ${mia.judgeN} · ${FN(j.fk)} · ${team.name}: ${mia.net} pts en “${ev.title}”`); j.dirty = false; }, ant ? 'Corrección publicada' : `Tu calificación: ${mia.net} pts`); }
     const prev = evScores(ev.id).find(s => s.teamId === team.id && s.faena === j.fk);
     const row = scoreRow(ev, team, j.fk, clone(d), [u.id, u.name], Date.now());
     if (prev) { row.createdAt = prev.createdAt; row.history = [...(prev.history || []), { net: prev.net, at: Date.now(), by: u.name }]; }
@@ -3605,6 +3654,62 @@ const ACT = {
   async lienzoSt(el){ const L = DB.get('lienzos', el.dataset.id), s = el.dataset.s; if (s === 'suspendido' && !(await ask('Suspender lienzo', 'Sus charreadas dejarán de mostrarse en público.', 'Suspender', true))) return;
     await safe(async () => { await DB.put('lienzos', { ...L, status: s }); const o = DB.get('profiles', L.ownerId); if (o) await DB.put('profiles', { ...o, status: s === 'aprobado' ? 'aprobado' : 'suspendido' }); await audit(s === 'aprobado' ? 'aprobar' : 'suspender', `${s === 'aprobado' ? 'Verificó' : 'Suspendió'} el lienzo ${L.name}`); }, s === 'aprobado' ? 'Lienzo verificado' : 'Lienzo suspendido'); }
 };
+
+/* ---------- JUECES DE ESCANEO: confirman quién hace cada faena, con qué caballo y qué ganado ---------- */
+const listaId = (eid, tid, fk) => `${eid}-${tid}-${fk}`;
+const listaDe = (eid, tid, fk) => DB.get('evento_lista', listaId(eid, tid, fk));
+const cambiosDe = eid => DB.all('evento_lista').filter(x => x.eventId === eid && x.tipo === 'cambio').sort((a, b) => b.at - a.at);
+async function listaCambio(ev, texto){ const u = State.user; await DB.put('evento_lista', { id: `${ev.id}-c-${uid()}`, tipo: 'cambio', eventId: ev.id, texto, byId: u.id, byName: u.name, at: Date.now() }); await audit('cambio', `${texto} en “${ev.title}”`); }
+function jListaHTML(ev, tid, fk){
+  const r = listaDe(ev.id, tid, fk), n = id => (ev.charros.find(c => c.id === id) || {}).name || '', C = cambiosDe(ev.id).slice(0, 3), js = DB.all('scores_juez').filter(s => s.eventId === ev.id && s.teamId === tid && s.faena === fk).map(s => s.judgeN);
+  const cab = r && r.charros.map(id => rideOf(ev.id, id, fk)).filter(Boolean).map(x => x.horseName);
+  return `<div class="card mt">${r ? `<div class="small"><b style="color:var(--green)">Confirmado:</b> ${r.charros.map(n).map(esc).join(', ')}${cab.length ? ` · ${cab.map(esc).join(', ')}` : ''}${r.stock ? ` · ${esc(r.stock.name)}` : ''}</div><div class="small mut2">Por ${esc(r.byName)} · ${ftime(r.at)}</div>` : '<div class="small mut">Los jueces de escaneo aún no confirman esta faena.</div>'}
+    <div class="small mut mt">Calificaron: ${[1, 2, 3].map(i => `${js.includes(i) ? '✓' : '·'} Juez ${i}`).join('  ')}</div>
+    ${C.length ? `<div class="small mt"><b>Cambios de último momento</b></div>${C.map(x => `<div class="small mut">${ftime(x.at)} · ${esc(x.texto)}</div>`).join('')}` : ''}
+    ${canLista(State.user, ev) ? `<details class="mt"><summary class="small" style="cursor:pointer">Cambiar un nombre</summary>${ev.charros.filter(c => c.teamId === tid).map(c => `<button class="btn ghost sm block mt" data-act="jNombre" data-c="${c.id}">${esc(c.name)}</button>`).join('')}</details>` : ''}</div>`;
+}
+function jCombina(ev, team, fk){   // mismas cuentas que scores_combina() en actualizacion_tres_jueces.sql
+  const L = DB.all('scores_juez').filter(s => s.eventId === ev.id && s.teamId === team.id && s.faena === fk).sort((a, b) => a.judgeN - b.judgeN), m = k => Math.floor(L.reduce((a, s) => a + (+s[k] || 0), 0) / L.length + .5), b = L[0];
+  const parts = b.parts.map(p => { const v = L.map(s => (s.parts || []).find(x => x.id === p.id)).filter(Boolean); return { ...p, pts: Math.floor(v.reduce((a, x) => a + (+x.pts || 0), 0) / v.length + .5) }; });
+  return { id: `${ev.id}-${team.id}-${fk}`, eventId: ev.id, teamId: team.id, teamName: team.name, faena: fk, input: b.input, buenos: m('buenos'), malos: m('malos'), total: m('total'), eq: m('eq'), net: m('net'), parts, judgeId: b.judgeId, judgeName: `${L.length} de 3 jueces`, jueces: L.map(s => ({ id: s.judgeId, name: s.judgeName, n: s.judgeN, net: s.net })), createdAt: b.createdAt, updatedAt: Date.now() };
+}
+function vEscaneo(ev){
+  const e = State.es && State.es.eid === ev.id ? State.es : (State.es = { eid: ev.id, tid: ev.teams[0].id, fk: ev.suertes[0], sel: {} }), k = `${e.tid}|${e.fk}`, r = listaDe(ev.id, e.tid, e.fk), team = ev.teams.find(t => t.id === e.tid), ch = ev.charros.filter(c => c.teamId === e.tid);
+  if (!e.sel[k]) e.sel[k] = { charros: r ? r.charros.slice() : [], stock: r ? r.stock : null };
+  const S = e.sel[k], ok = (tid, fk) => !!listaDe(ev.id, tid, fk), on = canLista(State.user, ev), eqOk = id => !!DB.get('evento_lista', `${ev.id}-${id}-equipo`), stock = (ev.stock || []).map(x => DB.get('stock', x.stockId)).filter(Boolean);
+  return `<a class="back" href="#evento-${ev.id}">${I.arrow} Ver pública</a><div style="font-weight:800;font-size:17px;margin-top:6px" class="ell">${esc(ev.title)}</div><div class="small mut">Mesa de escaneo. Confirma la lista para que los jueces solo califiquen.</div>
+    ${on ? `<button class="btn pri block mt" style="min-height:58px;font-size:17px" data-act="esScan">${I.check} Escanear QR o NFC</button>` : `<div class="banner warn mt">${I.info}<span>La charreada no está en vivo.</span></div>`}
+    <label class="f">${teamLabel(ev)}</label><div class="scroller">${ev.teams.map(t => `<button class="tog ${t.id === e.tid ? 'on' : ''}" data-act="esTeam" data-id="${t.id}">${eqOk(t.id) ? '✓ ' : ''}${esc(t.name)}</button>`).join('')}</div>
+    <label class="f">Faena</label><div class="scroller">${ev.suertes.map(fk => `<button class="tog ${ok(e.tid, fk) ? 'done' : ''} ${fk === e.fk ? 'on' : ''}" data-act="esFaena" data-id="${fk}">${ok(e.tid, fk) ? '✓ ' : ''}${esc(RULES.F[fk].short)}</button>`).join('')}</div>
+    <div class="h2">Quién hace ${esc(FN(e.fk))}</div><div class="card pad0">${ch.map(c => { const sel = S.charros.includes(c.id), rd = rideOf(ev.id, c.id, e.fk); return `<div class="rank" style="display:block"><div class="row between" style="gap:8px;align-items:center"><button class="tog ${sel ? 'on' : ''}" data-act="esCharro" data-id="${c.id}" ${on ? '' : 'disabled'}>${sel ? '✓' : '+'}</button><span class="grow ell" style="font-weight:700">${esc(c.name)}</span>${on ? `<button class="btn ghost sm" data-act="jNombre" data-c="${c.id}">Cambiar nombre</button>` : ''}</div>
+      ${sel && RIDE_FAENAS.includes(e.fk) ? `<div class="row between small mt" style="gap:8px;align-items:center"><span class="grow">${rd ? `Caballo: <b>${esc(rd.horseName)}</b>` : '<span class="mut">Falta el caballo</span>'}</span>${on ? `<button class="btn sm" data-act="esHorse" data-c="${c.id}">Escanear caballo</button>` : ''}</div>` : ''}</div>`; }).join('') || '<div class="small mut" style="padding:12px">Sin charros en este equipo.</div>'}</div>
+    ${on ? `<button class="btn block mt" data-act="esAdd">Agregar charro de último momento</button>` : ''}
+    ${e.fk !== 'cala' && stock.length ? `<div class="h2">Ganado</div><div class="chips">${stock.map(x => `<button class="tog ${S.stock && S.stock.id === x.id ? 'on' : ''}" data-act="esStock" data-id="${x.id}" ${on ? '' : 'disabled'}>${esc(x.name)}</button>`).join('')}</div>` : ''}
+    ${on ? `<button class="btn pri block mt2" style="min-height:54px" data-act="esOk">${r ? 'Actualizar' : 'Confirmar'} ${esc(RULES.F[e.fk].short)} de ${esc(team.name)}</button>` : ''}
+    ${r ? `<div class="small mut2 center mt">Confirmado por ${esc(r.byName)} · ${ftime(r.at)}</div>` : ''}
+    ${cambiosDe(ev.id).length ? `<div class="h2">Cambios de último momento</div><div class="card">${cambiosDe(ev.id).slice(0, 8).map(x => `<div class="small"><span class="mut">${ftime(x.at)}</span> · ${esc(x.texto)} · ${esc(x.byName)}</div>`).join('')}</div>` : ''}`;
+}
+/* Lee un pase QR, un carnet o un chip. El pase de charro o equipo lleva #pase-charro-ID o #pase-team-ID. */
+function jResuelve(ev, v){ const t = String(v || '').trim(), m = t.match(/#pase-(charro|team)-([^\s#?]+)/), c = t.match(/#carnet-([^\s#?]+)/);
+  if (m) { if (m[1] === 'team') { const x = ev.teams.find(y => y.refId === m[2] || y.id === m[2]); return x ? ['team', x] : ['no', 'Ese equipo no está inscrito en esta charreada']; } const d = DB.get('charros', m[2]), x = ev.charros.find(y => y.refId === m[2] || y.id === m[2] || (d && norm(y.name) === norm(d.name))); return x ? ['charro', x] : ['no', `${d ? d.name : 'Ese charro'} no está en la lista. Agrégalo como cambio de último momento.`]; }
+  const id = c ? c[1] : null, u = c ? '' : normUid(t), h = DB.all('horses').find(x => x.id === id || (u && x.chipUid === u)), g = DB.all('stock').find(x => x.id === id || (u && x.chipUid === u));
+  return h ? ['horse', h] : g ? ['stock', g] : ['no', 'No se reconoció ese código']; }
+function jLibQR(){ return window.jsQR ? Promise.resolve() : new Promise((ok, ko) => { const s = document.createElement('script'); s.src = 'jsQR.js'; s.onload = ok; s.onerror = () => ko(new Error('No se pudo cargar el lector de QR')); document.head.append(s); }); }
+function jScan(ev){ return new Promise(res => { let vivo = true, flujo = null;
+  const demo = DB.backend.mode === 'demo' ? [...ev.teams.map(t => [`Equipo: ${t.name}`, `#pase-team-${t.id}`]), ...ev.charros.slice(0, 12).map(c => [c.name, `#pase-charro-${c.id}`]), ...DB.all('horses').filter(hasCarnet).slice(0, 6).map(h => [`Caballo: ${h.name}`, h.chipUid]), ...(ev.stock || []).map(x => DB.get('stock', x.stockId)).filter(Boolean).map(x => [`Ganado: ${x.name}`, `#carnet-${x.id}`])] : [];
+  $('#modal').innerHTML = `<div class="modal"><div class="box"><div class="row between"><b style="font-size:17px">Escanear</b><button class="btn sm" id="scX">Cerrar</button></div><video id="scV" playsinline muted style="width:100%;border-radius:12px;margin-top:10px;display:none"></video><button class="btn pri block mt" id="scCam">Usar cámara (QR)</button>${hasNFC() ? '<button class="btn block mt" id="scNfc">Leer NFC</button>' : '<div class="small mut mt">NFC funciona en Chrome para Android. En iPhone usa el QR.</div>'}${demo.length ? `<div class="small mut mt">Demostración: elige lo que escanearías.</div><div style="max-height:32vh;overflow:auto">${demo.map(([l, v]) => `<button class="btn block mt" data-scan="${esc(v)}">${esc(l)}</button>`).join('')}</div>` : ''}<form id="scF" class="mt"><label class="f">Código o UID del chip</label><input class="in" name="c" autocomplete="off" required><button class="btn block mt">Usar código</button></form></div></div>`;
+  const fin = v => { vivo = false; if (flujo) flujo.getTracks().forEach(t => t.stop()); $('#modal').innerHTML = ''; res(v); };
+  $('#scX').onclick = () => fin(''); $('#scF').onsubmit = x => { x.preventDefault(); fin(x.target.c.value); }; document.querySelectorAll('[data-scan]').forEach(b => { b.onclick = () => fin(b.dataset.scan); });
+  if ($('#scNfc')) $('#scNfc').onclick = async () => { try { const r = await nfcRead(true); fin(r.url || r.uid); } catch (x) { toast(x.message, 'err'); } };
+  $('#scCam').onclick = async () => { try { flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); const v = $('#scV'); v.style.display = 'block'; v.srcObject = flujo; await v.play(); $('#scCam').style.display = 'none';
+      const bd = 'BarcodeDetector' in window ? new BarcodeDetector({ formats: ['qr_code'] }) : null; if (!bd) await jLibQR(); const cv = document.createElement('canvas'), g = cv.getContext('2d', { willReadFrequently: true });
+      const paso = async () => { if (!vivo) return; try { if (bd) { const c = await bd.detect(v); if (c[0]) return fin(c[0].rawValue); } else if (v.videoWidth) { cv.width = v.videoWidth; cv.height = v.videoHeight; g.drawImage(v, 0, 0); const c = jsQR(g.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height); if (c) return fin(c.data); } } catch (x) {} setTimeout(paso, 250); }; paso();
+    } catch (x) { toast('No se pudo abrir la cámara. Da permiso en el navegador.', 'err'); } };
+}); }
+const paseUrl = (k, id) => location.origin + location.pathname + `#pase-${k}-${id}`;
+function paseHTML(u){ const L = [...DB.all('charros').filter(c => c.userId === u.id).map(c => ['charro', c, 'Tu pase de charro']), ...DB.all('teams').filter(t => t.captainId === u.id).map(t => ['team', t, 'Pase del equipo'])]; if (!L.length) return '';
+  const img = (k, id) => { const q = qrcode(0, 'M'); q.addData(paseUrl(k, id)); q.make(); return q.createDataURL(4, 4); };
+  return `<div class="h2">Pase para charreadas</div>${L.map(([k, d, l]) => `<div class="card row mt" style="gap:14px"><img class="qr" src="${img(k, d.id)}" alt="Código QR de ${esc(d.name)}"><div class="grow"><div style="font-weight:800">${esc(d.name)}</div><div class="small mut">${l}. Muéstralo a los jueces de escaneo.</div>${hasNFC() ? `<button class="btn sm mt" data-act="paseNfc" data-k="${k}" data-id="${d.id}">Grabar en etiqueta NFC</button>` : ''}</div></div>`).join('')}`; }
 
 /* ---------- eventos de la mesa del juez ---------- */
 function jMark(){ State.j.dirty = true; render(); }
