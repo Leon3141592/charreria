@@ -1,6 +1,6 @@
 # Imágenes del demo
 
-Solo se publican en el demo. Antes de usar una imagen en otro lugar, revisa su licencia.
+Se publican en el demo. Las ilustraciones hombre-* y las fotos CC0 de toros, yeguas y caballos también se usan en las cartas del juego real (docs/fotos-juego). Antes de usar una imagen en otro lugar, revisa su licencia.
 
 ## Wikimedia Commons (CC0 o dominio público)
 

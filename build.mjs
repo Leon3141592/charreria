@@ -19,6 +19,9 @@ const build = (dir, cfg) => {
 mkdirSync('docs', { recursive: true });
 writeFileSync('docs/.nojekyll', '');
 cpSync('formatos', 'docs/formatos', { recursive: true });   // formatos oficiales para los PDF de escaramuzas
+// Las cartas del juego llevan foto también en la app real: solo imágenes CC0 o ilustraciones propias, nunca personas reales.
+const fotoJuego = src => /^fotos-demo(\/(hombre-\d+|foto-caballo-\d+|toro-[a-z]+|yegua-[a-z]+|el-diablo|la-guera)\.jpg)?$/.test(src);
+for (const d of ['docs/fotos-juego', 'docs/demo/fotos-juego']) cpSync('fotos-demo', d, { recursive: true, filter: fotoJuego });
 cpSync('fotos-demo', 'docs/demo/fotos', { recursive: true });   // imágenes de ejemplo: solo existen en el demo
 build('docs/demo', { MODE: 'demo', SUPABASE_URL: '', SUPABASE_ANON_KEY: '' });
 build('docs/demo/tcg', { MODE: 'demo', SITE: 'tcg', SUPABASE_URL: '', SUPABASE_ANON_KEY: '' });
