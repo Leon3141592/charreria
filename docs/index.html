@@ -724,7 +724,7 @@ const DB = {
   }
 };
 const fotoMem = {};
-const LS_KEY = 'charreriapro_demo_v28', SS_KEY = 'charreriapro_session';
+const LS_KEY = 'charreriapro_demo_v29', SS_KEY = 'charreriapro_session';
 let memSession = null;
 const Local = {
   mode: 'demo', bc: ('BroadcastChannel' in window) ? new BroadcastChannel('charreriapro') : null,
@@ -1098,8 +1098,9 @@ function seed(){
   const FOTO_PERSONA = { 'Ernesto Villaseñor':'charro-1', 'Alberto Fidencio Ramírez':'charro-2', 'Lorenzo Vázquez':'charro-3', 'Gerardo Solís':'charro-4', 'Octavio Rentería':'charro-5', 'Fausto Herrera':'charro-6', 'Rubén Escamilla':'charro-7', 'Mariana Ríos':'escaramuza-1', 'Daniela Ochoa':'escaramuza-2' };
   const retrato = n => fotoDemo(FOTO_PERSONA[n] || (/\b(Ana|Mariana|Daniela|Lucía|Fernanda)\b/.test(n) ? `mujer-${hashN(n) % 6 + 1}` : `hombre-${hashN(n) % 12 + 1}`));
   const FOTO_EQUIPO = { q0:'equipo-1', q1:'equipo-2', q2:'equipo-3', q3:'equipo-4', q4:'equipo-5', q5:'equipo-6', qesc:'escaramuza-1', qesc2:'escaramuza-2' }, FOTO_LIENZO = { lvilla:'lienzo-villa', lstm:'lienzo-santa-maria', lherr:'lienzo-herradero' };
-  const FOTO_CABALLO = { cb1:'lucero', cb2:'relampago', cb3:'canelo', cb4:'tormenta', cb5:'el-moro', cb6:'centella', cb7:'diamante' }, FOTO_GANADO = { s1:'el-diablo', s2:'toros-terna', s3:'yeguas', s4:'la-guera', s5:'novillos', s11:'novillos', s12:'toros-terna', s13:'novillos', s14:'toros-terna', s15:'el-diablo', s21:'yeguas', s22:'la-guera', s23:'yeguas', s24:'la-guera', s25:'yeguas' };
-  HS.forEach((x, i) => { x.photo = fotoDemo(FOTO_CABALLO[x.id] || `caballo-${i % 12 + 1}`); }); ST.forEach(x => { if (FOTO_GANADO[x.id]) x.photo = fotoDemo(FOTO_GANADO[x.id]); });
+  const FOTO_CABALLO = { cb1:'lucero', cb2:'relampago', cb3:'canelo', cb4:'tormenta', cb5:'el-moro', cb6:'centella', cb7:'diamante' }, FOTO_GANADO = { s1:'el-diablo', s2:'toros-terna', s3:'yeguas', s4:'la-guera', s5:'novillos', s11:'toro-pinto', s12:'toro-cenizo', s13:'toro-barroso', s14:'toro-prieto', s15:'toro-huracan', s21:'yegua-canela', s22:'yegua-mora', s23:'yegua-alazana', s24:'yegua-bronca', s25:'yegua-furia' };
+  const CABALLOS = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(n => `foto-caballo-${n}`).concat(Array.from({ length: 12 }, (_, n) => `caballo-${n + 1}`));
+  HS.forEach((x, i) => { x.photo = fotoDemo(FOTO_CABALLO[x.id] || CABALLOS[i % CABALLOS.length]); }); ST.forEach(x => { if (FOTO_GANADO[x.id]) x.photo = fotoDemo(FOTO_GANADO[x.id]); });
   CH.forEach(x => { x.photo = retrato(x.name); }); T.forEach((x, i) => { x.photo = fotoDemo(FOTO_EQUIPO[x.id] || `escudo-${i % 6 + 1}`); });
   L.forEach(x => { if (FOTO_LIENZO[x.id]) x.photo = fotoDemo(FOTO_LIENZO[x.id]); }); RA.forEach((x, i) => { x.photo = fotoDemo(`ganaderia-${i % 2 + 1}`); });
   P.forEach(x => { const l = L.findIndex(y => y.ownerId === x.id); x.photo = l >= 0 ? L[l].photo : retrato(x.name); });
