@@ -265,12 +265,38 @@ textarea.in{min-height:64px;resize:vertical}
 @keyframes jgTiroX{from{transform:translateX(var(--dx))}}
 @keyframes jgTiroY{from{transform:translateY(var(--dy)) rotate(0);animation-timing-function:ease-out}55%{transform:translateY(var(--al)) rotate(calc(var(--gi)*.55));animation-timing-function:ease-in}88%{transform:translateY(0) rotate(var(--gi))}94%{transform:translateY(-7px) rotate(var(--gi))}to{transform:none}}
 @media (prefers-reduced-motion:reduce){.jg-lienzo,.jg-c,.jg-faena,.jg-flip,.jg-gan,.jg-vs,.jg-hat,.jg-lado b{animation:none!important}.jg-res,.jg-fallo,.jg-duelo .btn{animation:none;opacity:1}.jg-c{transition:none}.jg-baraja{display:none}}
+/* Lectura fácil: letra, contraste y botones pensados para adultos mayores. Las tarjetas y hojas oficiales conservan su tamaño. */
+:root{--mut:#c9bcae;--mut2:#b8aa9b}
+html,body{font-size:17px;line-height:1.45}.tc,.sheet,.carnet{font-size:15px;line-height:1.4}
+body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+.h1{font-size:27px}.h2{font-size:16px;letter-spacing:.03em;text-transform:none}.sub{font-size:16px}.small{font-size:15px}
+.chip{font-size:13.5px;padding:4px 10px}.tog{font-size:15.5px;min-height:46px;padding:9px 15px}label.f{font-size:15.5px}
+.btn{font-size:16.5px;min-height:52px}.btn.sm{font-size:15px;min-height:46px;padding:9px 14px}.in{font-size:17px;min-height:52px}
+.back{font-size:16px;min-height:44px;color:var(--text)}.back svg{width:20px;height:20px}
+.evc .t{font-size:18px}.evc .meta{font-size:15px}.pts small{font-size:13px}.kpi span{font-size:13.5px}.score-line{font-size:14.5px}.badge-n{font-size:13px;min-width:22px;height:22px}
+.avatar{width:44px;height:44px;font-size:15px}.brand b{font-size:17px}.nav a{font-size:13px;color:var(--mut);padding:7px 0 5px}.nav a.on{color:var(--gold2);background:rgba(242,205,126,.1)}.nav svg{width:27px;height:27px}
+#toasts .toast,.toast{font-size:17px}
+:focus-visible{outline:3px solid var(--gold2);outline-offset:2px}
+.chip{font-size:14px}.datebox span{font-size:13.5px}.seg button{font-size:15px;min-height:46px}.pts small{font-size:14px}.pos{font-size:15px}.mini-l{font-size:13.5px}.banner{font-size:15.5px}.upg-badge{font-size:14px}
+#view :is([style*="font-size:9px"],[style*="font-size:10px"],[style*="font-size:10.5px"],[style*="font-size:11px"],[style*="font-size:11.5px"],[style*="font-size:12px"],[style*="font-size:12.5px"],[style*="font-size:13px"],[style*="font-size:13.5px"]):not(.tc *):not(.sheet *):not(.carnet *):not(.jg-c *){font-size:15px!important}
+html.xl,html.xl body{font-size:20px}html.xl .tc,html.xl .sheet,html.xl .carnet{font-size:15px}html.xl .h1{font-size:31px}html.xl .h2{font-size:19px}html.xl .sub{font-size:19px}html.xl .small{font-size:18px}html.xl .btn{font-size:19px;min-height:58px}html.xl .btn.sm{font-size:18px;min-height:52px}html.xl .tog{font-size:18px}html.xl label.f{font-size:18px}html.xl .in{font-size:20px}html.xl .evc .t{font-size:21px}html.xl .evc .meta{font-size:18px}html.xl .nav a{font-size:14px}
+html.xl #view :is([style*="font-size:9px"],[style*="font-size:10px"],[style*="font-size:10.5px"],[style*="font-size:11px"],[style*="font-size:11.5px"],[style*="font-size:12px"],[style*="font-size:12.5px"],[style*="font-size:13px"],[style*="font-size:13.5px"]):not(.tc *):not(.sheet *):not(.carnet *):not(.jg-c *){font-size:18px!important}
+.ayuda-b{flex:none;min-height:44px;padding:0 13px;border-radius:999px;background:var(--gold2);color:#2a1a08;border:0;font-weight:800;font-size:15px;cursor:pointer}
+@media(max-width:430px){.top .chip{display:none}.brand .logo{display:none}}
+#guia{position:fixed;inset:0;z-index:130}#guia:empty{display:none}
+.g-fondo{position:absolute;inset:0;background:rgba(7,4,3,.86);overflow:auto;padding:calc(16px + env(safe-area-inset-top)) 14px 16px;display:grid;justify-items:center;align-items:safe center}
+.g-caja{width:min(520px,100%);background:var(--card);border:1px solid var(--line2);border-radius:20px;padding:20px}.g-caja h2{margin:0 0 6px;font-family:'Cinzel',serif;font-size:27px;line-height:1.15;color:var(--gold2)}.g-caja p{margin:6px 0 0;font-size:18px;line-height:1.45}
+.g-op{display:flex;align-items:center;width:100%;min-height:62px;margin-top:10px;padding:10px 16px;border-radius:14px;border:1px solid var(--line2);background:var(--card2);color:var(--text);font-size:18px;font-weight:700;text-align:left;text-decoration:none;cursor:pointer}
+.g-op.pri{background:var(--gold2);color:#2a1a08;border-color:var(--gold2);justify-content:center;text-align:center}.g-op.sec{justify-content:center;text-align:center;font-weight:600}
+.g-hoyo{position:fixed;border:4px solid var(--gold2);border-radius:14px;box-shadow:0 0 0 9999px rgba(7,4,3,.86);pointer-events:none;transition:all .25s}
+.g-burbuja{position:fixed;left:12px;right:12px;margin:0 auto;max-width:520px;background:var(--card);border:2px solid var(--gold2);border-radius:18px;padding:16px}.g-burbuja b{display:block;font-size:21px;color:var(--gold2)}.g-burbuja p{margin:6px 0 0;font-size:18px;line-height:1.4}.g-paso{font-size:15px;color:var(--mut);margin-top:8px}.g-bts{display:flex;gap:8px;margin-top:10px}.g-bts .g-op{margin-top:0;justify-content:center;text-align:center}
+@media (prefers-reduced-motion:reduce){.g-hoyo{transition:none}}
 </style>
 </head>
 <body>
 <header class="top"><div class="top-in" id="top"></div></header>
 <main class="wrap" id="view"></main>
-<nav class="nav"><div class="nav-in" id="nav"></div></nav>
+<nav class="nav"><div class="nav-in" id="nav"></div></nav><div id="guia"></div>
 <div class="toasts" id="toasts"></div>
 <div id="modal"></div>
 <script>
@@ -1382,11 +1408,11 @@ function render(){
   if (TCG) return renderTcg();
   checkNotifs();
   $('#top').innerHTML = `<a class="brand" href="#inicio"><span class="logo">${I.horse}</span><b>Charrería <span>Pro</span></b></a>
-    ${DB.backend.mode === 'demo' ? '<span class="chip blue">DEMO</span>' : ''}
+    ${DB.backend.mode === 'demo' ? '<span class="chip blue">DEMO</span>' : ''}<button class="ayuda-b" id="ayudaB" data-g="ayuda">Ayuda</button>
     ${u ? `<a class="avatar" href="#avisos" aria-label="Avisos" style="position:relative"><span style="width:18px;height:18px;display:block">${I.bell}</span>${myNotifs().some(n => !n.read) ? `<span class="badge-n" style="position:absolute;top:-6px;right:-6px">${myNotifs().filter(n => !n.read).length}</span>` : ''}</a>` : ''}
     <a class="avatar" href="#cuenta" aria-label="Cuenta" style="overflow:hidden">${u ? (safeImg(u.photo || (myCharro(u) || {}).photo) ? `<img class="ph" src="${esc(safeImg(u.photo || myCharro(u).photo))}" alt="" style="width:100%;height:100%;border:0">` : esc(initials(u.name))) : '<span style="width:18px;height:18px;display:block">' + I.user + '</span>'}</a>`;
   const liveN = publicEvents().filter(e => e.status === 'en_vivo').length, pend = isSuper(u) ? pendingCount() : 0;
-  const tabs = [['inicio','Inicio',I.home],['vivo','En vivo',I.live,liveN],['historial','Historial',I.clock],['ranking','Ranking',I.trophy],['cuenta', u ? (isSuper(u) ? 'Admin' : 'Mi panel') : 'Entrar', isSuper(u) ? I.shield : I.user, 0, pend]];
+  const tabs = [['inicio','Inicio',I.home],['vivo','En vivo',I.live,liveN],['historial','Resultados',I.clock],['ranking','Ranking',I.trophy],['cuenta', u && isSuper(u) ? 'Admin' : 'Mi cuenta', isSuper(u) ? I.shield : I.user, 0, pend]];
   const active = { evento:'vivo', hoja:'vivo', 'panel-evento':'cuenta', panel:'cuenta', juez:'cuenta', admin:'cuenta', solicitudes:'cuenta', caballos:'ranking', caballo:'cuenta', ganado:'inicio', ganaderia:'inicio', res:'cuenta' }[State.route] || State.route;
   $('#nav').innerHTML = tabs.map(([k, l, ic, dot, badge]) => `<a href="#${k === 'cuenta' && isSuper(u) ? 'admin' : k}" class="${active === k ? 'on' : ''}">${ic}${dot ? '<span class="dot"></span>' : ''}${badge ? `<span class="badge-n" style="position:absolute;top:0;right:calc(50% - 22px)">${badge}</span>` : ''}<span>${l}</span></a>`).join('');
   const views = { inicio: vInicio, vivo: vVivo, historial: vHistorial, ranking: vRanking, cuenta: vCuenta, evento: vEvento, panel: vPanel, 'panel-evento': vPanelEvento, juez: vJuez, admin: vAdmin, hoja: vHoja, solicitudes: vSolicitudes, caballos: vCaballos, caballo: vCaballo, ganado: vGanado, ganaderia: vGanaderia, res: vRes, avisos: vAvisos, pdf: vPdf, microchip: vMicrochip, terminos: vTerminos, camaras: vCamaras, charrostv: vCharrosTv, tv: vTv, solicitar: vSolicitar, comprar: vComprar, pedido: vPedido, carnet: vCarnet, croquis: vCroquis };
@@ -1625,7 +1651,7 @@ function charroStats(name){
 }
 /* ---------- CHARRERÍATCG: catálogo de cartas y sitio satélite ---------- */
 const TCG_CONSENT_V = '2026-11';
-const TCG_CONSENT = 'Soy la persona de la carta, o su madre, padre o tutor, y autorizo usar su imagen y sus datos en el ranking y en las cartas, la tienda y los juegos de CharreríaTCG mientras mi plan Pro esté vigente. Puedo retirar esta autorización en Mi panel.';
+const TCG_CONSENT = 'Soy la persona de la carta, o su madre, padre o tutor, y autorizo usar su imagen y sus datos en el ranking y en las cartas, la tienda y los juegos de CharreríaTCG mientras mi plan Pro esté vigente. Puedo retirar esta autorización en Mi cuenta.';
 const TCG_SRC = [['charro', 'charros', 'userId'], ['horse', 'horses', 'ownerId'], ['stock', 'stock', 'ownerId']];
 const TORO_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 8C4.5 8 2.6 6.4 2 3.2 1 7.4 3 11 7 11.6c.2 3.4 1.5 7 3.2 8.7.9.9 2.7.9 3.6 0 1.7-1.7 3-5.3 3.2-8.7 4-.6 6-4.2 5-8.4C21.4 6.4 19.5 8 16 8Z"/></svg>';
 function tcgSyncLocal(){   // igual que tcg_sync() en la base: Pro vigente, autorización y registro verificado
@@ -1913,7 +1939,7 @@ function vJugar(){
 }
 function renderTcg(){
   jSync();
-  $('#top').innerHTML = `<a class="brand" href="#tienda"><span class="logo">${I.trophy}</span><b>Charrería <span>TCG</span></b></a>${DB.backend.mode === 'demo' ? '<span class="chip blue">DEMO</span>' : ''}<a class="avatar" href="../#cuenta" aria-label="Cuenta en Charrería Pro"><span style="width:18px;height:18px;display:block">${I.user}</span></a><a class="avatar" href="../" aria-label="Cerrar y volver a Charrería Pro" title="Volver a Charrería Pro" style="margin-left:6px;font-size:20px;line-height:1;text-decoration:none">×</a>`;
+  $('#top').innerHTML = `<a class="brand" href="#tienda"><span class="logo">${I.trophy}</span><b>Charrería <span>TCG</span></b></a>${DB.backend.mode === 'demo' ? '<span class="chip blue">DEMO</span>' : ''}<button class="ayuda-b" id="ayudaB" data-g="ayuda">Ayuda</button><a class="avatar" href="../#cuenta" aria-label="Cuenta en Charrería Pro"><span style="width:18px;height:18px;display:block">${I.user}</span></a><a class="avatar" href="../" aria-label="Cerrar y volver a Charrería Pro" title="Volver a Charrería Pro" style="margin-left:6px;font-size:20px;line-height:1;text-decoration:none">×</a>`;
   const active = State.route === 'carta' ? 'tienda' : State.route;
   $('#nav').innerHTML = [['#tienda', 'tienda', 'Cartas', I.trophy], ['#juego', 'juego', 'Jugar', I.live], ['#coleccion', 'coleccion', 'Mis cartas', I.shield], ['#jugar', 'jugar', 'Reglas', I.clock], ['../', '', 'Pro', I.horse]].map(([href, k, l, ic]) => `<a href="${href}" class="${k && active === k ? 'on' : ''}">${ic}<span>${l}</span></a>`).join('');
   $('#view').className = 'wrap'; $('#view').innerHTML = ({ tienda: vTienda, jugar: vJugar, carta: vCarta, juego: vJuego, coleccion: vColeccion }[State.route] || vTienda)();
@@ -2140,7 +2166,7 @@ function vCamaras(){
 }
 function vCharrosTv(){
   const u = State.user, ya = tvPendiente(u, 'tv_sub'), sub = ya ? tvEnviada('Ya apartaste tu lugar. Te avisaremos cuando Charros TV abra.') : `<a class="btn pri block mt" style="min-height:56px;font-size:17px" href="#solicitar-tv">Apartar mi lugar</a>`;
-  return `<div class="hero lp-hero" style="border-color:var(--line2)"><span class="upg-badge">${I.live} CHARROS TV</span><div class="h1" style="margin-top:14px">Tu equipo de producción, hecho de inteligencia artificial.</div><div class="sub" style="margin-top:8px">Camarógrafos, sonidista, editor y marketing que conocen la charrería y a tus participantes, por una mensualidad.</div><div class="lp-price">${tvPrecioMes()}</div><div class="small mut">Pago mensual del lienzo. No incluye cámaras. Transmitir en Charrería Pro sigue siendo gratis.</div>${sub}<div class="pattern"></div></div>
+  return `<div class="hero lp-hero" style="border-color:var(--line2)"><span class="upg-badge">${I.live} CHARROS TV</span><div class="h1" style="margin-top:14px">Un equipo que graba y transmite tu charreada.</div><div class="sub" style="margin-top:8px">Camarógrafos, sonidista, editor y marketing que conocen la charrería y a tus participantes, por una mensualidad.</div><div class="lp-price">${tvPrecioMes()}</div><div class="small mut">Pago mensual del lienzo. No incluye cámaras. Transmitir en Charrería Pro sigue siendo gratis.</div>${sub}<div class="pattern"></div></div>
     <div class="banner warn mt">${I.info}<span>Charros TV está en preparación. Hoy puedes apartar tu lugar sin ningún cargo y te avisamos cuando abramos.</span></div>
     <div class="h2">Qué es</div><div class="card small" style="line-height:1.5">Una empresa de IA que trabaja para tu lienzo. Es como contratar a un equipo de grabación y producción: te encargas de tu charreada y ese equipo se encarga de las transmisiones y su contenido.</div>
     <div class="h2">Tu equipo de IA</div><div class="card">${tvLi('<b>Camarógrafos.</b> Manejan las cámaras y saben qué suerte está en el lienzo: graban el centro del ruedo, la manga o los cajones, y siguen al jinete o al ganado.')}${tvLi('<b>Sonidista.</b> Cuida el audio de la transmisión y de las grabaciones.')}${tvLi('<b>Editor y medios.</b> Encuentran los mejores momentos y fotografías de cada grabación.')}${tvLi('<b>Marketing.</b> Publica y hace campañas para llevar público a tus transmisiones en YouTube y otras plataformas monetizables.')}</div>
@@ -2201,7 +2227,7 @@ function vMicrochip(){
 function vComprar(){
   const u = State.user, kit = prices().kit; if (!u) return `<a class="back" href="#microchip">${I.arrow} Microchip</a>` + emptyState(I.user, `Inicia sesión para ${KIT_VERBO.toLowerCase()}`, 'El kit queda ligado al caballo de tu cuenta.', `<a class="btn pri" href="#cuenta">Entrar</a>`);
   const L = chipTargets(u), sel = State.param && State.param2 ? `${State.param}:${State.param2}` : '', demo = DB.backend.mode === 'demo', inp = (n, l, o = '') => `<label class="f">${l}</label><input class="in" name="${n}" ${o}>`;
-  if (!L.length) return `<a class="back" href="#microchip">${I.arrow} Microchip</a>` + emptyState(I.horse, 'No tienes ejemplares pendientes', 'Registra un caballo en Mi panel. Si ya tienen chip o pedido abierto, no aparecen aquí.', `<a class="btn pri" href="#cuenta">Ir a Mi panel</a>`);
+  if (!L.length) return `<a class="back" href="#microchip">${I.arrow} Microchip</a>` + emptyState(I.horse, 'No tienes ejemplares pendientes', 'Registra un caballo en Mi cuenta. Si ya tienen chip o pedido abierto, no aparecen aquí.', `<a class="btn pri" href="#cuenta">Ir a Mi cuenta</a>`);
   return `<a class="back" href="#microchip">${I.arrow} Microchip</a><div class="h1">${KIT_VERBO} microchip</div>
     <form data-form="kitBuy"><div class="h2">1. Tu pedido</div><div class="card"><label class="f" style="margin-top:0">¿Para quién es?</label><select class="in" name="target" required>${L.map(([k, x]) => `<option value="${k}:${x.id}" ${`${k}:${x.id}` === sel ? 'selected' : ''}>${esc(x.name)} · ${k === 'horse' ? 'Caballo' : 'Ganado'}</option>`).join('')}</select>
       ${KIT_COTIZA ? `<div class="row between mt"><span>Kit de microchip</span><b>Precio a cotizar</b></div><div class="small mut" style="margin-top:4px">Incluye tarjeta metálica grabada, cuadro de vidrio y llavero con QR.</div>` : `<div class="row between mt"><span>Kit de microchip</span><b>${mxn(kit)}</b></div><div class="row between small mut" style="margin-top:4px"><span>Envío</span><span>Incluido</span></div><div class="sep"></div><div class="row between"><b>Total</b><b style="font-family:'Cinzel',serif;font-size:22px;color:var(--gold2)">${mxn(kit)} MXN</b></div>`}</div>
@@ -2215,7 +2241,7 @@ function vPedido(){
   const sh = r.ship || {}, pagado = kitPagado(r);
   return `<div class="card lp-hero"><span style="display:block;width:44px;height:44px;margin:0 auto;color:var(--gold2)">${I.check}</span><div class="h1" style="margin-top:8px">${pagado ? '¡Pedido recibido!' : 'Tu kit quedó apartado'}</div><div class="sub" style="margin-top:6px">${pagado ? 'Te avisaremos con la guía en cuanto salga.' : kitMonto(r) ? 'Aún no se ha hecho ningún cargo. Te contactaremos para completar el pago.' : 'Aún no se ha hecho ningún cargo. Te contactaremos con el precio.'}</div></div>
     <div class="h2">Resumen</div><div class="card small"><div class="row between" style="padding:3px 0"><span class="mut">Para</span><b>${esc(r.targetName)}</b></div><div class="row between" style="padding:3px 0"><span class="mut">Total</span><b>${kitMontoTxt(r)}</b></div><div class="row between" style="padding:3px 0"><span class="mut">Estado</span><b>${kitLabel(r)}</b></div>${r.tracking ? `<div class="row between" style="padding:3px 0"><span class="mut">Guía</span><b>${esc(r.tracking)}</b></div>` : ''}<div class="sep"></div>${esc(sh.name || '')}<br>${esc([sh.street, sh.colonia, sh.city, sh.state, sh.zip].filter(Boolean).join(', '))}</div>
-    <div class="h2">Qué sigue</div><div class="card lp-steps"><div>Recibes el kit en tu domicilio.</div><div>Un médico veterinario aplica el microchip.</div><div>Registras el chip en la pantalla de tu ejemplar.</div></div><a class="btn block mt2" href="#cuenta">Ir a Mi panel</a>`;
+    <div class="h2">Qué sigue</div><div class="card lp-steps"><div>Recibes el kit en tu domicilio.</div><div>Un médico veterinario aplica el microchip.</div><div>Registras el chip en la pantalla de tu ejemplar.</div></div><a class="btn block mt2" href="#cuenta">Ir a Mi cuenta</a>`;
 }
 function carnetHTML(kind, x){
   const u = State.user, own = u && x.ownerId === u.id, r = kind === 'stock' ? DB.get('ranches', x.ranchId) || {} : null;
@@ -2540,7 +2566,7 @@ function demoBox(){
   return `<div class="h2">Modo demostración</div><div class="card"><div class="small mut">Entra con una cuenta de prueba para ver cada rol. Abre la app en dos pestañas para ver las calificaciones llegar en vivo.</div>
     <div class="btns mt"><button class="btn sm" data-act="demo" data-e="publico@demo.mx" data-p="demo123">Público</button><button class="btn sm" data-act="demo" data-e="admin@charreriapro.mx" data-p="admin123">Súper usuario</button><button class="btn sm" data-act="demo" data-e="villa@demo.mx" data-p="demo123">Lienzo</button><button class="btn sm" data-act="demo" data-e="juez@demo.mx" data-p="demo123">Juez que califica</button><button class="btn sm" data-act="demo" data-e="juez6@demo.mx" data-p="demo123">Juez de escaneo</button><button class="btn sm" data-act="demo" data-e="capitan@demo.mx" data-p="demo123">Capitán</button><button class="btn sm" data-act="demo" data-e="charro@demo.mx" data-p="demo123">Charro</button><button class="btn sm" data-act="demo" data-e="dueno@demo.mx" data-p="demo123">Dueño</button></div>
     <button class="btn ghost sm block mt" data-act="reset">Restablecer datos de ejemplo</button></div>
-    <div class="h2">Ejemplo: croquis de escaramuzas</div><div class="card"><div class="small mut">Cada cuenta muestra una etapa. Después de entrar, ve a Mi panel.</div>
+    <div class="h2">Ejemplo: croquis de escaramuzas</div><div class="card"><div class="small mut">Cada cuenta muestra una etapa. Después de entrar, ve a Mi cuenta.</div>
     ${[['capitana@demo.mx', 'Capitana por llenar', 'Tiene dos charreadas por llenar: Libre y Charra Mayor'], ['capitana3@demo.mx', 'Capitana en borrador', 'Lleva 5 dibujos; solo ella lo ve'], ['capitana2@demo.mx', 'Capitana que ya entregó', 'Su croquis está bloqueado'], ['juez@demo.mx', 'Jueza', 'Mesa del juez › Torneo de Escaramuzas Bicentenario, con los dibujos de referencia'], ['villa@demo.mx', 'Lienzo', 'Copa Primavera: ve cada etapa; en las finalizadas baja el paquete para federación']].map(([e, t, x]) => `<button class="btn block mt" style="height:auto;text-align:left;display:block;padding:10px 12px" data-act="demo" data-e="${e}" data-p="demo123"><b>${t}</b><div class="small mut" style="font-weight:500">${x}</div></button>`).join('')}</div>`;
 }
 function charroSection(u){
@@ -3447,7 +3473,7 @@ function vAdmin(){
 }
 
 /* ------------------------- UI: toasts, modal, selector de infracciones ------------------------- */
-function toast(msg, type = ''){ const box = $('#toasts'); while (box.children.length > 1) box.firstChild.remove(); const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg; box.appendChild(t); setTimeout(() => t.remove(), 3200); }
+function toast(msg, type = ''){ const box = $('#toasts'); while (box.children.length > 1) box.firstChild.remove(); const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg; box.appendChild(t); setTimeout(() => t.remove(), 6000); }
 function ask(title, text, okLabel = 'Confirmar', danger = false, withInput = false){
   return new Promise(res => {
     $('#modal').innerHTML = `<div class="modal"><div class="box"><div style="font-weight:800;font-size:17px">${esc(title)}</div><div class="sub" style="margin-top:6px">${esc(text)}</div>${withInput ? `<input class="in mt" id="askIn" placeholder="${esc(typeof withInput === 'string' ? withInput : 'Motivo')}">` : ''}<div class="btns mt2"><button class="btn" id="askNo">Cancelar</button><button class="btn ${danger ? 'vino' : 'pri'}" id="askOk">${esc(okLabel)}</button></div></div></div>`;
@@ -3871,6 +3897,26 @@ document.addEventListener('submit', async e => {
 });
 
 /* ------------------------- ARRANQUE ------------------------- */
+/* ---------- BIENVENIDA, TUTORIAL Y AYUDA ---------- */
+const GUIA_K = TCG ? 'cp_guia_tcg_v1' : 'cp_guia_v1', LETRA_K = 'cp_letra_grande';
+const guiaLee = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, guiaPon = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const letraPinta = () => document.documentElement.classList.toggle('xl', guiaLee(LETRA_K) === '1'); letraPinta();
+const GUIA_PASOS = TCG ? [['#nav a:nth-child(1)', 'Cartas', 'Aquí mira todas las cartas de charros, caballos y ganado.'], ['#nav a:nth-child(2)', 'Jugar', 'Aquí empieza una partida. Puede jugar sin cuenta.'], ['#nav a:nth-child(3)', 'Mis cartas', 'Aquí guarda las cartas que gane.'], ['#nav a:nth-child(4)', 'Reglas', 'Aquí se explica el juego. Es sencillo: gana quien sume más.'], ['#nav a:nth-child(5)', 'Regresar', 'Con este botón regresa a Charrería Pro.'], ['#ayudaB', 'Ayuda', 'Si se pierde, toque Ayuda en cualquier momento.']]
+  : [['#nav a:nth-child(1)', 'Inicio', 'Aquí ve lo más importante del día. Si se pierde, toque aquí para volver.'], ['#nav a:nth-child(2)', 'En vivo', 'Aquí ve las charreadas que están pasando ahora, con sus puntos.'], ['#nav a:nth-child(3)', 'Resultados', 'Aquí ve las charreadas que ya terminaron.'], ['#nav a:nth-child(4)', 'Ranking', 'Aquí ve quiénes son los mejores charros, equipos y caballos.'], ['#nav a:nth-child(5)', 'Mi cuenta', 'Aquí entra con su correo. Para solo mirar no necesita cuenta.'], ['#ayudaB', 'Ayuda', 'Si tiene una duda, toque Ayuda en cualquier momento.']];
+const GUIA_ID = { inicio:'Aquí ve las charreadas de hoy. Toque una para ver sus puntos. Abajo puede buscar por lienzo o ciudad.', vivo:'Son las charreadas que están pasando ahora. Toque una para ver los puntos al momento.', historial:'Son las charreadas que ya terminaron. Toque una para ver cómo quedó cada equipo.', ranking:'Son los mejores de la temporada. Toque un nombre para ver su tarjeta.', cuenta:'Aquí entra con su correo y contraseña, o crea una cuenta. Para solo mirar no la necesita.', evento:'Es la página de una charreada. Aquí ve los equipos, sus puntos y cada faena.', juez:'Es la mesa de los jueces. Elija equipo y faena, capture los puntos y presione Publicar.', hoja:'Es la hoja oficial de calificación. Se revisa y se firma al terminar.', caballos:'Son los caballos registrados. Toque uno para ver su tarjeta.', caballo:'Es la ficha de su caballo. Hasta arriba registra su chip y su certificado.', ganado:'Aquí ve toros y yeguas para renta y sus ganaderías.', carnet:'Es el certificado del ejemplar. Con el sello, ya fue validado. Abajo abre su tarjeta pública.', charrostv:'Charros TV es un servicio para lienzos: un equipo que graba y transmite la charreada por una mensualidad. Ver las charreadas sigue siendo gratis.', tv:'Aquí se ven las transmisiones de Charros TV.', camaras:'Es el equipo de cámaras para lienzos. Se paga una sola vez.', avisos:'Aquí llegan sus avisos.', microchip:'Aquí pide el chip para su caballo o su ganado.', tienda:'Son las cartas de Charrería Pro. Toque una para verla grande.', juego:'Elija una suerte o una charreada y presione Jugar una partida. En cada faena elija su carta: gana quien sume más.', coleccion:'Aquí guarda las cartas que gana.', jugar:'Son las reglas: se suma la Media de sus cartas y gana el total más alto.', carta:'Es una carta. Puede verla con todos sus datos.' };
+const guiaSale = () => { $('#guia').innerHTML = ''; document.removeEventListener('keydown', guiaTecla); guiaPon(GUIA_K, '1'); };
+const guiaTecla = e => { if (e.key === 'Escape') guiaSale(); };
+function guiaPinta(h){ $('#guia').innerHTML = h; document.removeEventListener('keydown', guiaTecla); document.addEventListener('keydown', guiaTecla); const b = $('#guia button,#guia a'); if (b) b.focus({ preventScroll: true }); }
+const guiaLetraBtn = () => `<button class="g-op sec" data-g="letra">${guiaLee(LETRA_K) === '1' ? 'Usar letra normal' : 'Usar letra más grande'}</button>`;
+function guiaBienvenida(){ const O = TCG ? [['#juego', 'Jugar una partida'], ['#tienda', 'Ver las cartas'], ['#jugar', 'Ver las reglas'], ['../', 'Regresar a Charrería Pro']] : [['#vivo', 'Ver charreadas en vivo'], ['#historial', 'Ver resultados'], ['#ranking', 'Ver a los mejores'], ['tcg/', 'Jugar a las cartas'], ['#cuenta', 'Entrar a mi cuenta']];
+  guiaPinta(`<div class="g-fondo"><div class="g-caja" role="dialog" aria-modal="true" aria-label="Bienvenida"><h2>Le damos la bienvenida</h2><p>¿Qué quiere hacer?</p>${O.map(([href, l]) => `<a class="g-op" href="${href}" data-g="ir">${l}</a>`).join('')}<button class="g-op pri" data-g="tour">Enseñarme cómo se usa</button>${guiaLetraBtn()}<button class="g-op sec" data-g="cerrar">Cerrar</button></div></div>`); }
+function guiaAyuda(){ const t = GUIA_ID[State.route] || 'Use los botones de abajo para moverse. Inicio siempre lo regresa al principio.';
+  guiaPinta(`<div class="g-fondo"><div class="g-caja" role="dialog" aria-modal="true" aria-label="Ayuda"><h2>Ayuda</h2><p>${esc(t)}</p><button class="g-op pri" data-g="tour">Ver cómo se usa</button><button class="g-op sec" data-g="inicio">¿Qué quiere hacer?</button>${guiaLetraBtn()}<button class="g-op sec" data-g="cerrar">Cerrar</button></div></div>`); }
+function guiaPaso(n){ const P = GUIA_PASOS[n]; if (!P) return guiaSale(); const el = document.querySelector(P[0]); if (!el) return guiaPaso(n + 1); const r = el.getBoundingClientRect(), abajo = r.top > innerHeight / 2, fin = n === GUIA_PASOS.length - 1;
+  guiaPinta(`<div class="g-hoyo" style="left:${r.left - 5}px;top:${r.top - 5}px;width:${r.width + 10}px;height:${r.height + 10}px"></div><div class="g-burbuja" role="dialog" aria-modal="true" style="${abajo ? `bottom:${innerHeight - r.top + 18}px` : `top:${r.bottom + 18}px`}"><b>${esc(P[1])}</b><p>${esc(P[2])}</p><div class="g-paso">Paso ${n + 1} de ${GUIA_PASOS.length}</div><div class="g-bts">${n ? `<button class="g-op" data-g="paso" data-n="${n - 1}">Atrás</button>` : ''}<button class="g-op pri" data-g="${fin ? 'cerrar' : 'paso'}" data-n="${n + 1}">${fin ? 'Terminar' : 'Siguiente'}</button></div><button class="g-op sec" data-g="cerrar">Salir</button></div>`); }
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-g]'); if (!b) return; const g = b.dataset.g;
+  if (g === 'ayuda') return guiaAyuda(); if (g === 'tour') { window.scrollTo(0, 0); return guiaPaso(0); } if (g === 'paso') return guiaPaso(+b.dataset.n); if (g === 'inicio') return guiaBienvenida(); if (g === 'cerrar' || g === 'ir') return guiaSale();
+  if (g === 'letra') { guiaPon(LETRA_K, guiaLee(LETRA_K) === '1' ? '0' : '1'); letraPinta(); b.textContent = guiaLee(LETRA_K) === '1' ? 'Usar letra normal' : 'Usar letra más grande'; } });
 (async function boot(){
   $('#view').innerHTML = '<div class="empty">Cargando…</div>';
   const authHash = new URLSearchParams(location.hash.slice(1));   // enlace del correo: #access_token=…&type=recovery o #error=…
@@ -3888,6 +3934,7 @@ document.addEventListener('submit', async e => {
   if (authHash.has('error')) setTimeout(() => toast(authHash.get('error_code') === 'otp_expired' ? 'El enlace ya expiró o ya se usó. Pide uno nuevo.' : (authHash.get('error_description') || 'Enlace inválido'), 'err'), 300);
   if (TCG) document.title = 'CharreríaTCG';
   parseRoute(); render();
+  if (!guiaLee(GUIA_K) && !State.user && !State.recovery && ['inicio', 'tienda', 'juego', ''].includes(State.route)) setTimeout(guiaBienvenida, 400);   // solo la primera visita, y nunca sobre un enlace directo como el de un chip
 })();
 </script>
 </body>

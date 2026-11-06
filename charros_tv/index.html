@@ -16,17 +16,17 @@
   * { box-sizing: border-box; }
   body {
     margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
-    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 18px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   header {
     display: flex; align-items: center; justify-content: space-between; gap: 16px;
     padding: 14px 20px; border-bottom: 1px solid var(--line);
   }
   h1 { margin: 0; font: 800 20px/1.2 Georgia, "Times New Roman", serif; letter-spacing: .04em; color: var(--gold2); }
-  .conexion { color: var(--mut); font-size: 13px; }
+  .conexion { color: var(--text); font-size: 16px; }
 
   /* Interruptor DEMO / REAL */
-  .modo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; letter-spacing: .06em; }
+  .modo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
   .modo span { color: var(--mut); }
   .modo span.activo { color: var(--gold2); }
   body[data-modo="REAL"] .modo span.activo { color: var(--red); }
@@ -54,11 +54,11 @@
   .pantalla canvas { display: block; width: 100%; height: 100%; }
   .etiqueta {
     position: absolute; left: 10px; bottom: 10px; padding: 3px 9px; border-radius: 8px;
-    background: rgba(14, 10, 8, .78); font-size: 13px; text-align: left;
+    background: rgba(14, 10, 8, .86); font-size: 16px; text-align: left;
   }
   .senal {
     position: absolute; top: 10px; right: 10px; padding: 3px 9px; border-radius: 8px;
-    background: rgba(14, 10, 8, .78); font-size: 12px; font-weight: 700;
+    background: rgba(14, 10, 8, .86); font-size: 15px; font-weight: 700;
   }
   .senal.en_vivo { color: var(--green); }
   .senal.simulada { color: var(--gold2); }
@@ -88,9 +88,9 @@
       <div class="conexion" id="conexion" role="status">Conectando…</div>
     </div>
     <div class="modo">
-      <span id="etqDemo">DEMO</span>
+      <span id="etqDemo">Prueba</span>
       <button class="switch" id="switch" role="switch" aria-checked="false" aria-label="Usar modo real"></button>
-      <span id="etqReal">REAL</span>
+      <span id="etqReal">Cámaras reales</span>
     </div>
   </header>
 
