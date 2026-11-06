@@ -2313,9 +2313,7 @@ function vAuth(){
   else if (m === 'forgot') h += `<form class="card mt" data-form="forgot"><div style="font-weight:800">Recuperar contraseña</div><div class="small mut" style="margin-top:4px">Escribe el correo de tu cuenta. Te enviaremos un enlace para crear una contraseña nueva.</div>
     <label class="f">Correo</label><input class="in" name="email" type="email" autocomplete="email" required><button class="btn pri block mt2">Enviarme el enlace</button><button type="button" class="btn ghost sm block mt" data-act="authmode" data-k="login">Volver a entrar</button></form>`;
   else { const r = State.regRole, teamsAll = DB.all('teams').slice().sort((a, b) => a.name.localeCompare(b.name));
-    // Cambiar a true cuando actualizacion_publico.sql esté instalado: sin él, el registro falla y deja la cuenta a medias.
-    const PUBLICO_LISTO = CONFIG.MODE === 'demo';
-    const ROLES = [...(PUBLICO_LISTO ? [['publico','Público']] : []),['lienzo','Lienzo charro'],['juez','Juez'],['charro','Charro'],['escaramuza','Escaramuza'],['equipo','Equipo'],['dueno','Dueño de caballos'],['ganadero','Ganadería']];
+    const ROLES = [['publico','Público'],['lienzo','Lienzo charro'],['juez','Juez'],['charro','Charro'],['escaramuza','Escaramuza'],['equipo','Equipo'],['dueno','Dueño de caballos'],['ganadero','Ganadería']];
     const help = { publico: 'Para seguir charreadas, estadísticas básicas y las fotos públicas del mes. Con Pro ves las estadísticas avanzadas. Tu cuenta queda activa al instante.', lienzo: 'El administrador revisa y autoriza cada lienzo. Incluye Pro sin costo.', juez: 'El administrador autoriza a cada juez para su lienzo. Incluye Pro sin costo.',
       escaramuza: 'Tu cuenta queda activa al instante. Después puedes agregar caballos, ganado o tu equipo como capitana.', charro: 'Tu cuenta queda activa al instante. Para ser parte oficial de un equipo, su capitán, el lienzo o un juez aprueba tu solicitud.',
       equipo: 'Registras tu equipo como capitán. El lienzo al que te afilies aprueba la afiliación, y tú apruebas a los charros de tu roster.',
