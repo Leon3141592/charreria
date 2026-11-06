@@ -223,6 +223,41 @@ textarea.in{min-height:64px;resize:vertical}
   .sheet{zoom:1!important;width:100%;border-radius:0;padding:0}
   @page{size:letter portrait;margin:8mm}
 }
+
+/* Juego de CharreríaTCG: el movimiento va alrededor de la carta; la carta nunca cambia de diseño */
+.jg-mesa{position:relative;height:172px;margin-top:12px;perspective:760px;overflow:hidden;border-radius:18px;background:linear-gradient(#20150f,#0f0a07 60%);border:1px solid var(--line)}
+.jg-mesa::before{content:'';position:absolute;left:0;right:0;top:0;height:64px;background:repeating-linear-gradient(90deg,#3a2b20 0 3px,transparent 3px 34px),linear-gradient(#2a1c13,transparent);opacity:.7}
+.jg-lienzo{position:absolute;left:50%;bottom:-120px;width:150%;height:300px;margin-left:-75%;border-radius:50%;transform:rotateX(68deg);background:radial-gradient(ellipse at center,#c79a63 0 34%,#a87c49 62%,#7b5730 100%);box-shadow:0 0 0 7px #f4ece1,0 0 0 14px #8e1b2c,0 28px 60px #000 inset;animation:jgGira 26s linear infinite}
+@keyframes jgGira{from{background-position:0 0}to{background-position:220px 0}}
+.jg-lado{position:absolute;top:14px;width:38%;text-align:center;z-index:2}.jg-lado.a{left:6px}.jg-lado.b{right:6px}
+.jg-lado .n{font-size:12px;color:var(--text);text-shadow:0 1px 3px #000}.jg-lado b{display:block;font-family:'Cinzel',serif;font-size:46px;line-height:1.05;color:var(--gold2);text-shadow:0 3px 0 #5a361c,0 8px 16px #000;animation:jgPop .5s cubic-bezier(.2,1.6,.4,1)}
+.jg-hats{display:flex;justify-content:center;gap:1px;min-height:18px}.jg-hat{width:22px;height:14px;color:var(--gold2);filter:drop-shadow(0 2px 2px #000);animation:jgPop .5s cubic-bezier(.2,1.6,.4,1) backwards}
+.jg-bote{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;text-align:center;font-size:11px;color:var(--gold2);text-shadow:0 1px 3px #000}
+@keyframes jgPop{from{transform:scale(.3) translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.jg-faena{position:relative;margin-top:12px;padding:14px 16px;border-radius:16px;overflow:hidden;background:linear-gradient(120deg,#5a1a24,#2a0d12 70%);border:1px solid var(--line2);transform-origin:50% 0;animation:jgCae .55s cubic-bezier(.2,1.3,.4,1)}
+.jg-faena .r{font-size:12px;color:var(--mut)}.jg-faena .t{font-family:'Cinzel',serif;font-weight:800;font-size:23px;color:var(--gold2);margin-top:2px}.jg-faena .s{font-size:13px;margin-top:2px}
+@keyframes jgCae{from{transform:perspective(600px) rotateX(-78deg);opacity:0}to{transform:perspective(600px) rotateX(0);opacity:1}}
+.jg-mano{display:flex;gap:0;overflow-x:auto;padding:26px 28px 18px;margin:0 -10px;scroll-snap-type:x proximity;perspective:900px;-webkit-overflow-scrolling:touch}
+.jg-c{all:unset;flex:none;width:172px;margin-right:-34px;cursor:pointer;scroll-snap-align:center;transform:rotate(var(--r)) translateY(var(--y));transform-style:preserve-3d;transition:transform .22s cubic-bezier(.2,1.4,.4,1),filter .2s;animation:jgReparte .5s calc(var(--i)*45ms) cubic-bezier(.2,1.2,.4,1) backwards;position:relative;z-index:var(--z)}
+.jg-c .tc-wrap{zoom:.54;padding:0;perspective:none}.jg-c .ay{font-size:11px;text-align:center;margin-top:4px;color:var(--mut);opacity:0;transition:opacity .15s}
+.jg-c:hover,.jg-c:focus-visible,.jg-c.on{z-index:30;transform:translateY(-16px) rotate(0) scale(1.07) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg));filter:drop-shadow(0 14px 18px #000)}
+.jg-c:hover .ay,.jg-c:focus-visible .ay,.jg-c.on .ay{opacity:1}.jg-c.on{filter:drop-shadow(0 0 12px var(--gold2)) drop-shadow(0 14px 18px #000)}.jg-c:focus-visible{outline:2px solid var(--gold2);outline-offset:3px;border-radius:12px}
+@keyframes jgReparte{from{transform:translate(-90px,70px) rotate(-22deg) rotateY(90deg);opacity:0}}
+.jg-duelo{position:fixed;inset:0;z-index:90;display:grid;justify-items:center;align-items:safe center;padding:10px 0;background:radial-gradient(circle at 50% 40%,#2a1a11ee,#070403f5 72%);overflow:hidden auto;perspective:1000px}
+.jg-duelo>.in{width:min(560px,96vw);text-align:center}.jg-duelo>.in>.t{font-family:'Cinzel',serif;font-weight:800;font-size:21px;color:var(--gold2)}
+.jg-par{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:12px}.jg-vs{position:relative;z-index:3;font-family:'Cinzel',serif;font-weight:800;color:var(--mut);animation:jgPop .4s .5s backwards}
+.jg-lado3d{flex:1 1 0;min-width:0;max-width:240px}.jg-n{font-size:12px;margin-bottom:12px;color:var(--text)}
+.jg-flip{position:relative;transform-style:preserve-3d;animation:jgVolt .85s .25s cubic-bezier(.3,1.25,.4,1) backwards}.jg-lado3d.b .jg-flip{animation-delay:.45s}
+@keyframes jgVolt{from{transform:translateY(-70px) rotateY(180deg) rotateZ(-8deg) scale(.7)}}
+.jg-flip .fr{backface-visibility:hidden}.jg-flip .fr{position:relative;margin:0 auto}.jg-flip .fr .tc-wrap{position:absolute;left:0;top:0;padding:0;margin:0;perspective:none;transform-origin:0 0}.jg-flip .bk{position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);border-radius:14px;background:repeating-linear-gradient(45deg,#5a1a24 0 10px,#3f111a 10px 20px);border:3px solid var(--gold);display:grid;place-items:center;color:var(--gold2)}.jg-flip .bk svg{width:42%}
+.jg-res{margin-top:8px;opacity:0;animation:jgSube .4s 1.15s forwards}.jg-lado3d.b .jg-res{animation-delay:1.35s}.jg-res span{display:block;font-size:12px;color:var(--mut)}.jg-res b{font-family:'Cinzel',serif;font-size:34px;line-height:1.1;color:var(--gold2)}
+@keyframes jgSube{from{opacity:0;transform:translateY(12px) scale(.8)}to{opacity:1;transform:none}}
+.jg-lado3d.gana .jg-flip{animation:jgVolt .85s .25s cubic-bezier(.3,1.25,.4,1) backwards,jgGana .7s 1.75s forwards}.jg-lado3d.b.gana .jg-flip{animation-delay:.45s,1.75s}.jg-lado3d.pierde .jg-flip{animation:jgVolt .85s .25s cubic-bezier(.3,1.25,.4,1) backwards,jgPierde .5s 1.75s forwards}.jg-lado3d.b.pierde .jg-flip{animation-delay:.45s,1.75s}
+@keyframes jgGana{to{transform:scale(1.05) translateY(-4px);filter:drop-shadow(0 0 20px var(--gold2))}}@keyframes jgPierde{to{transform:scale(.92) rotateZ(-3deg);filter:grayscale(.75) brightness(.7)}}
+.jg-fallo{opacity:0;animation:jgSube .4s 1.9s forwards;margin-top:12px;font-weight:800}.jg-duelo .btn{opacity:0;animation:jgSube .3s 2s forwards;margin-top:12px}
+.jg-confeti{position:fixed;inset:0;pointer-events:none;z-index:95;overflow:hidden}.jg-confeti i{position:absolute;top:-30px;width:26px;height:16px;color:var(--gold2);animation:jgLluvia 2.6s linear forwards}
+@keyframes jgLluvia{to{transform:translateY(112vh) rotate(720deg) rotateY(540deg)}}
+@media (prefers-reduced-motion:reduce){.jg-lienzo,.jg-c,.jg-faena,.jg-flip,.jg-vs,.jg-hat,.jg-lado b{animation:none!important}.jg-res,.jg-fallo,.jg-duelo .btn{animation:none;opacity:1}.jg-c{transition:none}.jg-confeti{display:none}}
 </style>
 </head>
 <body>
@@ -1720,18 +1755,35 @@ function jCarta(c, n){
     <div class="ft"><span>CharreríaTCG</span><span>${esc(c.id.toUpperCase())}</span></div></div></div></div>`;
 }
 const jAyuda = c => `<div class="small mut" style="text-align:center;margin-top:4px">Reata ${c.reata} · Rienda ${c.rienda}${c.tipo === 'charro' ? ` · Jineteo ${c.jineteo}` : ''}</div>`;
-function jMarcador(a, b, sa, sb, bote){ return `<div class="card mt"><div class="row between"><div><div class="small mut">${esc(a)}</div><div class="score-big">${sa}</div></div><div class="small mut" style="text-align:center">🤠 sombreros${bote ? `<br>${bote} en juego` : ''}</div><div style="text-align:right"><div class="small mut">${esc(b)}</div><div class="score-big">${sb}</div></div></div></div>`; }
+const J_HAT = '<svg class="jg-hat" viewBox="0 0 44 28" aria-hidden="true"><path fill="currentColor" d="M22 2c-6 0-8 7-9 12-5 0-11 1-13 4 3 5 13 8 22 8s19-3 22-8c-2-3-8-4-13-4-1-5-3-12-9-12Z"/></svg>';
+function jMarcador(a, b, sa, sb, bote){ const hats = n => Array.from({ length: Math.min(n, 9) }, (_, i) => J_HAT.replace('class="jg-hat"', `class="jg-hat" style="animation-delay:${i * 60}ms"`)).join('');
+  return `<div class="jg-mesa" role="status" aria-label="${esc(a)} ${sa}, ${esc(b)} ${sb} sombreros"><div class="jg-lienzo"></div><div class="jg-lado a"><div class="n ell">${esc(a)}</div><b>${sa}</b><div class="jg-hats">${hats(sa)}</div></div><div class="jg-lado b"><div class="n ell">${esc(b)}</div><b>${sb}</b><div class="jg-hats">${hats(sb)}</div></div>${bote ? `<div class="jg-bote">${J_HAT}<br>${bote} en juego</div>` : ''}</div>`; }
+function jConfeti(){ const n = document.createElement('div'); n.className = 'jg-confeti'; n.innerHTML = Array.from({ length: 28 }, (_, i) => `<i style="left:${Math.random() * 100}%;animation-delay:${Math.random() * .9}s">${J_HAT}</i>`).join(''); document.body.append(n); setTimeout(() => n.remove(), 4000); }
+// La carta oficial mide lo mismo siempre; aquí solo se reduce entera para que quepan las dos, sin tocar su diseño.
+function jDueloAjusta(){ const ws = [...document.querySelectorAll('.jg-duelo .tc-wrap')]; if (!ws.length) return;
+  const c = ws[0].querySelector('.tc'), lado = ws[0].closest('.jg-lado3d'); if (!c || !lado) return;
+  const cw = c.offsetWidth, ch = c.offsetHeight, z = Math.min(lado.clientWidth * .9 / cw, Math.max(innerHeight - 290, 170) / ch, 1);
+  ws.forEach(w => { w.style.width = cw + 'px'; w.style.transform = `scale(${z})`; const fr = w.parentElement; fr.style.width = cw * z + 'px'; fr.style.height = ch * z + 'px'; });
+  document.querySelectorAll('.jg-duelo .jg-flip').forEach(x => { x.style.width = cw * z + 'px'; x.style.margin = '0 auto'; }); }
+addEventListener('resize', jDueloAjusta);
+function jDuelo(e, a, b, f, fin){
+  const lado = (k, n, c, h, u, t) => { const r = e.w ? (e.w === k ? ' gana' : ' pierde') : ''; return `<div class="jg-lado3d ${k}${r}"><div class="jg-n ell">${esc(n)}</div><div class="jg-flip"><div class="fr">${jCarta(JCX[c])}</div><div class="bk">${I.trophy}</div></div><div class="jg-res"><span>${h ? esc(JCX[h].nombre) + ' · ' : ''}suerte ${u > 0 ? '+' : ''}${u}</span><b>${t}</b></div></div>`; };
+  const msg = e.w ? `Gana ${esc(e.w === 'a' ? a : b)}` : `Nadie gana${f.b ? `: había que llegar a ${f.b}` : ''}. Los sombreros pasan a la siguiente.`;
+  $('#modal').innerHTML = `<div class="jg-duelo" role="dialog" aria-label="Resultado de ${esc(f.n)}"><div class="in"><div class="t">${esc(f.n)}</div><div class="jg-par">${lado('a', a, e.ca, e.ha, e.ua, e.ta)}<div class="jg-vs">VS</div>${lado('b', b, e.cb, e.hb, e.ub, e.tb)}</div><div class="jg-fallo" style="color:var(--gold2)">${msg}</div><button class="btn pri" data-act="jgDueloOk">${fin ? 'Ver resultado' : 'Siguiente faena'}</button></div></div>`;
+  jDueloAjusta();
+}
+document.addEventListener('pointermove', e => { const c = e.target.closest && e.target.closest('.jg-c'); if (!c || e.pointerType === 'touch') return; const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; c.style.setProperty('--ty', x * 18 + 'deg'); c.style.setProperty('--tx', -y * 18 + 'deg'); });
 function jRevela(e, a, b, f){ if (!e) return ''; const nm = i => i ? JCX[i].nombre : '';
   const lado = (n, c, h, u, t) => `<div class="small"><b>${esc(n)}:</b> ${esc(nm(c))}${h ? ' + ' + esc(nm(h)) : ''} · suerte ${u > 0 ? '+' : ''}${u} · <b style="color:var(--gold2)">${t}</b></div>`;
   return `<div class="banner ${e.w ? 'ok' : 'warn'} mt"><span>${e.w ? `Ganó ${esc(e.w === 'a' ? a : b)}` : 'Nadie ganó: los sombreros se suman a la siguiente'}${f.b ? ` (había que llegar a ${f.b})` : ''}</span></div><div class="card mt">${lado(a, e.ca, e.ha, e.ua, e.ta)}${lado(b, e.cb, e.hb, e.ub, e.tb)}</div>`; }
 function jMano(cs, hs, f, listo){
-  const S = State.jgSel || (State.jgSel = {}), boton = (c, k) => `<button type="button" data-act="jgSel" data-k="${k}" data-id="${c.id}" style="all:unset;cursor:pointer;display:block;outline:${S[k] === c.id ? '3px solid var(--gold2)' : 'none'};border-radius:12px" aria-pressed="${S[k] === c.id}" aria-label="${esc(c.nombre)}, ${J_STAT[f.stat]} ${k === 'c' ? c[f.stat] : '+' + jBono(c, f.stat)}">${jCarta(c)}${jAyuda(c)}</button>`;
-  const orden = (l, g) => l.slice().sort((a, b) => g(b) - g(a));
-  return `<div class="h2">Tu charro · cuenta ${J_STAT[f.stat]}</div><div class="tcg-grid">${orden(cs, c => c[f.stat]).map(c => boton(c, 'c')).join('')}</div>
-    ${f.caballo && hs.length ? `<div class="h2">Tu caballo · suma a ${J_STAT[f.stat === 'jineteo' ? 'rienda' : f.stat]}</div><div class="tcg-grid">${orden(hs, c => jBono(c, f.stat)).map(c => boton(c, 'h')).join('')}</div>` : ''}
-    ${S.c && (!f.caballo || !hs.length || S.h) ? `<button class="btn pri block mt2" style="min-height:56px;font-size:17px;position:sticky;bottom:calc(var(--navh,64px) + 8px)" data-act="${listo}">Jugar esta faena</button>` : `<div class="small mut mt2" style="text-align:center">Toca ${S.c ? 'tu caballo' : 'tu charro'} para continuar.</div>`}`;
+  const S = State.jgSel || (State.jgSel = {}), orden = (l, g) => l.slice().sort((a, b) => g(b) - g(a));
+  const fila = (l, k) => `<div class="jg-mano">${l.map((c, i) => { const m = (l.length - 1) / 2, d = i - m; return `<button type="button" class="jg-c${S[k] === c.id ? ' on' : ''}" data-act="jgSel" data-k="${k}" data-id="${c.id}" style="--i:${i};--r:${(d * 2.2).toFixed(1)}deg;--y:${(Math.abs(d) * 3).toFixed(0)}px;--z:${i + 1}" aria-pressed="${S[k] === c.id}" aria-label="${esc(c.nombre)}, ${J_STAT[f.stat]} ${k === 'c' ? c[f.stat] : '+' + jBono(c, f.stat)}">${jCarta(c)}<div class="ay">${jAyuda(c).replace(/<[^>]+>/g, '')}</div></button>`; }).join('')}</div>`;
+  return `<div class="h2">Tu charro · cuenta ${J_STAT[f.stat]}</div>${fila(orden(cs, c => c[f.stat]), 'c')}
+    ${f.caballo && hs.length ? `<div class="h2">Tu caballo · suma a ${J_STAT[f.stat === 'jineteo' ? 'rienda' : f.stat]}</div>${fila(orden(hs, c => jBono(c, f.stat)), 'h')}` : ''}
+    ${S.c && (!f.caballo || !hs.length || S.h) ? `<button class="btn pri block mt2" style="min-height:56px;font-size:17px;position:sticky;bottom:calc(var(--navh,64px) + 8px);z-index:40" data-act="${listo}">Jugar esta faena</button>` : `<div class="small mut mt2" style="text-align:center">Toca ${S.c ? 'tu caballo' : 'tu charro'} para continuar.</div>`}`;
 }
-function jFaenaHTML(f, r, total, s){ return `<div class="hero mt" style="border-color:var(--line2)"><div class="small mut">Ronda ${r + 1} de ${total}${s ? ` · vale ${s} ${s === 1 ? 'sombrero' : 'sombreros'}` : ''}</div><div class="h1" style="margin-top:6px">${esc(f.n)}</div><div class="sub" style="margin-top:4px">Cuenta ${J_STAT[f.stat]}${f.caballo ? ' con caballo' : ' sin caballo'}${f.b ? `. Hay que llegar a ${f.b}` : ''}.</div><div class="pattern"></div></div>`; }
+function jFaenaHTML(f, r, total, s){ return `<div class="jg-faena"><div class="r">Ronda ${r + 1} de ${total}${s ? ` · vale ${s} ${s === 1 ? 'sombrero' : 'sombreros'}` : ''}</div><div class="t">${esc(f.n)}</div><div class="s">Cuenta ${J_STAT[f.stat]}${f.caballo ? ' con caballo' : ' sin caballo'}${f.b ? `. Hay que llegar a ${f.b}` : ''}.</div></div>`; }
 function jMesaIA(){
   const st = State.jg, a = (State.user && State.user.name) || 'Tú', b = `IA ${J_NIVEL[st.nivel]}`;
   const ult = st.log[st.log.length - 1], fIdx = ult && (st.modo === 'suerte' ? st.faena : ult.ronda);
@@ -1747,6 +1799,8 @@ function jMesaOn(){
   let h = `<div class="row between"><div class="h1">Partida en línea</div><button class="btn ghost sm" data-act="jgDejar">${p.estado === 'fin' ? 'Salir' : 'Abandonar'}</button></div>`;
   if (p.estado === 'esperando') return h + `<div class="card mt" style="text-align:center"><div class="small mut">Comparte este código con tu rival</div><div class="score-big" style="font-size:26px;margin-top:8px">${esc(p.codigo)}</div><div class="small mut mt">Esperando a que entre…</div></div>`;
   const ult = p.log[p.log.length - 1], fi = ult && (p.modo === 'suerte' ? p.faena : ult.ronda);
+  if (State.jgVistos === undefined || State.jgVistosId !== p.id) { State.jgVistos = p.log.length; State.jgVistosId = p.id; }
+  if (p.log.length > State.jgVistos) { State.jgVistos = p.log.length; setTimeout(() => jDuelo(ult, a, b, JF[fi], p.estado === 'fin'), 0); }
   h += jMarcador(a, b, p.sa, p.sb, p.bote) + (ult ? jRevela(ult, a, b, JF[fi]) : '');
   if (p.estado === 'fin') return h + `<div class="hero mt" style="border-color:var(--line2)"><div class="h1">${!p.ganador ? '¡Empate!' : p.ganador === u.id ? '¡Ganaste!' : 'Ganó tu rival'}</div><div class="sub" style="margin-top:6px">${p.abandono ? 'La partida terminó por abandono. ' : ''}Revisa si ganaste carta en Mis cartas.</div><div class="pattern"></div></div>`;
   const f = JF[p.modo === 'suerte' ? p.faena : p.ronda], usados = p['usados' + L], m = p['mazo' + L].filter(i => !usados.includes(i)).map(i => JCX[i]);
@@ -1781,11 +1835,12 @@ async function jPrepararMazo(){
 }
 const jActs = {
   jgOpc(el){ State[el.dataset.k] = el.dataset.k === 'jgNivel' ? +el.dataset.v : el.dataset.v; render(); },
-  jgSel(el){ const S = State.jgSel || (State.jgSel = {}); S[el.dataset.k] = el.dataset.id; render(); },
+  jgSel(el){ const S = State.jgSel || (State.jgSel = {}), y = window.scrollY, xs = [...document.querySelectorAll('.jg-mano')].map(m => m.scrollLeft); S[el.dataset.k] = el.dataset.id; render(); document.querySelectorAll('.jg-c').forEach(c => { c.style.animation = 'none'; }); document.querySelectorAll('.jg-mano').forEach((m, i) => { m.scrollLeft = xs[i] || 0; }); window.scrollTo(0, y); },
+  jgDueloOk(){ $('#modal').innerHTML = ''; if (State.jg && State.jg.ronda >= State.jg.total && State.jg.sa > State.jg.sb) jConfeti(); window.scrollTo(0, 0); },
   async jgIA(){ await safe(async () => { const m = await jPrepararMazo(); if (!m) throw new Error('Tu mazo está incompleto'); const n = State.jgNivel || 1, ia = jMazoIA(n), modo = State.jgModo || 'charreada', es = (l, p) => l.filter(i => i[0] === p);
     State.jg = { modo, faena: +(State.jgFaena || 0), nivel: n, ronda: 0, total: modo === 'suerte' ? 3 : 7, c: es(m, 'c'), h: es(m, 'h'), ic: es(ia, 'c'), ih: es(ia, 'h'), sa: 0, sb: 0, bote: 0, log: [] }; State.jgSel = {}; render(); }); },
   async jgJugar(){ const st = State.jg, S = State.jgSel || {}, f = jFaena(st), [ic, ih] = jIA(st); st.c = st.c.filter(i => i !== S.c); st.h = st.h.filter(i => i !== S.h); st.ic = st.ic.filter(i => i !== ic); st.ih = st.ih.filter(i => i !== ih);
-    jResolver(st, S.c, f.caballo ? S.h || null : null, ic, ih); State.jgSel = {}; if (st.ronda >= st.total && State.user) await safe(async () => { st.premio = await jTcg('premio', { p_gano: st.sa > st.sb, p_nivel: st.nivel }); }); render(); window.scrollTo(0, 0); },
+    jResolver(st, S.c, f.caballo ? S.h || null : null, ic, ih); State.jgSel = {}; if (st.ronda >= st.total && State.user) await safe(async () => { st.premio = await jTcg('premio', { p_gano: st.sa > st.sb, p_nivel: st.nivel }); }); render(); window.scrollTo(0, 0); const e = st.log[st.log.length - 1]; jDuelo(e, (State.user && State.user.name) || 'Tú', `IA ${J_NIVEL[st.nivel]}`, JF[st.modo === 'suerte' ? st.faena : e.ronda], st.ronda >= st.total); },
   jgSalir(){ State.jg = null; State.jgSel = {}; render(); }, jgOtra(){ State.jg = null; State.jgSel = {}; render(); },
   async jgCrear(){ await safe(async () => { const m = await jPrepararMazo(); if (!m) throw new Error('Tu mazo está incompleto'); State.jgOn = await jTcg('crear_partida', { p_modo: State.jgModo || 'charreada', p_faena: +(State.jgFaena || 0), p_mazo: m }); State.jgSel = {}; render(); }); },
   jgVolver(el){ State.jgOn = el.dataset.id; State.jgSel = {}; render(); },
