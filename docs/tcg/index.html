@@ -1218,18 +1218,12 @@ async function nfcRead(completo = false){
     r.onreading = e => { clearTimeout(t); ctl.abort(); const uidv = normUid(e.serialNumber), rec = [...((e.message && e.message.records) || [])].find(x => x.recordType === 'url'); ok(completo ? { uid: uidv, url: rec ? new TextDecoder().decode(rec.data) : '' } : uidv); };
     r.onreadingerror = () => { clearTimeout(t); ctl.abort(); ko(new Error('No se pudo leer el chip. Acércalo más y no lo muevas.')); }; });
 }
-async function nfcAlta(url){   // en un solo toque: lee el UID y graba el enlace del carnet
+async function nfcWrite(url){   // sobrescribe lo que tenga el chip; espera a que lo acerquen
   if (!hasNFC()) throw new Error(NFC_HELP);
-  const r = new NDEFReader(), ctl = new AbortController();
-  try { await r.scan({ signal: ctl.signal }); } catch (e) { throw nfcErr(e); }
-  toast('Acerca el celular al chip y no lo muevas…');
-  return new Promise((ok, ko) => { const t = setTimeout(() => { ctl.abort(); ko(new Error('No se detectó ningún chip. Intenta de nuevo, más cerca.')); }, 25000);
-    r.onreading = async e => { clearTimeout(t); const uidv = normUid(e.serialNumber); let grabado = true; try { await r.write({ records: [{ recordType: 'url', data: url }] }, { overwrite: true }); } catch (x) { grabado = false; } ctl.abort(); ok({ uid: uidv, grabado }); };
-    r.onreadingerror = () => { clearTimeout(t); ctl.abort(); ko(new Error('No se pudo leer el chip. Acércalo más y no lo muevas.')); }; });
-}
-async function nfcWrite(url){
-  if (!hasNFC()) throw new Error(NFC_HELP);
-  try { const r = new NDEFReader(); toast('Acerca el celular al chip para grabar…'); await r.write({ records: [{ recordType: 'url', data: url }] }, { overwrite: true }); } catch (e) { throw nfcErr(e); }
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 25000);
+  try { const r = new NDEFReader(); toast('Acerca el chip y no lo muevas hasta que termine…'); await r.write({ records: [{ recordType: 'url', data: url }] }, { overwrite: true, signal: ctl.signal }); }
+  catch (e) { throw e && e.name === 'AbortError' ? new Error('No se detectó el chip. Presiona otra vez y acércalo.') : e && e.name === 'NetworkError' ? new Error('Se movió el chip o no permite grabar. Intenta de nuevo sin moverlo; si sigue igual, puede estar bloqueado.') : nfcErr(e); }
+  finally { clearTimeout(t); }
 }
 const carnetUrl = id => location.origin + location.pathname + '#carnet-' + id;
 const chipTarget = id => DB.get('horses', id) ? ['horse', DB.get('horses', id)] : DB.get('stock', id) ? ['stock', DB.get('stock', id)] : [null, null];
@@ -2093,11 +2087,11 @@ function chipSection(kind, x){
   const orders = DB.all('requests').filter(r => r.type === 'chip_order' && r.targetId === x.id).sort((a, b) => b.createdAt - a.createdAt), open = orders.find(r => ['pendiente','enviado'].includes(r.status)), st = x.chipStatus;
     let h = `<div class="h2">Microchip y carnet digital</div><div class="card">`;
   if (st === 'validado') h += `<div class="row between" style="gap:8px"><div><span class="chip green">${I.check}Carnet validado</span><div class="small mut" style="margin-top:6px">UID ${esc(fmtUid(x.chipUid))}</div></div></div>
-      <div class="btns mt"><a class="btn pri sm" href="#carnet-${x.id}">${I.shield} Ver carnet</a><button class="btn sm" data-act="nfcWrite" data-id="${x.id}">Grabar enlace en el chip (NFC)</button></div><div class="small mut2 mt">Al grabarlo, cualquiera que acerque su celular al chip abre el carnet para verificarlo.</div>`;
-  else { if (st === 'pendiente') h += `<div class="banner warn">${I.clock}<span>Chip ${esc(fmtUid(x.chipUid))} registrado. Falta que el súper usuario lo valide${kind === 'horse' ? '; mientras tanto sus puntos no cuentan en el ranking oficial' : ''}.</span></div>`;
+      <div class="btns mt"><a class="btn pri sm" href="#carnet-${x.id}">${I.shield} Ver carnet</a><button class="btn sm" data-act="nfcWrite" data-id="${x.id}">Grabar certificado en el chip</button></div><div class="small mut2 mt">Al grabarlo, cualquiera que acerque su celular al chip abre el certificado.</div>`;
+  else { if (st === 'pendiente') h += `<div class="banner warn">${I.clock}<span>Certificado generado para el chip ${esc(fmtUid(x.chipUid))}. Falta que el súper usuario lo valide${kind === 'horse' ? '; mientras tanto sus puntos no cuentan en el ranking oficial' : ''}. Al validarse aparecerá el sello.</span></div><div class="btns mt"><button class="btn pri sm" data-act="nfcWrite" data-id="${x.id}">Grabar certificado en el chip</button><a class="btn sm" href="#carnet-${x.id}">${I.shield} Ver certificado</a></div>`;
     if (st === 'rechazado') h += `<div class="banner err">${I.info}<span>El chip ${esc(fmtUid(x.chipUid))} no se pudo validar. Revisa el UID o solicita un kit.</span></div>`;
     h += `<div class="small mut${st ? ' mt' : ''}">${kind === 'horse' ? 'Con el carnet validado, los puntos de este caballo cuentan en el ranking oficial.' : 'El carnet identifica a este ejemplar ante lienzos y jueces.'}</div>
-      ${st === 'pendiente' ? '' : `<button class="btn pri block mt" style="min-height:56px;font-size:16px" data-act="chipAlta" data-k="${kind}" data-id="${x.id}">${I.shield} Escanear chip y registrar (NFC)</button><div class="small mut2 mt">Acerca el celular al chip: se lee, queda registrado a nombre de ${esc(x.name)} y se le graba su carnet.</div>`}
+      ${st === 'pendiente' ? '' : `<button class="btn pri block mt" style="min-height:56px;font-size:16px" data-act="chipAlta" data-k="${kind}" data-id="${x.id}">${I.shield} Escanear chip y registrar (NFC)</button><div class="small mut2 mt">Acerca el celular al chip: se lee y se genera el certificado de ${esc(x.name)}. Después se graba en el chip con un segundo toque.</div>`}
       <form data-form="chipReg" data-kind="${kind}" data-id="${x.id}" class="mt"><label class="f">O escribe el UID del chip</label><div class="row" style="gap:8px"><input class="in" name="uid" id="uid-${x.id}" placeholder="04:A1:C2:E3:F4:05:1A" autocomplete="off" style="font-family:monospace;text-transform:uppercase" required><button class="btn sm" style="min-height:46px">Registrar</button></div></form>
       <div class="small mut2 mt">${hasNFC() ? 'Tu navegador pedirá permiso para usar NFC.' : NFC_HELP}</div>`; }
   if (orders.length) h += `<div class="sep"></div>${orders.map(r => `<div class="row between small" style="padding:4px 0;gap:8px"><span>Kit · ${fdate(localISO(r.createdAt))}${r.tracking ? ' · Guía ' + esc(r.tracking) : ''}</span><a class="chip ${r.status === 'entregado' ? 'green' : 'blue'}" href="#pedido-${r.id}" style="text-decoration:none">${kitLabel(r)}</a></div>`).join('')}`;
@@ -2218,21 +2212,21 @@ function carnetHTML(kind, x){
   const F = kind === 'horse' ? [['Raza', x.breed], ['Sexo', x.sex], ['Nacimiento', x.birthYear], ['Pelaje', x.coat], ['Disciplina', x.discipline], ['Registro', x.registry || 'Sin registro']]
     : [['Tipo', x.kind === 'toro' ? 'Toro' : 'Yegua bruta'], ['Número', x.tag], ['Edad', x.age], ['Peso', x.weight], ['Faenas', (x.uses || []).join(', ')]];
   const photo = safeImg(x.photo), ok = hasCarnet(x);
-  return `<div class="carnet" id="carnet-card"><div class="ch"><span class="logo" style="width:24px;height:24px;border-radius:7px"><span style="width:14px;height:14px;display:block;color:var(--gold2)">${I.horse}</span></span><b>${esc(CONFIG.APP_NAME)}</b><span>Carnet de identificación<br>${kind === 'horse' ? 'equina' : 'de ganado'}</span></div>
+  return `<div class="carnet" id="carnet-card"><div class="ch"><span class="logo" style="width:24px;height:24px;border-radius:7px"><span style="width:14px;height:14px;display:block;color:var(--gold2)">${I.horse}</span></span><b>${esc(CONFIG.APP_NAME)}</b><span>Certificado de identificación<br>${kind === 'horse' ? 'equina' : 'de ganado'}</span></div>
     <div class="cb"><div class="cp">${photo ? `<img src="${esc(photo)}" alt="" crossorigin="anonymous">` : `<span style="width:56px;height:56px;color:var(--gold);opacity:.7">${I.horse}</span>`}</div>
       <div class="cf"><div class="w nm"><span>Nombre</span><b>${esc(x.name)}</b></div><div class="w"><span>${kind === 'horse' ? 'Dueño' : 'Ganadería'}</span><b>${esc(owner)}</b></div>${F.filter(([, v]) => v).slice(0, 6).map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}
         <div class="w"><span>Microchip UID</span><b style="font-family:monospace">${esc(fmtUid(x.chipUid) || '—')}</b></div></div></div>
-    <div class="cfoot"><span>Folio ${esc(carnetFolio(x.id))}</span><span>${ok ? 'Validado ' + fdate(localISO(x.chipAt)) : 'Sin validar'}</span></div>${ok ? `<div class="seal">CARNET<br>VALIDADO</div>` : ''}</div>`;
+    <div class="cfoot"><span>Folio ${esc(carnetFolio(x.id))}</span><span>${ok ? 'Validado ' + fdate(localISO(x.chipAt)) : 'Sin validar'}</span></div>${ok ? `<div class="seal">CERTIFICADO<br>VALIDADO</div>` : ''}</div>`;
 }
 function vCarnet(){
   const [kind, x] = chipTarget(State.param), u = State.user; if (!x) return emptyState(I.shield, 'Carnet no encontrado', 'Revisa el enlace o el chip.');
   const own = u && x.ownerId === u.id, ok = hasCarnet(x);
-  return `<a class="back" href="#${own ? (kind === 'horse' ? 'caballo-' : 'res-') + x.id : kind === 'horse' ? 'caballos' : 'ganado'}">${I.arrow} ${own ? 'Administrar' : 'Regresar'}</a><div class="h1">Carnet digital</div>
-    <div class="banner ${ok ? 'ok' : 'warn'} mt">${ok ? I.check : I.info}<span>${ok ? `Carnet verificado por ${esc(CONFIG.APP_NAME)}: el microchip ${esc(fmtUid(x.chipUid))} pertenece a este ejemplar.` : 'Este ejemplar todavía no tiene un carnet validado.'}</span></div>
+  return `<a class="back" href="#${own ? (kind === 'horse' ? 'caballo-' : 'res-') + x.id : kind === 'horse' ? 'caballos' : 'ganado'}">${I.arrow} ${own ? 'Administrar' : 'Regresar'}</a><div class="h1">Certificado</div>
+    <div class="banner ${ok ? 'ok' : 'warn'} mt">${ok ? I.check : I.info}<span>${ok ? `Certificado verificado por ${esc(CONFIG.APP_NAME)}: el microchip ${esc(fmtUid(x.chipUid))} pertenece a este ejemplar.` : x.chipUid ? 'Certificado generado. Todavía no está validado: el sello aparece cuando lo valide el súper usuario.' : 'Este ejemplar todavía no tiene chip registrado.'}</span></div>
     <div class="mt">${carnetHTML(kind, x)}</div>
-    ${ok ? `<div class="h2">Código QR</div><div class="card row" style="gap:14px"><img class="qr" src="${carnetQR(x.id).createDataURL(4, 4)}" alt="Código QR del carnet de ${esc(x.name)}"><div class="small mut">Es el mismo que trae el llavero del kit. Al escanearlo se abre este carnet.</div></div>` : ''}
-    ${own && ok ? `<div class="btns mt2"><button class="btn pri" data-act="carnetPng" data-id="${x.id}">${I.upload} Descargar carnet</button><button class="btn" data-act="nfcWrite" data-id="${x.id}">Grabar en el chip (NFC)</button></div>` : ''}
-    ${kind === 'horse' ? `<button class="btn ghost block mt" data-act="hcard" data-id="${x.id}">Ver tarjeta del caballo</button>` : `<button class="btn ghost block mt" data-act="scard" data-id="${x.id}">Ver ficha</button>`}`;
+    ${kind === 'horse' ? `<button class="btn pri block mt" data-act="hcard" data-id="${x.id}">Ver tarjeta pública</button>` : `<button class="btn pri block mt" data-act="scard" data-id="${x.id}">Ver tarjeta pública</button>`}
+    ${x.chipUid ? `<div class="h2">Código QR</div><div class="card row" style="gap:14px"><img class="qr" src="${carnetQR(x.id).createDataURL(4, 4)}" alt="Código QR del carnet de ${esc(x.name)}"><div class="small mut">Al escanearlo se abre este certificado.</div></div>` : ''}
+    ${own && x.chipUid ? `<div class="btns mt2">${ok ? `<button class="btn pri" data-act="carnetPng" data-id="${x.id}">${I.upload} Descargar certificado</button>` : ''}<button class="btn" data-act="nfcWrite" data-id="${x.id}">Grabar en el chip</button></div>` : ''}`;
 }
 function vCaballo(){
   const u = State.user, h = DB.get('horses', State.param);
@@ -3524,11 +3518,14 @@ const ACT = {
   async kitPaid(el){ const r = DB.get('requests', el.dataset.id); if (!r) return; if (!(await ask('Marcar pagado', `Confirma que ya recibiste ${mxn(kitMonto(r))} de este pedido. Después podrás enviarlo.`, 'Ya pagó'))) return; await safe(() => DB.put('requests', { ...r, payStatus: 'pagado', paidAt: Date.now(), paidBy: State.user.name }), 'Pedido marcado como pagado'); },
   async nfcRead(el){ const inp = document.getElementById(el.dataset.target); try { const id = await nfcRead(); if (inp) inp.value = fmtUid(id); toast('Chip leído: ' + fmtUid(id), 'ok'); } catch (e) { toast(e.message, 'err'); } },
   async chipAlta(el){ const kind = el.dataset.k, x = DB.get(kind === 'horse' ? 'horses' : 'stock', el.dataset.id); if (!x) return;
-    try { let r; if (hasNFC()) r = await nfcAlta(carnetUrl(x.id)); else if (DB.backend.mode === 'demo') r = { uid: '04' + [...crypto.getRandomValues(new Uint8Array(6))].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase(), grabado: true }; else return toast(NFC_HELP, 'err');
-      const st = await DB.backend.registerChip(kind, x, r.uid); await audit('microchip', `Registró el chip ${fmtUid(r.uid)} en ${x.name}`);
-      toast(!r.grabado ? 'Chip registrado, pero no se pudo grabar el enlace. El chip puede estar bloqueado.' : st === 'validado' ? 'Certificado listo: el chip coincide con tu kit.' : 'Chip registrado y carnet grabado. Ya lo reconocen los jueces.', r.grabado ? 'ok' : 'err'); if (st === 'validado') go('carnet-' + x.id); else render();
+    try { const demo = !hasNFC() && DB.backend.mode === 'demo'; if (!hasNFC() && !demo) return toast(NFC_HELP, 'err');
+      const uidv = demo ? '04' + [...crypto.getRandomValues(new Uint8Array(6))].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase() : await nfcRead();
+      const st = await DB.backend.registerChip(kind, x, uidv); await audit('microchip', `Registró el chip ${fmtUid(uidv)} en ${x.name}`); render();
+      if (demo) return toast('Certificado generado. En un celular con NFC ahora se graba en el chip.', 'ok');
+      if (await ask('Certificado generado', 'Falta grabarlo en el chip. Presiona Grabar y acerca el chip otra vez, sin moverlo.', 'Grabar en el chip')) { await nfcWrite(carnetUrl(x.id)); toast('Certificado grabado. Al acercar un celular se abre el certificado.', 'ok'); }
+      if (st === 'validado') go('carnet-' + x.id); else render();
     } catch (e) { toast(e.message || 'No se pudo registrar el chip', 'err'); } },
-  async nfcWrite(el){ try { await nfcWrite(carnetUrl(el.dataset.id)); toast('Enlace del carnet grabado en el chip', 'ok'); } catch (e) { toast(e.message, 'err'); } },
+  async nfcWrite(el){ try { await nfcWrite(carnetUrl(el.dataset.id)); toast('Certificado grabado. Al acercar un celular se abre el certificado.', 'ok'); } catch (e) { toast(e.message, 'err'); } },
   async carnetPng(el){ const [, x] = chipTarget(el.dataset.id); await safe(() => downloadNode($('#carnet-card'), `carnet-${slug(x ? x.name : 'ejemplar')}.png`), 'Carnet descargado'); },
   async chipVal(el){ const kind = el.dataset.k, x = DB.get(kind === 'horse' ? 'horses' : 'stock', el.dataset.id), ok = !!el.dataset.ok; if (!x) return;
     await safe(async () => { await DB.backend.validateChip(kind, x, ok); await audit('microchip', `${ok ? 'Validó' : 'Rechazó'} el chip ${fmtUid(x.chipUid)} de ${x.name}`); }, ok ? 'Carnet validado' : 'Chip rechazado'); },
